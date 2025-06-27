@@ -1,10 +1,10 @@
 import { Module } from "@nestjs/common";
 import { SpotifyController } from "./spotify.controller";
-import { SpotifyService } from "./spotify.service";
+import { SpotifyAuthService } from "./services/spotify.auth-service";
 
 @Module({
     controllers: [SpotifyController],
-    providers: [SpotifyService],
+    providers: [SpotifyAuthService],
 })
 
 export class SpotifyModule {}
