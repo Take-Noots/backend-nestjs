@@ -17,10 +17,10 @@ export class SpotifyController {
     @Get('whoami')
     async getUsername(
         @SpotifyToken(SpotifyTokenPipe) spotifyToken: string
-    ): Promise<string> {
+    ): Promise<{username: string}> {
         try {
             const username = await this.authService.getUsername(spotifyToken);
-            return username;
+            return { username };
         } catch (error) {
             // throw correct nest js error
             throw new HttpException('Failed to fetch username', HttpStatus.INTERNAL_SERVER_ERROR);
