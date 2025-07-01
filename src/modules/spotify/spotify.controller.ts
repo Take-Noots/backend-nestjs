@@ -1,10 +1,12 @@
-import { Controller, Get, HttpException, BadRequestException, HttpStatus, UseGuards, Query, Res, Req } from '@nestjs/common';
-import { Response, Request } from 'express';
-import { SpotifyAuthService } from './services/spotify.auth-service';
-import { SpotifyTokenGuard } from './guards/spotify-token.guard';
-import { SpotifyToken } from './decorators/spotify-token.decorator';
-import { SpotifyTokenPipe } from './pipes/spotify-token.pipe';
+import { Controller, Get, HttpException, HttpStatus, Query, Res, UseGuards } from '@nestjs/common';
+import { Response } from 'express';
+import { SpotifyRefreshToken } from './decorators/spotify-refresh-token.decorator';
 import { SkipSpotifyAuth } from './decorators/spotify-skip-auth.decorator';
+import { SpotifyToken } from './decorators/spotify-token.decorator';
+import { SpotifyTokenGuard } from './guards/spotify-token.guard';
+import { SpotifyRefreshTokenPipe } from './pipes/spotify-refresh-token.pipe';
+import { SpotifyTokenPipe } from './pipes/spotify-token.pipe';
+import { SpotifyAuthService } from './services/spotify.auth-service';
 
 
 @Controller('spotify')
@@ -15,10 +17,10 @@ export class SpotifyController {
     @Get('whoami')
     async getUsername(
         @SpotifyToken(SpotifyTokenPipe) spotifyToken: string
-    ): Promise<string> {
+    ): Promise<{username: string}> {
         try {
             const username = await this.authService.getUsername(spotifyToken);
-            return username;
+            return { username };
         } catch (error) {
             // throw correct nest js error
             throw new HttpException('Failed to fetch username', HttpStatus.INTERNAL_SERVER_ERROR);
@@ -61,11 +63,9 @@ export class SpotifyController {
     @Get('refresh')
     @SkipSpotifyAuth()
     async refresh(
-        @Req() req: Request,
+        @SpotifyRefreshToken(SpotifyRefreshTokenPipe) refresh_token: string,
         @Res() res: Response,
     ):Promise<void>{
-        const refresh_token = req.cookies['spotify_refresh_token'];
-        
         try {
             const { access_token, new_refresh_token } = await this.authService.refreshToken(refresh_token);
 
