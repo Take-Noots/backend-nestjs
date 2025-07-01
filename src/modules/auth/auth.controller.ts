@@ -3,7 +3,7 @@ import { Response } from 'express';
 import { RegisterUserDTO } from './dto/register-user.dto';
 import { LoginUserDTO } from './dto/login-user.dto';
 import { AuthService } from './auth.service';
-import { UserType } from '../../common/interfaces/user.interface';
+import { UserType } from '@interfaces/user.interface';
 
 
 @Controller('auth')

@@ -1,4 +1,4 @@
-import { Controller, Get, HttpException, HttpStatus, Query, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, HttpException, HttpStatus, Query, Res, UseGuards } from '@nestjs/common';
 import { Response } from 'express';
 import { SpotifyRefreshToken } from './decorators/spotify-refresh-token.decorator';
 import { SkipSpotifyAuth } from './decorators/spotify-skip-auth.decorator';
@@ -7,13 +7,18 @@ import { SpotifyTokenGuard } from './guards/spotify-token.guard';
 import { SpotifyRefreshTokenPipe } from './pipes/spotify-refresh-token.pipe';
 import { SpotifyTokenPipe } from './pipes/spotify-token.pipe';
 import { SpotifyAuthService } from './services/spotify.auth-service';
+import { SpotifySearchService } from './services/spotify.search-service';
 
 
 @Controller('spotify')
 @UseGuards(SpotifyTokenGuard)
 export class SpotifyController {
-    constructor(private authService: SpotifyAuthService) {}
+    constructor(
+        private authService: SpotifyAuthService,
+        private searchService: SpotifySearchService
+    ) {}
 
+    // ---------- AUTHENTICATION ENDPOINTS ----------
     @Get('whoami')
     async getUsername(
         @SpotifyToken(SpotifyTokenPipe) spotifyToken: string
@@ -85,5 +90,51 @@ export class SpotifyController {
             throw new HttpException(`Failed to refresh token : ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
+    }
+
+    // ---------- SEARCH ENDPOINTS ----------
+    // Are these Gets? or Posts? I am confused on the fact
+    // If post then => @Post('search/track')
+    // If get then => @Get('search/track')
+    @Get('search/track')
+    async searchTracks(
+        @SpotifyToken(SpotifyTokenPipe) spotifyToken: string,
+        @Body() body: { track_name: string }
+    ) {
+        const { track_name } = body;
+        
+        if (!track_name) {
+            throw new HttpException('track_name is required in request body', HttpStatus.BAD_REQUEST);
+        }
+
+        try {
+            return await this.searchService.searchTracks(spotifyToken, track_name);
+        } catch (error) {
+            if (error instanceof HttpException) {
+                throw error;
+            }
+            throw new HttpException('Failed to search tracks', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @Get('search/artists/top-tracks')
+    async searchArtistsFamousTracks(
+        @SpotifyToken(SpotifyTokenPipe) spotifyToken: string,
+        @Body() body: { artist_name: string }
+    ) {
+        const { artist_name } = body;
+        
+        if (!artist_name) {
+            throw new HttpException('artist_name is required in request body', HttpStatus.BAD_REQUEST);
+        }
+
+        try {
+            return await this.searchService.searchArtistsFamousTracks(spotifyToken, artist_name);
+        } catch (error) {
+            if (error instanceof HttpException) {
+                throw error;
+            }
+            throw new HttpException('Failed to get artist tracks', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }
