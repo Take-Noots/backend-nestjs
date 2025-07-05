@@ -99,12 +99,10 @@ export class SpotifyController {
     @Get('search/track')
     async searchTracks(
         @SpotifyToken(SpotifyTokenPipe) spotifyToken: string,
-        @Body() body: { track_name: string }
+        @Query('track_name') track_name: string
     ) {
-        const { track_name } = body;
-        
         if (!track_name) {
-            throw new HttpException('track_name is required in request body', HttpStatus.BAD_REQUEST);
+            throw new HttpException('track_name is required as a query parameter', HttpStatus.BAD_REQUEST);
         }
 
         try {
