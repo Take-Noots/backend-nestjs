@@ -1,12 +1,19 @@
+import * as dns from 'dns';
+dns.setServers(['8.8.8.8']);
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as cookieParser from 'cookie-parser';
-import { config } from 'dotenv';
+import { ValidationPipe } from '@nestjs/common';
+
 
 async function bootstrap() {
-  console.log(process.env.DB_CONN_STRING);
   const app = await NestFactory.create(AppModule);
   app.use(cookieParser()); 
+  app.enableCors();
+  app.useGlobalPipes(new ValidationPipe());
+  // app.setGlobalPrefix('api');
   await app.listen(process.env.PORT ?? 3000);
+  
 }
 bootstrap();
