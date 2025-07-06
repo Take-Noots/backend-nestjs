@@ -10,7 +10,7 @@ export class SongPostService {
     @InjectModel(SongPost.name) private songPostModel: Model<SongPostDocument>,
   ) {}
 
-  async create(createPostDto: CreatePostDto): Promise<SongPost> {
+  async create(createPostDto: CreatePostDto): Promise<SongPostDocument> {
     console.log('Creating new song post:', createPostDto);
     
     const createdPost = new this.songPostModel(createPostDto);
@@ -20,15 +20,15 @@ export class SongPostService {
     return savedPost;
   }
 
-  async findAll(): Promise<SongPost[]> {
+  async findAll(): Promise<SongPostDocument[]> {
     return this.songPostModel.find().sort({ createdAt: -1 }).exec();
   }
 
-  async findById(id: string): Promise<SongPost | null> {
+  async findById(id: string): Promise<SongPostDocument | null> {
     return this.songPostModel.findById(id).exec();
   }
 
-  async findByUserId(userId: string): Promise<SongPost[]> {
+  async findByUserId(userId: string): Promise<SongPostDocument[]> {
     return this.songPostModel.find({ userId }).sort({ createdAt: -1 }).exec();
   }
 }
