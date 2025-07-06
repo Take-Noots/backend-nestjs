@@ -1,7 +1,7 @@
 import { Controller, Post, Get, Body, Param, UsePipes, ValidationPipe } from '@nestjs/common';
 import { SongPostService } from './songPost.service';
 import { CreatePostDto } from './dto/create-post.dto';
-import { SongPost } from './songPost.model';
+import { SongPost, SongPostDocument } from './songPost.model';
 
 @Controller('song-posts')
 export class SongPostController {
@@ -9,23 +9,29 @@ export class SongPostController {
 
   @Post()
   @UsePipes(new ValidationPipe())
-  async create(@Body() createPostDto: CreatePostDto): Promise<SongPost> {
+  async create(@Body() createPostDto: CreatePostDto): Promise<SongPostDocument> {
     console.log('Received create post request:', createPostDto);
-    return this.songPostService.create(createPostDto);
+    const createdPost = await this.songPostService.create(createPostDto);
+    
+    
+    return createdPost;
   }
 
   @Get()
-  async findAll(): Promise<SongPost[]> {
-    return this.songPostService.findAll();
+  async findAll(): Promise<SongPostDocument[]> {
+    const posts = await this.songPostService.findAll();
+    
+    
+    return posts;
   }
 
   @Get(':id')
-  async findById(@Param('id') id: string): Promise<SongPost | null> {
+  async findById(@Param('id') id: string): Promise<SongPostDocument | null> {
     return this.songPostService.findById(id);
   }
 
   @Get('user/:userId')
-  async findByUserId(@Param('userId') userId: string): Promise<SongPost[]> {
+  async findByUserId(@Param('userId') userId: string): Promise<SongPostDocument[]> {
     return this.songPostService.findByUserId(userId);
   }
 }
