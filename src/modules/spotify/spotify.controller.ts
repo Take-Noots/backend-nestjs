@@ -8,6 +8,7 @@ import { SpotifyRefreshTokenPipe } from './pipes/spotify-refresh-token.pipe';
 import { SpotifyTokenPipe } from './pipes/spotify-token.pipe';
 import { SpotifyAuthService } from './services/spotify.auth-service';
 import { SpotifySearchService } from './services/spotify.search-service';
+import { SpotifySessionService } from './services/spotify.session-service';
 
 
 @Controller('spotify')
@@ -15,7 +16,8 @@ import { SpotifySearchService } from './services/spotify.search-service';
 export class SpotifyController {
     constructor(
         private authService: SpotifyAuthService,
-        private searchService: SpotifySearchService
+        private searchService: SpotifySearchService,
+        private sessionService: SpotifySessionService
     ) {}
 
     // ---------- AUTHENTICATION ENDPOINTS ----------
@@ -35,7 +37,10 @@ export class SpotifyController {
     @Get('login')
     @SkipSpotifyAuth()
     login(@Res() res: Response): void{
-        const loginParams = this.authService.login();
+        const userId: string = "685fb750cc084ba7e0ef8533"; 
+        const state = this.sessionService.createStateToken(userId);
+
+        const loginParams = this.authService.login(state);
         res.redirect(`https://accounts.spotify.com/authorize?${loginParams}`);
     }
 
@@ -50,18 +55,38 @@ export class SpotifyController {
         // Should be a Promise<void> since a response is sent back to the client
         try {
             const { access_token, refresh_token, expires_in } = await this.authService.validateCallback(code, state, error);
-            res.cookie('spotify_refresh_token', refresh_token, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+
+            const userId = this.sessionService.verifyStateToken(state);
+            if (!userId) {
+                throw new HttpException('Invalid state parameter', HttpStatus.BAD_REQUEST);
+            }
+            
+
+            // Store the refresh token in database (encrypted)
+            await this.sessionService.saveRefreshToken(userId, refresh_token);
+            
+
+            // Store access token in memory
+            this.sessionService.storeAccessToken(userId, access_token, expires_in);
+
+            console.log('Access token stored in memory for user:', userId);
+
+            res.json({
+                message: "Authentication successful",
+                user_id: userId
             });
+            // res.cookie('spotify_refresh_token', refresh_token, {
+            //     httpOnly: true,
+            //     secure: process.env.NODE_ENV === 'production',
+            //     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+            // });
 
-            res.setHeader('x-spotify-token', access_token);
+            // res.setHeader('x-spotify-token', access_token);
 
-            // Remove this later. Callback should return a response
-            res.json({"refresh_token": refresh_token});
+            // // Remove this later. Callback should return a response
+            // res.json({"refresh_token": refresh_token});
         } catch (error) {
-            throw new HttpException('Failed to fetch username', HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new HttpException('Failed to process callback: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }   
     
