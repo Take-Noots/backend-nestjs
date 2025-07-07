@@ -1,0 +1,7 @@
+[
+  { "id": 1, "type": "person", "name": "John Doew" },
+  { "id": 2, "type": "page", "name": "Flutter Devs" },
+  { "id": 3, "type": "group", "name": "Open Source Group" },
+  { "id": 4, "type": "person", "name": "Jane Smith" },
+  { "id": 5, "type": "page", "name": "Music Lovers" }
+]

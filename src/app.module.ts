@@ -3,6 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { SpotifyModule } from './modules/spotify/spotify.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { SongPostModule } from './modules/songPost/songPost.module';
+import { SearchModule } from './modules/search/search.module';
 import 'dotenv/config';
 
 const dbUrl: string = process.env.DB_CONN_STRING as string;
@@ -12,7 +13,8 @@ const dbUrl: string = process.env.DB_CONN_STRING as string;
     MongooseModule.forRoot(dbUrl),
     SpotifyModule, 
     AuthModule,
-    SongPostModule
+    SongPostModule,
+    SearchModule
   ]
 })
 export class AppModule {}
