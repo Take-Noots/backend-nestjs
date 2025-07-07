@@ -82,19 +82,52 @@ export class SpotifySessionService {
   }
 
   // Get access token from memory
-  getAccessToken(userId: string): string | null {
+  async getAccessToken(userId: string): Promise<string | null> {
     const tokenData = this.tokenStore.get(userId);
-    if (!tokenData) {
-      return null;
+    
+    // If we have a valid, non-expired token, return it
+    if (tokenData && tokenData.expiresAt > Date.now()) {
+      return tokenData.accessToken;
     }
-
-    // Check if token has expired
-    if (tokenData.expiresAt < Date.now()) {
-      this.tokenStore.delete(userId);
-      return null;
+    
+    // If token is expired or not found, try to refresh it
+    if (!tokenData || tokenData.expiresAt < Date.now()) {
+      // Clear expired token if it exists
+      if (tokenData) {
+        this.tokenStore.delete(userId);
+      }
+      
+      try {
+        // Get refresh token from database
+        const refreshToken = await this.getRefreshToken(userId);
+        
+        if (!refreshToken) {
+          return null; // No refresh token available
+        }
+        
+        // Import SpotifyAuthService to prevent circular dependency
+        const { SpotifyAuthService } = await import('../services/spotify.auth-service');
+        const spotifyAuthService = new SpotifyAuthService();
+        
+        // Get new tokens using the refresh token
+        const { access_token, new_refresh_token } = await spotifyAuthService.refreshToken(refreshToken);
+        
+        // Save new refresh token if it's different
+        if (new_refresh_token && new_refresh_token !== refreshToken) {
+          await this.saveRefreshToken(userId, new_refresh_token);
+        }
+        
+        // Store new access token in memory
+        this.storeAccessToken(userId, access_token, 3600); // Default to 1 hour if expires_in is not provided
+        
+        return access_token;
+      } catch (error) {
+        console.error('Failed to refresh access token:', error);
+        return null;
+      }
     }
-
-    return tokenData.accessToken;
+    
+    return null; // This line should never be reached, but TypeScript needs it
   }
 
   // Save or update refresh token in database

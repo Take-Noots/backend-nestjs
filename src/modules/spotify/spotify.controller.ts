@@ -1,5 +1,10 @@
-import { Controller, Get, Post, Body, HttpException, HttpStatus, Query, Res, UseGuards } from '@nestjs/common';
-import { Response } from 'express';
+import { Controller, Get, Post, Body, HttpException, HttpStatus, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { Response, Request } from 'express';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/role.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '../../common/enums/role.enum';
+import { JwtUser, JwtUserData } from '../../common/decorators/jwt-user.decorator';
 import { SpotifyRefreshToken } from './decorators/spotify-refresh-token.decorator';
 import { SkipSpotifyAuth } from './decorators/spotify-skip-auth.decorator';
 import { SpotifyToken } from './decorators/spotify-token.decorator';
@@ -12,7 +17,7 @@ import { SpotifySessionService } from './services/spotify.session-service';
 
 
 @Controller('spotify')
-@UseGuards(SpotifyTokenGuard)
+// @UseGuards(SpotifyTokenGuard)
 export class SpotifyController {
     constructor(
         private authService: SpotifyAuthService,
@@ -22,15 +27,29 @@ export class SpotifyController {
 
     // ---------- AUTHENTICATION ENDPOINTS ----------
     @Get('whoami')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.User, Role.Admin)
     async getUsername(
-        @SpotifyToken(SpotifyTokenPipe) spotifyToken: string
+        @JwtUser() user: JwtUserData
     ): Promise<{username: string}> {
         try {
+            console.log('User ID from JWT:', user.userId);
+            
+            // Get Spotify access token using the user ID (which might trigger a refresh)
+            const spotifyToken = await this.sessionService.getAccessToken(user.userId);
+            
+            if (!spotifyToken) {
+                throw new HttpException('No Spotify token found for this user', HttpStatus.UNAUTHORIZED);
+            }
+            
+            // Get username using the Spotify access token
             const username = await this.authService.getUsername(spotifyToken);
             return { username };
         } catch (error) {
-            // throw correct nest js error
-            throw new HttpException('Failed to fetch username', HttpStatus.INTERNAL_SERVER_ERROR);
+            if (error instanceof HttpException) {
+                throw error;
+            }
+            throw new HttpException('Failed to fetch username: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
     
