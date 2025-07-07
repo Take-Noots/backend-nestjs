@@ -31,4 +31,20 @@ export class SongPostService {
   async findByUserId(userId: string): Promise<SongPostDocument[]> {
     return this.songPostModel.find({ userId }).sort({ createdAt: -1 }).exec();
   }
+
+  async likePost(postId: string, userId: string): Promise<SongPostDocument | null> {
+    const post = await this.songPostModel.findById(postId);
+    if (!post) return null;
+
+    // Toggle like
+    const index = post.likedBy.indexOf(userId);
+    if (index === -1) {
+      post.likedBy.push(userId);
+    } else {
+      post.likedBy.splice(index, 1);
+    }
+    post.likes = post.likedBy.length;
+    await post.save();
+    return post;
+  }
 }
