@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, HttpException, HttpStatus, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, HttpException, HttpStatus, Query, Req, Res, UseGuards, Put } from '@nestjs/common';
 import { Response, Request } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/role.guard';
@@ -13,6 +13,8 @@ import { SpotifyTokenPipe } from './pipes/spotify-token.pipe';
 import { SpotifyAuthService } from './services/spotify.auth-service';
 import { SpotifySearchService } from './services/spotify.search-service';
 import { SpotifySessionService } from './services/spotify.session-service';
+import { SpotifyPlayerService } from './services/spotify.player-service';
+import { PlayTrackDto } from './dto/play-track.dto';
 
 
 @Controller('spotify')
@@ -21,7 +23,8 @@ export class SpotifyController {
     constructor(
         private authService: SpotifyAuthService,
         private searchService: SpotifySearchService,
-        private sessionService: SpotifySessionService
+        private sessionService: SpotifySessionService,
+        private playerService: SpotifyPlayerService
     ) {}
 
     // ---------- AUTHENTICATION ENDPOINTS ----------
@@ -162,6 +165,62 @@ export class SpotifyController {
                 throw error;
             }
             throw new HttpException('Failed to get artist tracks', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // ---------- PLAYER ENDPOINTS ----------
+    @Get('player/current-track')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.User, Role.Admin)
+    async getCurrentTrack(
+        @JwtUser() user: JwtUserData
+    ) {
+        try {            
+            // Get Spotify access token using the user ID (which might trigger a refresh)
+            const spotifyToken = await this.sessionService.getAccessToken(user.userId);
+            
+            if (!spotifyToken) {
+                throw new HttpException('No Spotify token found for this user', HttpStatus.UNAUTHORIZED);
+            }
+            
+            // Get current track using the Spotify access token
+            return await this.playerService.getCurrentTrack(spotifyToken);
+        } catch (error) {
+            if (error instanceof HttpException) {
+                throw error;
+            }
+            throw new HttpException('Failed to fetch current track: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    
+    @Post('player/play')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.User, Role.Admin)
+    async playTrack(
+        @JwtUser() user: JwtUserData,
+        @Body() playTrackDto: PlayTrackDto
+    ) {
+        try {            
+            // Get Spotify access token using the user ID (which might trigger a refresh)
+            const spotifyToken = await this.sessionService.getAccessToken(user.userId);
+            
+            if (!spotifyToken) {
+                throw new HttpException('No Spotify token found for this user', HttpStatus.UNAUTHORIZED);
+            }
+
+            const { track_id, track_position } = playTrackDto;
+            
+            if (!track_id) {
+                throw new HttpException('track_id is required in request body', HttpStatus.BAD_REQUEST);
+            }
+            
+            // Play the track using the Spotify access token
+            return await this.playerService.playTrack(spotifyToken, track_id, track_position);
+        } catch (error) {
+            if (error instanceof HttpException) {
+                throw error;
+            }
+            throw new HttpException('Failed to play track: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }
