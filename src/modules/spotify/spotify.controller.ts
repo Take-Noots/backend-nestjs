@@ -8,7 +8,6 @@ import { JwtUser, JwtUserData } from '../../common/decorators/jwt-user.decorator
 import { SpotifyRefreshToken } from './decorators/spotify-refresh-token.decorator';
 import { SkipSpotifyAuth } from './decorators/spotify-skip-auth.decorator';
 import { SpotifyToken } from './decorators/spotify-token.decorator';
-import { SpotifyTokenGuard } from './guards/spotify-token.guard';
 import { SpotifyRefreshTokenPipe } from './pipes/spotify-refresh-token.pipe';
 import { SpotifyTokenPipe } from './pipes/spotify-token.pipe';
 import { SpotifyAuthService } from './services/spotify.auth-service';
@@ -32,9 +31,7 @@ export class SpotifyController {
     async getUsername(
         @JwtUser() user: JwtUserData
     ): Promise<{username: string}> {
-        try {
-            console.log('User ID from JWT:', user.userId);
-            
+        try {            
             // Get Spotify access token using the user ID (which might trigger a refresh)
             const spotifyToken = await this.sessionService.getAccessToken(user.userId);
             
@@ -53,18 +50,17 @@ export class SpotifyController {
         }
     }
     
-    @Get('login')
-    @SkipSpotifyAuth()
-    login(@Res() res: Response): void{
-        const userId: string = "685fb750cc084ba7e0ef8533"; 
-        const state = this.sessionService.createStateToken(userId);
+    @Post('login')
+    @UseGuards(JwtAuthGuard)
+    login(@JwtUser() user: JwtUserData, @Res() res: Response): void{
+        
+        const state = this.sessionService.createStateToken(user.userId);
 
         const loginParams = this.authService.login(state);
         res.redirect(`https://accounts.spotify.com/authorize?${loginParams}`);
     }
 
     @Get('callback')
-    @SkipSpotifyAuth()
     async callback(
         @Query('code') code: string,
         @Query('state') state: string,
@@ -80,10 +76,8 @@ export class SpotifyController {
                 throw new HttpException('Invalid state parameter', HttpStatus.BAD_REQUEST);
             }
             
-
             // Store the refresh token in database (encrypted)
             await this.sessionService.saveRefreshToken(userId, refresh_token);
-            
 
             // Store access token in memory
             this.sessionService.storeAccessToken(userId, access_token, expires_in);
@@ -94,16 +88,7 @@ export class SpotifyController {
                 message: "Authentication successful",
                 user_id: userId
             });
-            // res.cookie('spotify_refresh_token', refresh_token, {
-            //     httpOnly: true,
-            //     secure: process.env.NODE_ENV === 'production',
-            //     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-            // });
 
-            // res.setHeader('x-spotify-token', access_token);
-
-            // // Remove this later. Callback should return a response
-            // res.json({"refresh_token": refresh_token});
         } catch (error) {
             throw new HttpException('Failed to process callback: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
         }

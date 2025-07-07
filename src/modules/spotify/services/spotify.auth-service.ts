@@ -103,6 +103,9 @@ export class SpotifyAuthService {
 
             const { access_token, refresh_token, expires_in } = tokenResponse.data;
             
+            // Clean up the codeVerifierStore after successful validation
+            codeVerifierStore.delete(state);
+            
             return { access_token, refresh_token, expires_in };
             
         } catch (error: any) {
