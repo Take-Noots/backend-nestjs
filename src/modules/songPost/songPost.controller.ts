@@ -34,4 +34,13 @@ export class SongPostController {
   async findByUserId(@Param('userId') userId: string): Promise<SongPostDocument[]> {
     return this.songPostService.findByUserId(userId);
   }
+
+  @Post(':id/like')
+  async likePost(@Param('id') postId: string, @Body('userId') userId: string) {
+    const post = await this.songPostService.likePost(postId, userId);
+    if (!post) {
+      return { success: false, message: 'Post not found' };
+    }
+    return { success: true, data: post };
+  }
 }

@@ -36,6 +36,9 @@ export class SongPost {
 
   @Prop({ default: 0 })
   comments: number;
+
+  @Prop({ type: [String], default: [] })
+  likedBy: string[];
 }
 
 export const SongPostSchema = SchemaFactory.createForClass(SongPost);
