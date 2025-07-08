@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { SongPost, SongPostDocument } from './songPost.model';
-import { CreatePostDto } from './dto/create-post.dto';
+import { CreatePostDto, AddCommentDto } from './dto/create-post.dto';
 
 @Injectable()
 export class SongPostService {
@@ -44,6 +44,36 @@ export class SongPostService {
       post.likedBy.splice(index, 1);
     }
     post.likes = post.likedBy.length;
+    await post.save();
+    return post;
+  }
+
+  async addComment(postId: string, addCommentDto: AddCommentDto): Promise<SongPostDocument | null> {
+    const post = await this.songPostModel.findById(postId);
+    if (!post) return null;
+    post.comments.push({
+      ...addCommentDto,
+      createdAt: new Date(),
+      likes: 0,
+      likedBy: [],
+    });
+    await post.save();
+    return post;
+  }
+
+  async likeComment(postId: string, commentId: string, userId: string): Promise<SongPostDocument | null> {
+    const post = await this.songPostModel.findById(postId);
+    if (!post) return null;
+    const comment = post.comments.find((c: any) => c._id?.toString() === commentId);
+    if (!comment) return null;
+
+    const index = comment.likedBy.indexOf(userId);
+    if (index === -1) {
+      comment.likedBy.push(userId);
+    } else {
+      comment.likedBy.splice(index, 1);
+    }
+    comment.likes = comment.likedBy.length;
     await post.save();
     return post;
   }

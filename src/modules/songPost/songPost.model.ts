@@ -8,6 +8,29 @@ export type SongPostDocument = SongPost & Document & {
 };
 
 @Schema({ timestamps: true })
+export class Comment {
+  @Prop({ required: true })
+  userId: string;
+
+  @Prop({ required: true })
+  username: string;
+
+  @Prop({ required: true })
+  text: string;
+
+  @Prop({ default: Date.now })
+  createdAt: Date;
+
+  @Prop({ default: 0 })
+  likes: number;
+
+  @Prop({ type: [String], default: [] })
+  likedBy: string[];
+}
+
+export const CommentSchema = SchemaFactory.createForClass(Comment);
+
+@Schema({ timestamps: true })
 export class SongPost {
 
   @Prop({ required: true })
@@ -34,8 +57,8 @@ export class SongPost {
   @Prop({ default: 0 })
   likes: number;
 
-  @Prop({ default: 0 })
-  comments: number;
+  @Prop({ type: [CommentSchema], default: [] })
+  comments: Comment[];
 
   @Prop({ type: [String], default: [] })
   likedBy: string[];
