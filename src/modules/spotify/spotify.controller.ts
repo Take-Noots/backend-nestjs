@@ -248,4 +248,52 @@ export class SpotifyController {
             throw new HttpException('Failed to pause playback: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+    
+    @Post('player/next')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.User, Role.Admin)
+    async nextTrack(
+        @JwtUser() user: JwtUserData
+    ) {
+        try {            
+            // Get Spotify access token using the user ID (which might trigger a refresh)
+            const spotifyToken = await this.sessionService.getAccessToken(user.userId);
+            
+            if (!spotifyToken) {
+                throw new HttpException('No Spotify token found for this user', HttpStatus.UNAUTHORIZED);
+            }
+            
+            // Skip to next track
+            return await this.playerService.nextTrack(spotifyToken);
+        } catch (error) {
+            if (error instanceof HttpException) {
+                throw error;
+            }
+            throw new HttpException('Failed to skip to next track: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    
+    @Post('player/previous')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.User, Role.Admin)
+    async previousTrack(
+        @JwtUser() user: JwtUserData
+    ) {
+        try {            
+            // Get Spotify access token using the user ID (which might trigger a refresh)
+            const spotifyToken = await this.sessionService.getAccessToken(user.userId);
+            
+            if (!spotifyToken) {
+                throw new HttpException('No Spotify token found for this user', HttpStatus.UNAUTHORIZED);
+            }
+            
+            // Skip to previous track
+            return await this.playerService.previousTrack(spotifyToken);
+        } catch (error) {
+            if (error instanceof HttpException) {
+                throw error;
+            }
+            throw new HttpException('Failed to skip to previous track: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 }

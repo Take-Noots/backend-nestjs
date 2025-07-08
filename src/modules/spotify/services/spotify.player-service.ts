@@ -90,4 +90,40 @@ export class SpotifyPlayerService {
             throw new HttpException(errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+    
+    async nextTrack(accessToken: string) {
+        try {
+            await axios.post('https://api.spotify.com/v1/me/player/next',
+                {}, // Empty body
+                {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`
+                    }
+                }
+            );
+
+            return { success: true, message: 'Skipped to next track' };
+        } catch (error) {
+            const errorMessage = error.response?.data?.error?.message || error.message || 'Failed to skip to next track';
+            throw new HttpException(errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    
+    async previousTrack(accessToken: string) {
+        try {
+            await axios.post('https://api.spotify.com/v1/me/player/previous',
+                {}, // Empty body
+                {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`
+                    }
+                }
+            );
+
+            return { success: true, message: 'Skipped to previous track' };
+        } catch (error) {
+            const errorMessage = error.response?.data?.error?.message || error.message || 'Failed to skip to previous track';
+            throw new HttpException(errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 }
