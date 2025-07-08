@@ -108,7 +108,7 @@ Using curl, we will call the endpoint with the access token we retrieved from th
 To call this endpoint, use the following command in your terminal:
 
 ```
-curl -X POST http://localhost:3000/spotify/login -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ODVmYjc1MGNjMDg0YmE3ZTBlZjg1MzMiLCJleHAiOjE3NTE5MjExODUsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzUxOTIwMjg1fQ.-0lvMENsJtwmNVCdmo2ACOzibJ_lAFZWDQlwdsNMlQs"
+curl -X POST http://localhost:3000/spotify/login -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ODVmYjc1MGNjMDg0YmE3ZTBlZjg1MzMiLCJleHAiOjE3NTE5NTA4OTQsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzUxOTQ5OTk0fQ.jQdAMbyxIqz-WKBtuX-NUjVteEgl3bVusNlLwW8QkmE"
 ```
 
 Make sure your `Authorization` header follows this exact format:
@@ -118,7 +118,7 @@ Authorization: Bearer <your-access-token>
 ```
 
 
-If the token is valid and not expired, the request should go through s525448uccessfully and you will see something like this
+If the token is valid and not expired, the request should go through successfully and you will see something like this
 
 ```
 Found. Redirecting to <SPOTIFY-LINK>
