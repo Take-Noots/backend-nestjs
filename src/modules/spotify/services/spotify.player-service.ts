@@ -54,4 +54,40 @@ export class SpotifyPlayerService {
             throw new HttpException(errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+    
+    async resumeTrack(accessToken: string) {
+        try {
+            await axios.put('https://api.spotify.com/v1/me/player/play',
+                {}, // Empty body to resume current track
+                {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`
+                    }
+                }
+            );
+
+            return { is_playing: true };
+        } catch (error) {
+            const errorMessage = error.response?.data?.error?.message || error.message || 'Failed to resume playback';
+            throw new HttpException(errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    
+    async pauseTrack(accessToken: string) {
+        try {
+            await axios.put('https://api.spotify.com/v1/me/player/pause',
+                {}, // Empty body
+                {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`
+                    }
+                }
+            );
+
+            return { is_playing: false };
+        } catch (error) {
+            const errorMessage = error.response?.data?.error?.message || error.message || 'Failed to pause playback';
+            throw new HttpException(errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 }

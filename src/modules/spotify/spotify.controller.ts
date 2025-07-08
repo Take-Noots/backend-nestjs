@@ -210,17 +210,42 @@ export class SpotifyController {
 
             const { track_id, track_position } = playTrackDto;
             
+            // If track_id is not provided, resume current playback
             if (!track_id) {
-                throw new HttpException('track_id is required in request body', HttpStatus.BAD_REQUEST);
+                return await this.playerService.resumeTrack(spotifyToken);
             }
             
-            // Play the track using the Spotify access token
+            // Play the specified track using the Spotify access token
             return await this.playerService.playTrack(spotifyToken, track_id, track_position);
         } catch (error) {
             if (error instanceof HttpException) {
                 throw error;
             }
             throw new HttpException('Failed to play track: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    
+    @Put('player/pause')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.User, Role.Admin)
+    async pauseTrack(
+        @JwtUser() user: JwtUserData
+    ) {
+        try {            
+            // Get Spotify access token using the user ID (which might trigger a refresh)
+            const spotifyToken = await this.sessionService.getAccessToken(user.userId);
+            
+            if (!spotifyToken) {
+                throw new HttpException('No Spotify token found for this user', HttpStatus.UNAUTHORIZED);
+            }
+            
+            // Pause the current playback
+            return await this.playerService.pauseTrack(spotifyToken);
+        } catch (error) {
+            if (error instanceof HttpException) {
+                throw error;
+            }
+            throw new HttpException('Failed to pause playback: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }
