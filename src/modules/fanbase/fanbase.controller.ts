@@ -1,9 +1,28 @@
-import { Controller } from "@nestjs/common";
+import { Controller, Get, Param, Post, Body, Patch, Query } from '@nestjs/common';
+import { FanbaseService } from './fanbase.services';
+import { CreateFanbaseDto } from './dto/create-fanbase.dto';
 
-@Controller('fanbase')
+@Controller('fanbases')
 export class FanbaseController {
-    // This controller will handle all fanbase related routes
-    // For now, it is empty and will be filled in later
-    // You can add methods here to handle specific routes
-    // For example, you can add a method to get fanbase data
+  constructor(private readonly fanbaseService: FanbaseService) {}
+
+  @Get()
+  getAll() {
+    return this.fanbaseService.findAll();
+  }
+
+  @Get(':id')
+  getOne(@Param('id') id: string) {
+    return this.fanbaseService.findOne(id);
+  }
+
+  @Post()
+  create(@Body() dto: CreateFanbaseDto) {
+    return this.fanbaseService.create(dto);
+  }
+
+  @Patch(':id/join')
+  toggleJoin(@Param('id') id: string, @Query('userId') userId: string) {
+    return this.fanbaseService.toggleJoin(id, userId);
+  }
 }

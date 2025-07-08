@@ -1,16 +1,14 @@
-// src/fanbase/fanbase.controller.ts
-import { Body, Controller, Post } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { FanbaseController } from './fanbase.controller';
 import { FanbaseService } from './fanbase.services';
-import { CreateFanbaseDto } from './dto/create-fanbase.dto';
-import { Fanbase } from './entities/fanbase.entity';
+import { Fanbase, FanbaseSchema } from './entities/fanbase.entity';
 
-@Controller('fanbase')
-export class FanbaseController {
-  constructor(private readonly fanbaseService: FanbaseService) {}
-
-  @Post()
-  async createFanbase(@Body() dto: CreateFanbaseDto): Promise<Fanbase> {
-    // Later: add logic to check post existence and auto-fill description
-    return this.fanbaseService.create(dto);
-  }
-}
+@Module({
+  imports: [
+    MongooseModule.forFeature([{ name: Fanbase.name, schema: FanbaseSchema }]),
+  ],
+  controllers: [FanbaseController],
+  providers: [FanbaseService],
+})
+export class FanbaseModule {}
