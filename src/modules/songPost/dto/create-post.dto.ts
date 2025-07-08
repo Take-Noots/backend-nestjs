@@ -29,3 +29,9 @@ export class CreatePostDto {
   @IsNotEmpty()
   username: string;
 }
+
+export class AddCommentDto {
+  userId: string;
+  username: string;
+  text: string;
+}
