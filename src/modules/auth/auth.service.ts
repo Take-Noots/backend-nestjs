@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { UserService } from '../user/user.service';
+import { UserService } from '@modules/user/user.service';
 import { RegisterUserDTO } from './dto/register-user.dto';
 import { LoginUserDTO } from './dto/login-user.dto';
-import { UserType } from '../../common/interfaces/user.interface';
+import { UserType } from '@interfaces/user.interface';
 import * as bcrypt from 'bcrypt';
 import 'dotenv/config';
 import * as jwt from 'jsonwebtoken';
@@ -55,11 +55,13 @@ export class AuthService {
         const accessClaims = {
             sub: foundUser._id.toString(), // Use user ID in JWT claims
             exp: access_expiration_time,
+            role: foundUser.role, // Include role in JWT to use for authorization
         };
 
         const refreshClaims = {
             sub: foundUser._id.toString(), // Use user ID in JWT claims
             exp: refresh_expiration_time,
+            role: foundUser.role, // Include role in JWT to use for authorization
         };
 
         const accessToken = jwt.sign(accessClaims, myAccessSecret, { algorithm: 'HS256' });

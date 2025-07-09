@@ -4,6 +4,7 @@ import * as crypto from 'crypto';
 import * as querystring from 'querystring';
 import 'dotenv/config';
 
+
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI;
@@ -34,6 +35,7 @@ const generateCodeChallenge = (verifier: string): string => {
 
 @Injectable()
 export class SpotifyAuthService {
+
     async getUsername(accessToken: string): Promise<string> {
         try {
             const response = await axios.get('https://api.spotify.com/v1/me', {
@@ -48,8 +50,8 @@ export class SpotifyAuthService {
         }
     }
 
-    login(): string {
-        const state = crypto.randomBytes(16).toString('hex');
+    login(jwtState: string): string {
+        const state = jwtState;
         const codeVerifier = generateCodeVerifier(128);
         const codeChallenge = generateCodeChallenge(codeVerifier);
         
@@ -100,6 +102,9 @@ export class SpotifyAuthService {
             );
 
             const { access_token, refresh_token, expires_in } = tokenResponse.data;
+            
+            // Clean up the codeVerifierStore after successful validation
+            codeVerifierStore.delete(state);
             
             return { access_token, refresh_token, expires_in };
             
