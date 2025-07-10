@@ -1,28 +1,24 @@
-import { Controller, Get, Param, Post, Body, Patch, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { FanbaseService } from './fanbase.services';
 import { CreateFanbaseDto } from './dto/create-fanbase.dto';
+import { Fanbase } from './entities/fanbase.entity';
 
-@Controller('fanbases')
+@Controller('fanbase')
 export class FanbaseController {
   constructor(private readonly fanbaseService: FanbaseService) {}
 
+  @Post()
+  async create(@Body() dto: CreateFanbaseDto): Promise<Fanbase> {
+    return this.fanbaseService.create(dto);
+  }
+
   @Get()
-  getAll() {
+  async findAll(): Promise<Fanbase[]> {
     return this.fanbaseService.findAll();
   }
 
   @Get(':id')
-  getOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string): Promise<Fanbase> {
     return this.fanbaseService.findOne(id);
-  }
-
-  @Post()
-  create(@Body() dto: CreateFanbaseDto) {
-    return this.fanbaseService.create(dto);
-  }
-
-  @Patch(':id/join')
-  toggleJoin(@Param('id') id: string, @Query('userId') userId: string) {
-    return this.fanbaseService.toggleJoin(id, userId);
   }
 }

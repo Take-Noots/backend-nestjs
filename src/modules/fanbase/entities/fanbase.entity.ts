@@ -3,11 +3,17 @@ import { Document } from 'mongoose';
 
 @Schema()
 export class Fanbase extends Document {
-  @Prop()
-  description: string;
+  @Prop({ required: true })
+  fanbaseName: string;
 
-  @Prop()
-  postId?: string;
+  @Prop({ required: true })
+  topic: string;
+
+  @Prop({ required: true })
+  createdUserId: string;
+
+  @Prop({ required: true })
+  fanbasePhotoUrl: string;
 
   @Prop({ default: 0 })
   numberOfLikes: number;
@@ -16,18 +22,12 @@ export class Fanbase extends Document {
   likedUserIds: string[];
 
   @Prop({ default: 0 })
-  numberOfComments: number;
+  numberOfPosts: number;
 
   @Prop({ type: [String], default: [] })
-  comments: string[];
+  postIds: string[];
 
-  @Prop({ default: 0 })
-  numberOfShares: number;
-
-  @Prop({ type: [String], default: [] })
-  sharedUserIds: string[];
-
-  @Prop()
+  @Prop({ default: Date.now })
   createdAt: Date;
 }
 

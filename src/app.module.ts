@@ -5,6 +5,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { SongPostModule } from './modules/songPost/songPost.module';
 import { SearchModule } from './modules/search/search.module';
 import 'dotenv/config';
+import { FanbaseModule } from './modules/fanbase/fanbase.module';
 
 const dbUrl: string = process.env.DB_CONN_STRING as string;
 
@@ -14,7 +15,8 @@ const dbUrl: string = process.env.DB_CONN_STRING as string;
     SpotifyModule, 
     AuthModule,
     SongPostModule,
-    SearchModule
+    SearchModule,
+    FanbaseModule, // Ensure FanbaseModule is imported
   ]
 })
 export class AppModule {}

@@ -1,6 +1,6 @@
 import { Controller, Post, Get, Body, Param, UsePipes, ValidationPipe } from '@nestjs/common';
 import { SongPostService } from './songPost.service';
-import { CreatePostDto } from './dto/create-post.dto';
+import { CreatePostDto, AddCommentDto } from './dto/create-post.dto';
 import { SongPost, SongPostDocument } from './songPost.model';
 
 @Controller('song-posts')
@@ -40,6 +40,31 @@ export class SongPostController {
     const post = await this.songPostService.likePost(postId, userId);
     if (!post) {
       return { success: false, message: 'Post not found' };
+    }
+    return { success: true, data: post };
+  }
+
+  @Post(':id/comment')
+  async addComment(
+    @Param('id') postId: string,
+    @Body() addCommentDto: AddCommentDto
+  ) {
+    const post = await this.songPostService.addComment(postId, addCommentDto);
+    if (!post) {
+      return { success: false, message: 'Post not found' };
+    }
+    return { success: true, data: post };
+  }
+
+  @Post(':postId/comment/:commentId/like')
+  async likeComment(
+    @Param('postId') postId: string,
+    @Param('commentId') commentId: string,
+    @Body('userId') userId: string
+  ) {
+    const post = await this.songPostService.likeComment(postId, commentId, userId);
+    if (!post) {
+      return { success: false, message: 'Post or comment not found' };
     }
     return { success: true, data: post };
   }
