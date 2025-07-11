@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Body, Param, HttpException, HttpStatus, Res } from '@nestjs/common';
-import { Response } from 'express';
+import { Controller, Get, Post, Body, Param, HttpException, HttpStatus, Res, Req } from '@nestjs/common';
+import { Response, Request } from 'express';
 import { RegisterUserDTO } from './dto/register-user.dto';
 import { LoginUserDTO } from './dto/login-user.dto';
 import { AuthService } from './auth.service';
@@ -40,6 +40,37 @@ export class AuthController{
             });
         } catch (error) {
             throw new HttpException(`Failed to login user : ${error.message}`, HttpStatus.UNAUTHORIZED);
+        }
+    }
+
+    @Post('refresh')
+    async refresh(@Req() req: Request, @Res() res: Response) {
+        try {
+            // Extract refresh token from cookies
+            const refreshToken = req.cookies?.refresh_token;
+            
+            if (!refreshToken) {
+                throw new Error('Refresh token not provided');
+            }
+            
+            // Call service to validate and generate new tokens
+            const [accessToken, newRefreshToken, userId, role] = await this.authService.refresh(refreshToken);
+            
+            // Set new refresh token in cookie
+            res.cookie('refresh_token', newRefreshToken, { httpOnly: true });
+            
+            // Return new access token
+            res.status(200).json({
+                message: 'Token refreshed successfully',
+                accessToken: accessToken,
+                user: {
+                    id: userId,
+                    role: role
+                }
+            });
+            
+        } catch (error) {
+            throw new HttpException(`Failed to refresh token: ${error.message}`, HttpStatus.UNAUTHORIZED);
         }
     }
 }
