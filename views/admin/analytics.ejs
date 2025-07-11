@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= title || 'Analytics' %> - Noot Admin
+    </title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#667eea',
+                        secondary: '#764ba2',
+                        accent: '#f093fb',
+                        success: '#10b981',
+                        warning: '#f59e0b',
+                        error: '#ef4444',
+                        dark: '#1f2937',
+                        light: '#f9fafb'
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-in': 'slideIn 0.3s ease-out',
+                        'bounce-in': 'bounceIn 0.6s ease-out',
+                        'pulse-dot': 'pulse 2s infinite'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .stat-number {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .sidebar-item {
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .sidebar-item:hover {
+            transform: translateX(4px);
+        }
+        
+        .sidebar-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .badge.admin { background: #dbeafe; color: #1d4ed8; }
+        .badge.moderator { background: #f3e8ff; color: #7c3aed; }
+        .badge.user { background: #dcfce7; color: #16a34a; }
+        .badge.banned { background: #fee2e2; color: #dc2626; }
+        .badge.active { background: #dcfce7; color: #16a34a; }
+        .badge.pending { background: #fef3c7; color: #d97706; }
+        .badge.resolved { background: #dcfce7; color: #16a34a; }
+        .badge.warning { background: #fef3c7; color: #d97706; }
+        
+        .toast {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            max-width: 400px;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .sidebar-mobile-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 40;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar-mobile-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebarOverlay" class="sidebar-mobile-overlay lg:hidden"></div>
+    
+    <!-- Sidebar -->
+    <div id="sidebar" class="sidebar fixed inset-y-0 left-0 z-50 w-64 gradient-bg text-white">
+        <div class="flex items-center justify-between h-16 px-4 border-b border-white/10">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <span class="text-2xl">🎵</span>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold">Noot Admin</h1>
+                    <p class="text-xs text-white/70">Music Social Platform</p>
+                </div>
+            </div>
+            <!-- Mobile Close Button -->
+            <button id="closeSidebar" class="lg:hidden p-2 text-white/70 hover:text-white">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <nav class="mt-8 px-4 space-y-2">
+            <a href="/admin" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
+                <i class="fas fa-home w-5 h-5 mr-3"></i>
+                Dashboard
+            </a>
+            <a href="/admin/users" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
+                <i class="fas fa-users w-5 h-5 mr-3"></i>
+                Users
+                <span class="ml-auto bg-red-500 text-xs px-2 py-1 rounded-full" id="usersCount">0</span>
+            </a>
+            <a href="/admin/posts" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
+                <i class="fas fa-newspaper w-5 h-5 mr-3"></i>
+                Posts
+                <span class="ml-auto bg-blue-500 text-xs px-2 py-1 rounded-full" id="postsCount">0</span>
+            </a>
+            <a href="/admin/reports" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
+                <i class="fas fa-flag w-5 h-5 mr-3"></i>
+                Reports
+                <span class="ml-auto bg-yellow-500 text-xs px-2 py-1 rounded-full animate-pulse-dot" id="reportsCount">0</span>
+            </a>
+            <a href="/admin/fanbases" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
+                <i class="fas fa-heart w-5 h-5 mr-3"></i>
+                Fanbases
+                <span class="ml-auto bg-pink-500 text-xs px-2 py-1 rounded-full" id="fanbasesCount">0</span>
+            </a>
+            <a href="/admin/analytics" class="sidebar-item active flex items-center px-4 py-3 text-sm font-medium rounded-lg bg-white/10 relative">
+                <i class="fas fa-chart-bar w-5 h-5 mr-3"></i>
+                Analytics
+            </a>
+            <a href="/admin/settings" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
+                <i class="fas fa-cog w-5 h-5 mr-3"></i>
+                Settings
+            </a>
+        </nav>
+        
+        <div class="absolute bottom-4 left-4 right-4">
+            <div class="glass-effect rounded-lg p-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                        <i class="fas fa-user text-sm"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <% if (typeof user !== 'undefined' && user) { %>
+                        <p class="text-sm font-medium text-white truncate"><%= user.username || user.email %></p>
+                        <p class="text-xs text-white/70 truncate"><%= user.email %></p>
+                        <% } else { %>
+                        <p class="text-sm font-medium text-white truncate">Admin User</p>
+                        <p class="text-xs text-white/70 truncate">admin@noot.com</p>
+                        <% } %>
+                    </div>
+                </div>
+                <form action="/admin/logout" method="POST" class="mt-3">
+                    <button type="submit" class="w-full px-3 py-2 text-xs font-medium text-white bg-white/10 rounded-lg hover:bg-white/20 transition-colors">
+                        <i class="fas fa-sign-out-alt mr-2"></i>
+                        Logout
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content lg:ml-64">
+        <!-- Top Bar -->
+        <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+            <div class="flex items-center justify-between px-4 lg:px-6 py-4">
+                <div class="flex items-center space-x-4">
+                    <!-- Mobile Menu Button -->
+                    <button id="openSidebar" class="lg:hidden p-2 text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    
+                    <h2 class="text-xl lg:text-2xl font-bold text-gray-900">Analytics</h2>
+                    <span class="hidden sm:inline-flex px-3 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full">
+                        <i class="fas fa-circle text-green-500 mr-1"></i>
+                        All Systems Operational
+                    </span>
+                </div>
+                
+                <div class="flex items-center space-x-2 lg:space-x-4">
+                    <!-- Search -->
+                    <div class="relative hidden md:block">
+                        <input type="text" placeholder="Search..." class="w-48 lg:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                    
+                    <!-- Notifications -->
+                    <button class="relative p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
+                        <i class="fas fa-bell text-lg lg:text-xl"></i>
+                        <span id="notificationBadge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center hidden">0</span>
+                    </button>
+                    
+                    <!-- Profile -->
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-full gradient-bg flex items-center justify-center">
+                            <i class="fas fa-user text-white text-sm"></i>
+                        </div>
+                        <% if (typeof user !== 'undefined' && user) { %>
+                        <span class="hidden sm:inline-flex px-3 py-1 text-sm font-medium text-purple-800 bg-purple-100 rounded-full"><%= user.role %></span>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <main class="p-4 lg:p-6">
+            <!-- Analytics Overview -->
+            <div class="space-y-6 animate-fade-in">
+                <!-- Time Period Selector -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <div class="flex items-center justify-between flex-wrap gap-4">
+                        <h3 class="text-lg font-semibold text-gray-900">
+                            <i class="fas fa-chart-line text-primary mr-2"></i>
+                            Analytics Overview
+                        </h3>
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center space-x-2">
+                                <label class="text-sm font-medium text-gray-700">Time Period:</label>
+                                <select id="periodSelector" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" onchange="changePeriod()">
+                                    <option value="7d" <%= (typeof currentPeriod !== 'undefined' && currentPeriod === '7d') ? 'selected' : '' %>>Last 7 Days</option>
+                                    <option value="30d" <%= (typeof currentPeriod !== 'undefined' && currentPeriod === '30d') ? 'selected' : '' %>>Last 30 Days</option>
+                                    <option value="90d" <%= (typeof currentPeriod !== 'undefined' && currentPeriod === '90d') ? 'selected' : '' %>>Last 90 Days</option>
+                                    <option value="1y" <%= (typeof currentPeriod !== 'undefined' && currentPeriod === '1y') ? 'selected' : '' %>>Last Year</option>
+                                </select>
+                            </div>
+                            <button onclick="refreshData()" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors flex items-center">
+                                <i class="fas fa-sync mr-2"></i>
+                                Refresh
+                            </button>
+                            <button onclick="exportAnalytics()" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors flex items-center">
+                                <i class="fas fa-download mr-2"></i>
+                                Export Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Key Metrics Overview -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-l-4 border-blue-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Total Users</p>
+                                <p class="text-2xl font-bold text-blue-600 mt-1">
+                                    <%= (typeof userMetrics !== 'undefined' && userMetrics) ? (userMetrics.total || 0) : 0 %>
+                                </p>
+                                <div class="flex items-center mt-2">
+                                    <i class="fas fa-arrow-up text-green-500 text-sm mr-1"></i>
+                                    <span class="text-sm text-green-600 font-medium">
+                                        +<%= (typeof userMetrics !== 'undefined' && userMetrics) ? (userMetrics.newThisWeek || 0) : 0 %>
+                                    </span>
+                                    <span class="text-sm text-gray-500 ml-1">this week</span>
+                                </div>
+                            </div>
+                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-users text-blue-600 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-l-4 border-green-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Total Posts</p>
+                                <p class="text-2xl font-bold text-green-600 mt-1">
+                                    <%= (typeof contentMetrics !== 'undefined' && contentMetrics) ? (contentMetrics.totalPosts || 0) : 0 %>
+                                </p>
+                                <div class="flex items-center mt-2">
+                                    <i class="fas fa-arrow-up text-green-500 text-sm mr-1"></i>
+                                    <span class="text-sm text-green-600 font-medium">
+                                        +<%= (typeof contentMetrics !== 'undefined' && contentMetrics) ? (contentMetrics.postsToday || 0) : 0 %>
+                                    </span>
+                                    <span class="text-sm text-gray-500 ml-1">today</span>
+                                </div>
+                            </div>
+                            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-newspaper text-green-600 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-l-4 border-red-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Total Reports</p>
+                                <p class="text-2xl font-bold text-red-600 mt-1">
+                                    <%= (typeof reportMetrics !== 'undefined' && reportMetrics) ? (reportMetrics.total || 0) : 0 %>
+                                </p>
+                                <div class="flex items-center mt-2">
+                                    <i class="fas fa-clock text-yellow-500 text-sm mr-1"></i>
+                                    <span class="text-sm text-yellow-600 font-medium">
+                                        <%= (typeof reportMetrics !== 'undefined' && reportMetrics && reportMetrics.byStatus) ? (reportMetrics.byStatus.pending || 0) : 0 %>
+                                    </span>
+                                    <span class="text-sm text-gray-500 ml-1">pending</span>
+                                </div>
+                            </div>
+                            <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-flag text-red-600 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-l-4 border-purple-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Active Fanbases</p>
+                                <p class="text-2xl font-bold text-purple-600 mt-1">
+                                    <%= (typeof contentMetrics !== 'undefined' && contentMetrics) ? (contentMetrics.totalFanbases || 0) : 0 %>
+                                </p>
+                                <div class="flex items-center mt-2">
+                                    <i class="fas fa-check-circle text-green-500 text-sm mr-1"></i>
+                                    <span class="text-sm text-green-600 font-medium">
+                                        <%= (typeof contentMetrics !== 'undefined' && contentMetrics) ? (contentMetrics.activeFanbases || 0) : 0 %>
+                                    </span>
+                                    <span class="text-sm text-gray-500 ml-1">active</span>
+                                </div>
+                            </div>
+                            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-heart text-purple-600 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Growth Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- User Growth Chart -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                            <i class="fas fa-users text-primary mr-2"></i>
+                            User Growth
+                        </h3>
+                        <div class="relative h-64 mb-4">
+                            <canvas id="userGrowthChart"></canvas>
+                        </div>
+                        <div class="flex justify-around text-center text-sm">
+                            <div>
+                                <div class="text-xl font-bold text-blue-600">
+                                    <%= (typeof userMetrics !== 'undefined' && userMetrics) ? (userMetrics.total || 0) : 0 %>
+                                </div>
+                                <div class="text-gray-500">Total Users</div>
+                            </div>
+                            <div>
+                                <div class="text-xl font-bold text-green-600">
+                                    <%= (typeof userMetrics !== 'undefined' && userMetrics) ? (userMetrics.moderators || 0) : 0 %>
+                                </div>
+                                <div class="text-gray-500">Moderators</div>
+                            </div>
+                            <div>
+                                <div class="text-xl font-bold text-red-600">
+                                    <%= (typeof userMetrics !== 'undefined' && userMetrics) ? (userMetrics.banned || 0) : 0 %>
+                                </div>
+                                <div class="text-gray-500">Banned</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Content Growth Chart -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                            <i class="fas fa-newspaper text-primary mr-2"></i>
+                            Content Growth
+                        </h3>
+                        <div class="relative h-64 mb-4">
+                            <canvas id="contentGrowthChart"></canvas>
+                        </div>
+                        <div class="flex justify-around text-center text-sm">
+                            <div>
+                                <div class="text-xl font-bold text-blue-600">
+                                    <%= (typeof contentMetrics !== 'undefined' && contentMetrics) ? (contentMetrics.totalPosts || 0) : 0 %>
+                                </div>
+                                <div class="text-gray-500">Total Posts</div>
+                            </div>
+                            <div>
+                                <div class="text-xl font-bold text-yellow-600">
+                                    <%= (typeof contentMetrics !== 'undefined' && contentMetrics) ? (contentMetrics.totalFanbases || 0) : 0 %>
+                                </div>
+                                <div class="text-gray-500">Fanbases</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Analytics -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Activity Breakdown -->
+                    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                            <i class="fas fa-chart-pie text-primary mr-2"></i>
+                            Platform Activity
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Engagement Metrics -->
+                            <div>
+                                <h5 class="font-medium text-gray-900 mb-4">User Engagement</h5>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                        <span class="text-sm text-gray-600">Daily Active Users</span>
+                                        <span class="font-semibold text-blue-600">
+                                            <%= (typeof userMetrics !== 'undefined' && userMetrics) ? (userMetrics.activeToday || 0) : 0 %>
+                                        </span>
+                                    </div>
+                                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                        <span class="text-sm text-gray-600">Posts per Day</span>
+                                        <span class="font-semibold text-green-600">
+                                            <%= (typeof growthMetrics !== 'undefined' && growthMetrics && growthMetrics.engagement) ? (growthMetrics.engagement.postsPerDay || 0) : 0 %>
+                                        </span>
+                                    </div>
+                                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                        <span class="text-sm text-gray-600">Reports per Day</span>
+                                        <span class="font-semibold text-red-600">
+                                            <%= (typeof growthMetrics !== 'undefined' && growthMetrics && growthMetrics.engagement) ? (growthMetrics.engagement.reportsPerDay || 0) : 0 %>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Content Distribution -->
+                            <div>
+                                <h5 class="font-medium text-gray-900 mb-4">Content Distribution</h5>
+                                <div class="relative h-48">
+                                    <canvas id="contentPieChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reports Analysis -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                            <i class="fas fa-flag text-primary mr-2"></i>
+                            Moderation Stats
+                        </h3>
+                        
+                        <div class="mb-6">
+                            <h5 class="font-medium text-gray-900 mb-3">Report Status</h5>
+                            <% if (typeof reportMetrics !== 'undefined' && reportMetrics && reportMetrics.byStatus) { %>
+                                <% Object.entries(reportMetrics.byStatus).forEach(function([status, count]) { %>
+                                <div class="flex justify-between items-center p-2 mb-2">
+                                    <span class="badge <%= status === 'resolved' ? 'active' : status === 'pending' ? 'pending' : 'user' %>">
+                                        <%= status %>
+                                    </span>
+                                    <span class="font-semibold"><%= count %></span>
+                                </div>
+                                <% }); %>
+                            <% } else { %>
+                            <p class="text-gray-500 text-center py-4">No report data available</p>
+                            <% } %>
+                        </div>
+
+                        <div>
+                            <h5 class="font-medium text-gray-900 mb-3">Report Categories</h5>
+                            <% if (typeof reportMetrics !== 'undefined' && reportMetrics && reportMetrics.byCategory) { %>
+                                <% Object.entries(reportMetrics.byCategory).forEach(function([category, count]) { %>
+                                <div class="flex justify-between items-center p-2 mb-2">
+                                    <span class="text-sm text-gray-600"><%= category %></span>
+                                    <span class="badge user"><%= count %></span>
+                                </div>
+                                <% }); %>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance Metrics -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                        <i class="fas fa-tachometer-alt text-primary mr-2"></i>
+                        Platform Performance
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="text-center p-4 bg-gray-50 rounded-lg">
+                            <i class="fas fa-clock text-3xl text-blue-500 mb-3"></i>
+                            <div class="text-2xl font-bold text-gray-900">
+                                <% 
+                                if (typeof userMetrics !== 'undefined' && userMetrics && userMetrics.newThisWeek) {
+                                    const avgDaily = Math.round((userMetrics.newThisWeek / 7) * 10) / 10;
+                                %><%= avgDaily %><% 
+                                } else { 
+                                %>0<% 
+                                } 
+                                %>
+                            </div>
+                            <div class="text-gray-500 text-sm">Avg. Daily Signups</div>
+                        </div>
+
+                        <div class="text-center p-4 bg-gray-50 rounded-lg">
+                            <i class="fas fa-chart-line text-3xl text-green-500 mb-3"></i>
+                            <div class="text-2xl font-bold text-gray-900">
+                                <% 
+                                if (typeof contentMetrics !== 'undefined' && contentMetrics && contentMetrics.postsToday && contentMetrics.totalPosts) {
+                                    const growthRate = Math.round((contentMetrics.postsToday / contentMetrics.totalPosts) * 10000) / 100;
+                                %><%= growthRate %><% 
+                                } else { 
+                                %>0<% 
+                                } 
+                                %>%
+                            </div>
+                            <div class="text-gray-500 text-sm">Daily Growth Rate</div>
+                        </div>
+
+                        <div class="text-center p-4 bg-gray-50 rounded-lg">
+                            <i class="fas fa-shield-alt text-3xl text-yellow-500 mb-3"></i>
+                            <div class="text-2xl font-bold text-gray-900">
+                                <% 
+                                if (typeof reportMetrics !== 'undefined' && reportMetrics && reportMetrics.byStatus && reportMetrics.total) {
+                                    const resolutionRate = Math.round(((reportMetrics.byStatus.resolved || 0) / reportMetrics.total) * 100);
+                                %><%= resolutionRate %><% 
+                                } else { 
+                                %>0<% 
+                                } 
+                                %>%
+                            </div>
+                            <div class="text-gray-500 text-sm">Resolution Rate</div>
+                        </div>
+
+                        <div class="text-center p-4 bg-gray-50 rounded-lg">
+                            <i class="fas fa-users-cog text-3xl text-purple-500 mb-3"></i>
+                            <div class="text-2xl font-bold text-gray-900">
+                                <% 
+                                if (typeof userMetrics !== 'undefined' && userMetrics && userMetrics.moderators && userMetrics.total) {
+                                    const modRatio = Math.round((userMetrics.moderators / userMetrics.total) * 100);
+                                %><%= modRatio %><% 
+                                } else { 
+                                %>0<% 
+                                } 
+                                %>%
+                            </div>
+                            <div class="text-gray-500 text-sm">Moderator Ratio</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg p-6 flex items-center space-x-3">
+            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            <span class="text-gray-700">Loading...</span>
+        </div>
+    </div>
+
+    <script>
+        // Global chart variables
+        let userGrowthChart, contentGrowthChart, contentPieChart;
+
+        // Mobile sidebar functionality
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        const openSidebarBtn = document.getElementById('openSidebar');
+        const closeSidebarBtn = document.getElementById('closeSidebar');
+
+        function openSidebar() {
+            sidebar.classList.add('show');
+            sidebarOverlay.classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSidebar() {
+            sidebar.classList.remove('show');
+            sidebarOverlay.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+
+        if (openSidebarBtn) {
+            openSidebarBtn.addEventListener('click', openSidebar);
+        }
+
+        if (closeSidebarBtn) {
+            closeSidebarBtn.addEventListener('click', closeSidebar);
+        }
+
+        if (sidebarOverlay) {
+            sidebarOverlay.addEventListener('click', closeSidebar);
+        }
+
+        // Toast notifications
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast px-6 py-4 rounded-lg shadow-lg flex items-center space-x-3 ${
+                type === 'success' ? 'bg-green-500 text-white' :
+                type === 'error' ? 'bg-red-500 text-white' :
+                type === 'warning' ? 'bg-yellow-500 text-white' :
+                'bg-blue-500 text-white'
+            }`;
+            
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation' : 'info'}-circle"></i>
+                <span>${message}</span>
+                <button onclick="this.parentElement.remove()" class="ml-4 text-white/70 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 100);
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        function showLoading() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        // Initialize charts when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+
+            // Add fade-in animation to content
+            const main = document.querySelector('main');
+            if (main) {
+                main.style.opacity = '0';
+                main.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    main.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    main.style.opacity = '1';
+                    main.style.transform = 'translateY(0)';
+                }, 100);
+            }
+        });
+
+        function initializeCharts() {
+            // User Growth Chart
+            const userCtx = document.getElementById('userGrowthChart').getContext('2d');
+            userGrowthChart = new Chart(userCtx, {
+                type: 'line',
+                data: {
+                    labels: generateDateLabels(),
+                    datasets: [{
+                        label: 'New Users',
+                        data: generateUserGrowthData(),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Content Growth Chart
+            const contentCtx = document.getElementById('contentGrowthChart').getContext('2d');
+            contentGrowthChart = new Chart(contentCtx, {
+                type: 'line',
+                data: {
+                    labels: generateDateLabels(),
+                    datasets: [{
+                        label: 'Posts',
+                        data: generateContentGrowthData('posts'),
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Fanbases',
+                        data: generateContentGrowthData('fanbases'),
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        tension: 0.4,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Content Distribution Pie Chart
+            const pieCtx = document.getElementById('contentPieChart').getContext('2d');
+            const totalPosts = parseInt('<%= (typeof contentMetrics !== "undefined" && contentMetrics) ? (contentMetrics.totalPosts || 0) : 0 %>');
+            const totalFanbases = parseInt('<%= (typeof contentMetrics !== "undefined" && contentMetrics) ? (contentMetrics.totalFanbases || 0) : 0 %>');
+            
+            contentPieChart = new Chart(pieCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Posts', 'Fanbases', 'Comments'],
+                    datasets: [{
+                        data: [totalPosts, totalFanbases, Math.floor(totalPosts * 0.3)], // Estimate comments
+                        backgroundColor: ['#667eea', '#f59e0b', '#10b981'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function generateDateLabels() {
+            const labels = [];
+            const period = '<%= typeof currentPeriod !== "undefined" ? currentPeriod : "7d" %>';
+            const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 365;
+            
+            for (let i = days - 1; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            }
+            
+            return labels;
+        }
+
+        function generateUserGrowthData() {
+            const period = '<%= typeof currentPeriod !== "undefined" ? currentPeriod : "7d" %>';
+            const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 365;
+            
+            // Simulated data - replace with real data from backend
+            const data = [];
+            for (let i = 0; i < days; i++) {
+                data.push(Math.floor(Math.random() * 10) + 1);
+            }
+            
+            return data;
+        }
+
+        function generateContentGrowthData(type) {
+            const period = '<%= typeof currentPeriod !== "undefined" ? currentPeriod : "7d" %>';
+            const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 365;
+            
+            // Simulated data - replace with real data from backend
+            const data = [];
+            const multiplier = type === 'posts' ? 5 : 1;
+            
+            for (let i = 0; i < days; i++) {
+                data.push(Math.floor(Math.random() * 20 * multiplier) + multiplier);
+            }
+            
+            return data;
+        }
+
+        function changePeriod() {
+            const period = document.getElementById('periodSelector').value;
+            window.location.href = `/admin/analytics?period=${period}`;
+        }
+
+        async function refreshData() {
+            const period = document.getElementById('periodSelector').value;
+            
+            try {
+                showLoading();
+                const response = await fetch(`/admin/api/analytics/${period}`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    showToast('Data refreshed successfully', 'success');
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    showToast('Failed to refresh data', 'error');
+                }
+            } catch (error) {
+                showToast('Failed to refresh data: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function exportAnalytics() {
+            const period = document.getElementById('periodSelector').value;
+            showLoading();
+            
+            // Create download link
+            const link = document.createElement('a');
+            link.href = `/admin/analytics/export?period=${period}`;
+            link.download = `analytics-report-${period}-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            setTimeout(() => {
+                hideLoading();
+                showToast('Analytics report exported successfully!', 'success');
+            }, 1000);
+        }
+
+        // Auto-refresh charts every 5 minutes
+        setInterval(async () => {
+            if (document.visibilityState === 'visible') {
+                try {
+                    const period = document.getElementById('periodSelector').value;
+                    const response = await fetch(`/admin/api/analytics/${period}`, {
+                        credentials: 'include'
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('Analytics data refreshed');
+                        // Update charts with new data if needed
+                    }
+                } catch (error) {
+                    console.log('Failed to refresh analytics:', error);
+                }
+            }
+        }, 300000); // 5 minutes
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= title || 'Reports Management' %> - Noot Admin
+    </title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.0/axios.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#667eea',
+                        secondary: '#764ba2',
+                        accent: '#f093fb',
+                        success: '#10b981',
+                        warning: '#f59e0b',
+                        error: '#ef4444',
+                        dark: '#1f2937',
+                        light: '#f9fafb'
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-in': 'slideIn 0.3s ease-out',
+                        'bounce-in': 'bounceIn 0.6s ease-out',
+                        'pulse-dot': 'pulse 2s infinite'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .stat-number {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .sidebar-item {
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .sidebar-item:hover {
+            transform: translateX(4px);
+        }
+        
+        .sidebar-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .data-table th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .data-table tr:hover {
+            background: #f9fafb;
+        }
+        
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .badge.admin { background: #dbeafe; color: #1d4ed8; }
+        .badge.moderator { background: #f3e8ff; color: #7c3aed; }
+        .badge.user { background: #dcfce7; color: #16a34a; }
+        .badge.banned { background: #fee2e2; color: #dc2626; }
+        .badge.active { background: #dcfce7; color: #16a34a; }
+        .badge.pending { background: #fef3c7; color: #d97706; }
+        .badge.resolved { background: #dcfce7; color: #16a34a; }
+        .badge.warning { background: #fef3c7; color: #d97706; }
+        
+        .line-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .floating-action {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 50;
+        }
+        
+        .toast {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            max-width: 400px;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .sidebar-mobile-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 40;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar-mobile-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebarOverlay" class="sidebar-mobile-overlay lg:hidden"></div>
+    
+    <!-- Sidebar -->
+    <div id="sidebar" class="sidebar fixed inset-y-0 left-0 z-50 w-64 gradient-bg text-white">
+        <div class="flex items-center justify-between h-16 px-4 border-b border-white/10">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <span class="text-2xl">🎵</span>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold">Noot Admin</h1>
+                    <p class="text-xs text-white/70">Music Social Platform</p>
+                </div>
+            </div>
+            <!-- Mobile Close Button -->
+            <button id="closeSidebar" class="lg:hidden p-2 text-white/70 hover:text-white">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <nav class="mt-8 px-4 space-y-2">
+            <a href="/admin" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
+                <i class="fas fa-home w-5 h-5 mr-3"></i>
+                Dashboard
+            </a>
+            <a href="/admin/users" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
+                <i class="fas fa-users w-5 h-5 mr-3"></i>
+                Users
+                <span class="ml-auto bg-red-500 text-xs px-2 py-1 rounded-full" id="usersCount">0</span>
+            </a>
+            <a href="/admin/posts" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
+                <i class="fas fa-newspaper w-5 h-5 mr-3"></i>
+                Posts
+                <span class="ml-auto bg-blue-500 text-xs px-2 py-1 rounded-full" id="postsCount">0</span>
+            </a>
+            <a href="/admin/reports" class="sidebar-item active flex items-center px-4 py-3 text-sm font-medium rounded-lg bg-white/10 relative">
+                <i class="fas fa-flag w-5 h-5 mr-3"></i>
+                Reports
+                <span class="ml-auto bg-yellow-500 text-xs px-2 py-1 rounded-full animate-pulse-dot" id="reportsCount">
+                    <%= (reports && reports.length) || 0 %>
+                </span>
+            </a>
+            <a href="/admin/fanbases" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
+                <i class="fas fa-heart w-5 h-5 mr-3"></i>
+                Fanbases
+                <span class="ml-auto bg-pink-500 text-xs px-2 py-1 rounded-full" id="fanbasesCount">0</span>
+            </a>
+            <a href="/admin/analytics" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
+                <i class="fas fa-chart-bar w-5 h-5 mr-3"></i>
+                Analytics
+            </a>
+            <a href="/admin/settings" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
+                <i class="fas fa-cog w-5 h-5 mr-3"></i>
+                Settings
+            </a>
+        </nav>
+        
+        <div class="absolute bottom-4 left-4 right-4">
+            <div class="glass-effect rounded-lg p-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                        <i class="fas fa-user text-sm"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <% if (typeof user !== 'undefined' && user) { %>
+                        <p class="text-sm font-medium text-white truncate"><%= user.username || user.email %></p>
+                        <p class="text-xs text-white/70 truncate"><%= user.email %></p>
+                        <% } else { %>
+                        <p class="text-sm font-medium text-white truncate">Admin User</p>
+                        <p class="text-xs text-white/70 truncate">admin@noot.com</p>
+                        <% } %>
+                    </div>
+                </div>
+                <form action="/admin/logout" method="POST" class="mt-3">
+                    <button type="submit" class="w-full px-3 py-2 text-xs font-medium text-white bg-white/10 rounded-lg hover:bg-white/20 transition-colors">
+                        <i class="fas fa-sign-out-alt mr-2"></i>
+                        Logout
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content lg:ml-64">
+        <!-- Top Bar -->
+        <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+            <div class="flex items-center justify-between px-4 lg:px-6 py-4">
+                <div class="flex items-center space-x-4">
+                    <!-- Mobile Menu Button -->
+                    <button id="openSidebar" class="lg:hidden p-2 text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    
+                    <h2 class="text-xl lg:text-2xl font-bold text-gray-900">Reports Management</h2>
+                    <span class="hidden sm:inline-flex px-3 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full">
+                        <i class="fas fa-circle text-green-500 mr-1"></i>
+                        All Systems Operational
+                    </span>
+                </div>
+                
+                <div class="flex items-center space-x-2 lg:space-x-4">
+                    <!-- Search -->
+                    <div class="relative hidden md:block">
+                        <input type="text" placeholder="Search..." class="w-48 lg:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                    
+                    <!-- Notifications -->
+                    <button class="relative p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
+                        <i class="fas fa-bell text-lg lg:text-xl"></i>
+                        <span id="notificationBadge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center hidden">0</span>
+                    </button>
+                    
+                    <!-- Profile -->
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-full gradient-bg flex items-center justify-center">
+                            <i class="fas fa-user text-white text-sm"></i>
+                        </div>
+                        <% if (typeof user !== 'undefined' && user) { %>
+                        <span class="hidden sm:inline-flex px-3 py-1 text-sm font-medium text-purple-800 bg-purple-100 rounded-full"><%= user.role %></span>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <main class="p-4 lg:p-6">
+            <!-- Reports Management -->
+            <div class="space-y-6 animate-fade-in">
+                <!-- Reports Overview Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-l-4 border-red-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Pending Reports</p>
+                                <p class="text-2xl font-bold text-red-600 mt-1">
+                                    <%= reports ? reports.filter(r => r.status === 'pending').length : 0 %>
+                                </p>
+                            </div>
+                            <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-l-4 border-yellow-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">High Priority</p>
+                                <p class="text-2xl font-bold text-yellow-600 mt-1">
+                                    <%= reports ? reports.filter(r => (r.priority || 1) >= 3).length : 0 %>
+                                </p>
+                            </div>
+                            <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-flag text-yellow-600 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-l-4 border-green-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Resolved Today</p>
+                                <p class="text-2xl font-bold text-green-600 mt-1">
+                                    <%= reports ? reports.filter(r => r.status === 'resolved' && new Date(r.updatedAt).toDateString() === new Date().toDateString()).length : 0 %>
+                                </p>
+                            </div>
+                            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-l-4 border-blue-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Total Reports</p>
+                                <p class="text-2xl font-bold text-blue-600 mt-1">
+                                    <%= pagination ? pagination.totalReports : (reports ? reports.length : 0) %>
+                                </p>
+                            </div>
+                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-clipboard-list text-blue-600 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Report Filters -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                        <i class="fas fa-filter text-primary mr-2"></i>
+                        Report Filters
+                    </h3>
+                    <form method="GET" action="/admin/reports" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 items-end">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                            <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <option value="">All Status</option>
+                                <option value="pending" <%= (typeof currentStatus !== 'undefined' && currentStatus === 'pending') ? 'selected' : '' %>>Pending</option>
+                                <option value="reviewing" <%= (typeof currentStatus !== 'undefined' && currentStatus === 'reviewing') ? 'selected' : '' %>>Under Review</option>
+                                <option value="resolved" <%= (typeof currentStatus !== 'undefined' && currentStatus === 'resolved') ? 'selected' : '' %>>Resolved</option>
+                                <option value="dismissed" <%= (typeof currentStatus !== 'undefined' && currentStatus === 'dismissed') ? 'selected' : '' %>>Dismissed</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                            <select name="category" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <option value="">All Categories</option>
+                                <option value="spam" <%= (typeof currentCategory !== 'undefined' && currentCategory === 'spam') ? 'selected' : '' %>>Spam</option>
+                                <option value="harassment" <%= (typeof currentCategory !== 'undefined' && currentCategory === 'harassment') ? 'selected' : '' %>>Harassment</option>
+                                <option value="inappropriate" <%= (typeof currentCategory !== 'undefined' && currentCategory === 'inappropriate') ? 'selected' : '' %>>Inappropriate Content</option>
+                                <option value="copyright" <%= (typeof currentCategory !== 'undefined' && currentCategory === 'copyright') ? 'selected' : '' %>>Copyright Violation</option>
+                                <option value="misinformation" <%= (typeof currentCategory !== 'undefined' && currentCategory === 'misinformation') ? 'selected' : '' %>>Misinformation</option>
+                                <option value="other" <%= (typeof currentCategory !== 'undefined' && currentCategory === 'other') ? 'selected' : '' %>>Other</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                            <select name="priority" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <option value="">All Priority</option>
+                                <option value="1" <%= (typeof currentPriority !== 'undefined' && currentPriority === '1') ? 'selected' : '' %>>Low (1)</option>
+                                <option value="2" <%= (typeof currentPriority !== 'undefined' && currentPriority === '2') ? 'selected' : '' %>>Medium (2)</option>
+                                <option value="3" <%= (typeof currentPriority !== 'undefined' && currentPriority === '3') ? 'selected' : '' %>>High (3)</option>
+                                <option value="4" <%= (typeof currentPriority !== 'undefined' && currentPriority === '4') ? 'selected' : '' %>>Critical (4)</option>
+                                <option value="5" <%= (typeof currentPriority !== 'undefined' && currentPriority === '5') ? 'selected' : '' %>>Emergency (5)</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Content Type</label>
+                            <select name="contentType" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <option value="">All Types</option>
+                                <option value="post" <%= (typeof currentContentType !== 'undefined' && currentContentType === 'post') ? 'selected' : '' %>>Posts</option>
+                                <option value="user" <%= (typeof currentContentType !== 'undefined' && currentContentType === 'user') ? 'selected' : '' %>>Users</option>
+                                <option value="fanbase" <%= (typeof currentContentType !== 'undefined' && currentContentType === 'fanbase') ? 'selected' : '' %>>Fanbases</option>
+                                <option value="comment" <%= (typeof currentContentType !== 'undefined' && currentContentType === 'comment') ? 'selected' : '' %>>Comments</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+                            <select name="dateRange" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <option value="">All Time</option>
+                                <option value="today" <%= (typeof currentDateRange !== 'undefined' && currentDateRange === 'today') ? 'selected' : '' %>>Today</option>
+                                <option value="week" <%= (typeof currentDateRange !== 'undefined' && currentDateRange === 'week') ? 'selected' : '' %>>This Week</option>
+                                <option value="month" <%= (typeof currentDateRange !== 'undefined' && currentDateRange === 'month') ? 'selected' : '' %>>This Month</option>
+                            </select>
+                        </div>
+                        
+                        <div class="flex space-x-2">
+                            <button type="submit" class="flex-1 bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center">
+                                <i class="fas fa-search mr-2"></i>
+                                Filter
+                            </button>
+                            <a href="/admin/reports" class="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center">
+                                <i class="fas fa-times mr-2"></i>
+                                Clear
+                            </a>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                        <i class="fas fa-bolt text-primary mr-2"></i>
+                        Quick Actions
+                    </h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <button onclick="bulkResolve()" class="flex flex-col items-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg hover:from-green-100 hover:to-green-200 transition-all duration-300 group">
+                            <i class="fas fa-check-circle text-2xl text-green-600 mb-2 group-hover:scale-110 transition-transform"></i>
+                            <span class="text-sm font-medium text-green-700">Bulk Resolve</span>
+                        </button>
+                        <button onclick="bulkDismiss()" class="flex flex-col items-center p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg hover:from-yellow-100 hover:to-yellow-200 transition-all duration-300 group">
+                            <i class="fas fa-times-circle text-2xl text-yellow-600 mb-2 group-hover:scale-110 transition-transform"></i>
+                            <span class="text-sm font-medium text-yellow-700">Bulk Dismiss</span>
+                        </button>
+                        <a href="/admin/reports?status=pending&priority=3" class="flex flex-col items-center p-4 bg-gradient-to-br from-red-50 to-red-100 rounded-lg hover:from-red-100 hover:to-red-200 transition-all duration-300 group">
+                            <i class="fas fa-exclamation-triangle text-2xl text-red-600 mb-2 group-hover:scale-110 transition-transform"></i>
+                            <span class="text-sm font-medium text-red-700">High Priority</span>
+                        </a>
+                        <button onclick="exportReports()" class="flex flex-col items-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg hover:from-purple-100 hover:to-purple-200 transition-all duration-300 group">
+                            <i class="fas fa-download text-2xl text-purple-600 mb-2 group-hover:scale-110 transition-transform"></i>
+                            <span class="text-sm font-medium text-purple-700">Export Reports</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Reports Cards -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">
+                            <i class="fas fa-flag text-primary mr-2"></i>
+                            Reports
+                            <% if (pagination && pagination.totalReports) { %>
+                                <span class="text-sm font-normal text-gray-500">(<%= pagination.totalReports %> total)</span>
+                            <% } else if (reports) { %>
+                                <span class="text-sm font-normal text-gray-500">(<%= reports.length %> total)</span>
+                            <% } %>
+                        </h3>
+                        <div class="flex items-center space-x-4">
+                            <label class="flex items-center space-x-2">
+                                <input type="checkbox" id="selectAll" onchange="toggleSelectAll()" class="rounded border-gray-300 focus:ring-primary">
+                                <span class="text-sm text-gray-600">Select All</span>
+                            </label>
+                            <span class="text-sm px-3 py-1 bg-gray-100 rounded-full" id="selectedCount">0 selected</span>
+                        </div>
+                    </div>
+                    
+                    <div class="p-6">
+                        <% if (reports && reports.length > 0) { %>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                            <% reports.forEach(function(report, index) { %>
+                            <div class="bg-gray-50 rounded-lg p-6 card-hover transition-all duration-300 relative" data-report-id="<%= report.id %>">
+                                <!-- Selection Checkbox -->
+                                <div class="absolute top-4 left-4 z-10">
+                                    <input type="checkbox" class="report-checkbox rounded border-gray-300 focus:ring-primary" 
+                                           value="<%= report.id %>" onchange="updateSelectedCount()">
+                                </div>
+                                
+                                <!-- Priority Badge -->
+                                <div class="absolute top-4 right-4 z-10">
+                                    <% if ((report.priority || 1) >= 4) { %>
+                                    <span class="badge banned">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                                        Priority <%= report.priority || 1 %>
+                                    </span>
+                                    <% } else if ((report.priority || 1) >= 3) { %>
+                                    <span class="badge warning">
+                                        <i class="fas fa-flag mr-1"></i>
+                                        Priority <%= report.priority || 1 %>
+                                    </span>
+                                    <% } else { %>
+                                    <span class="badge pending">
+                                        <i class="fas fa-info mr-1"></i>
+                                        Priority <%= report.priority || 1 %>
+                                    </span>
+                                    <% } %>
+                                </div>
+                                
+                                <!-- Report Icon -->
+                                <div class="flex items-center justify-center mb-4 mt-6">
+                                    <div class="w-16 h-16 bg-gradient-to-br from-red-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+                                        <i class="fas fa-flag text-white text-2xl"></i>
+                                    </div>
+                                </div>
+                                
+                                <!-- Category and Content Type -->
+                                <div class="flex items-center justify-center space-x-2 mb-4">
+                                    <span class="badge <%= 
+                                        report.category === 'harassment' ? 'banned' : 
+                                        report.category === 'spam' ? 'warning' : 
+                                        report.category === 'inappropriate' ? 'pending' : 'user' 
+                                    %>">
+                                        <%= report.category || 'other' %>
+                                    </span>
+                                    <span class="badge pending">
+                                        <%= report.contentType || 'post' %>
+                                    </span>
+                                </div>
+                                
+                                <!-- Report Reason -->
+                                <div class="mb-4">
+                                    <h4 class="font-medium text-gray-900 text-center mb-2">Report Reason</h4>
+                                    <p class="text-sm text-gray-700 text-center line-clamp-3">
+                                        <% if (report.reason && report.reason.length > 100) { %>
+                                            <%= report.reason.substring(0, 100) %>...
+                                            <button onclick="viewReport('<%= report.id %>')" class="text-primary hover:underline text-xs ml-1">
+                                                Read more
+                                            </button>
+                                        <% } else { %>
+                                            <%= report.reason || 'No reason provided' %>
+                                        <% } %>
+                                    </p>
+                                </div>
+                                
+                                <!-- Report Status -->
+                                <div class="flex items-center justify-center mb-4">
+                                    <span class="badge <%= 
+                                        report.status === 'resolved' ? 'active' : 
+                                        report.status === 'dismissed' ? 'user' : 
+                                        report.status === 'reviewing' ? 'warning' : 'pending' 
+                                    %>">
+                                        <i class="fas fa-<%= 
+                                            report.status === 'resolved' ? 'check' : 
+                                            report.status === 'dismissed' ? 'times' : 
+                                            report.status === 'reviewing' ? 'eye' : 'clock' 
+                                        %> mr-1"></i>
+                                        <%= report.status || 'pending' %>
+                                    </span>
+                                </div>
+                                
+                                <!-- Report Meta -->
+                                <div class="border-t pt-4 mb-4">
+                                    <div class="text-xs text-gray-500 space-y-1 text-center">
+                                        <div>Report ID: <%= report.id %></div>
+                                        <div>Content: <%= report.contentId %></div>
+                                        <div>Reporter: <%= (report.reportedBy || '').substring(0, 8) %>...</div>
+                                        <div><%= new Date(report.createdAt).toLocaleDateString() %></div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Action Buttons -->
+                                <div class="space-y-2">
+                                    <button onclick="viewReport('<%= report.id %>')" 
+                                            class="w-full bg-blue-500 text-white text-sm px-3 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                                        <i class="fas fa-eye mr-2"></i>
+                                        View Details
+                                    </button>
+                                    
+                                    <% if (report.status === 'pending' || report.status === 'reviewing') { %>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <button onclick="resolveReport('<%= report.id %>')" 
+                                                class="bg-green-500 text-white text-sm px-3 py-2 rounded-lg hover:bg-green-600 transition-colors">
+                                            <i class="fas fa-check mr-1"></i>
+                                            Resolve
+                                        </button>
+                                        <button onclick="dismissReport('<%= report.id %>')" 
+                                                class="bg-yellow-500 text-white text-sm px-3 py-2 rounded-lg hover:bg-yellow-600 transition-colors">
+                                            <i class="fas fa-times mr-1"></i>
+                                            Dismiss
+                                        </button>
+                                    </div>
+                                    <% } %>
+                                    
+                                    <div class="grid grid-cols-2 gap-2 text-xs">
+                                        <button onclick="viewContent('<%= report.contentId %>', '<%= report.contentType %>')" 
+                                                class="bg-gray-500 text-white px-2 py-1 rounded hover:bg-gray-600 transition-colors">
+                                            View Content
+                                        </button>
+                                        <button onclick="viewReporter('<%= report.reportedBy %>')" 
+                                                class="bg-gray-500 text-white px-2 py-1 rounded hover:bg-gray-600 transition-colors">
+                                            View Reporter
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <% }); %>
+                        </div>
+                        <% } else { %>
+                        <div class="text-center py-12">
+                            <i class="fas fa-flag text-gray-300 text-6xl mb-4"></i>
+                            <h3 class="text-lg font-medium text-gray-900 mb-2">No Reports Found</h3>
+                            <p class="text-gray-500 mb-4">No reports match your current filters.</p>
+                            <a href="/admin/reports" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                                <i class="fas fa-refresh mr-2"></i>
+                                View All Reports
+                            </a>
+                        </div>
+                        <% } %>
+                    </div>
+                </div>
+
+                <!-- Pagination -->
+                <% if (pagination && pagination.total > 1) { %>
+                <div class="flex items-center justify-between bg-white px-6 py-4 rounded-xl shadow-sm">
+                    <div class="text-sm text-gray-700">
+                        Showing <%= ((pagination.current - 1) * pagination.limit) + 1 %> to 
+                        <%= Math.min(pagination.current * pagination.limit, pagination.totalReports) %> of 
+                        <%= pagination.totalReports %> reports
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <% if (pagination.current > 1) { %>
+                        <a href="?page=<%= pagination.current - 1 %>" 
+                           class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                            <i class="fas fa-chevron-left mr-1"></i>
+                            Previous
+                        </a>
+                        <% } %>
+                        
+                        <% for (let i = Math.max(1, pagination.current - 2); i <= Math.min(pagination.total, pagination.current + 2); i++) { %>
+                        <a href="?page=<%= i %>" 
+                           class="px-3 py-2 text-sm font-medium <%= i === pagination.current ? 'text-white bg-primary' : 'text-gray-500 bg-white hover:bg-gray-50' %> border border-gray-300 rounded-lg transition-colors">
+                            <%= i %>
+                        </a>
+                        <% } %>
+                        
+                        <% if (pagination.current < pagination.total) { %>
+                        <a href="?page=<%= pagination.current + 1 %>" 
+                           class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                            Next
+                            <i class="fas fa-chevron-right ml-1"></i>
+                        </a>
+                        <% } %>
+                    </div>
+                </div>
+                <% } %>
+            </div>
+        </main>
+    </div>
+
+    <!-- Report Detail Modal -->
+    <div id="reportModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">
+                    <i class="fas fa-flag text-primary mr-2"></i>
+                    Report Details
+                </h3>
+                <button onclick="closeReportModal()" class="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="reportModalContent" class="p-6">
+                <!-- Content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg p-6 flex items-center space-x-3">
+            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            <span class="text-gray-700">Loading...</span>
+        </div>
+    </div>
+
+    <script>
+        let selectedReports = [];
+
+        // Mobile sidebar functionality
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        const openSidebarBtn = document.getElementById('openSidebar');
+        const closeSidebarBtn = document.getElementById('closeSidebar');
+
+        function openSidebar() {
+            sidebar.classList.add('show');
+            sidebarOverlay.classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSidebar() {
+            sidebar.classList.remove('show');
+            sidebarOverlay.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+
+        if (openSidebarBtn) {
+            openSidebarBtn.addEventListener('click', openSidebar);
+        }
+
+        if (closeSidebarBtn) {
+            closeSidebarBtn.addEventListener('click', closeSidebar);
+        }
+
+        if (sidebarOverlay) {
+            sidebarOverlay.addEventListener('click', closeSidebar);
+        }
+
+        // Toast notifications
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast px-6 py-4 rounded-lg shadow-lg flex items-center space-x-3 ${
+                type === 'success' ? 'bg-green-500 text-white' :
+                type === 'error' ? 'bg-red-500 text-white' :
+                type === 'warning' ? 'bg-yellow-500 text-white' :
+                'bg-blue-500 text-white'
+            }`;
+            
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation' : 'info'}-circle"></i>
+                <span>${message}</span>
+                <button onclick="this.parentElement.remove()" class="ml-4 text-white/70 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 100);
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        function showLoading() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        function confirmAction(message) {
+            return confirm(message);
+        }
+
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.report-checkbox');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAll.checked;
+            });
+            
+            updateSelectedCount();
+        }
+
+        function updateSelectedCount() {
+            const checkboxes = document.querySelectorAll('.report-checkbox:checked');
+            selectedReports = Array.from(checkboxes).map(cb => cb.value);
+            
+            document.getElementById('selectedCount').textContent = `${selectedReports.length} selected`;
+            
+            // Update select all checkbox state
+            const allCheckboxes = document.querySelectorAll('.report-checkbox');
+            const selectAll = document.getElementById('selectAll');
+            
+            if (selectAll) {
+                selectAll.checked = selectedReports.length === allCheckboxes.length;
+                selectAll.indeterminate = selectedReports.length > 0 && selectedReports.length < allCheckboxes.length;
+            }
+        }
+
+        async function resolveReport(reportId) {
+            const resolution = prompt('Enter resolution details:');
+            if (!resolution) return;
+            
+            const actionTaken = prompt('Action taken (content_removed, user_warned, user_banned, no_action):');
+            if (!actionTaken) return;
+            
+            try {
+                showLoading();
+                const response = await axios.post(`/admin/reports/${reportId}/resolve`, {
+                    resolution,
+                    actionTaken,
+                    reviewedBy: '<%= user ? user.id : "" %>',
+                    reviewNotes: 'Resolved by admin'
+                });
+                
+                if (response.status === 200) {
+                    showToast('Report resolved successfully', 'success');
+                    setTimeout(() => window.location.reload(), 1000);
+                }
+            } catch (error) {
+                showToast('Failed to resolve report: ' + (error.response?.data?.message || error.message), 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function dismissReport(reportId) {
+            const reason = prompt('Enter dismissal reason:');
+            if (!reason) return;
+            
+            if (!confirmAction('Are you sure you want to dismiss this report?')) return;
+            
+            try {
+                showLoading();
+                const response = await axios.post(`/admin/reports/${reportId}/dismiss`, {
+                    reason,
+                    reviewedBy: '<%= user ? user.id : "" %>'
+                });
+                
+                if (response.status === 200) {
+                    showToast('Report dismissed successfully', 'success');
+                    setTimeout(() => window.location.reload(), 1000);
+                }
+            } catch (error) {
+                showToast('Failed to dismiss report: ' + (error.response?.data?.message || error.message), 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function viewReport(reportId) {
+            try {
+                showLoading();
+                const response = await axios.get(`/admin/reports/${reportId}`);
+                
+                if (response.status === 200) {
+                    const report = response.data;
+                    showReportModal(report);
+                }
+            } catch (error) {
+                showToast('Failed to load report details: ' + (error.response?.data?.message || error.message), 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function showReportModal(report) {
+            const modal = document.getElementById('reportModal');
+            const content = document.getElementById('reportModalContent');
+            
+            const priorityColor = report.priority >= 4 ? '#ef4444' : report.priority >= 3 ? '#f59e0b' : report.priority >= 2 ? '#3b82f6' : '#10b981';
+            
+            content.innerHTML = `
+                <div class="space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <h5 class="font-medium text-gray-900 mb-2">Report Category</h5>
+                            <span class="badge ${report.category === 'harassment' ? 'banned' : 'warning'}">
+                                ${report.category || 'other'}
+                            </span>
+                        </div>
+                        <div>
+                            <h5 class="font-medium text-gray-900 mb-2">Priority Level</h5>
+                            <span class="badge" style="background-color: ${priorityColor}20; color: ${priorityColor};">
+                                Priority ${report.priority || 1}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h5 class="font-medium text-gray-900 mb-2">Report Reason</h5>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-700 leading-relaxed">
+                                ${report.reason || 'No reason provided'}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <h5 class="font-medium text-gray-900 mb-2">Content Information</h5>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Content Type:</span>
+                                    <span class="text-gray-900">${report.contentType || 'post'}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Content ID:</span>
+                                    <span class="font-mono text-gray-900 text-xs">${report.contentId}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <h5 class="font-medium text-gray-900 mb-2">Reporter Information</h5>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Reporter ID:</span>
+                                    <span class="font-mono text-gray-900 text-xs">${report.reportedBy}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Status:</span>
+                                    <span class="badge ${report.status === 'resolved' ? 'active' : report.status === 'dismissed' ? 'user' : 'pending'}">
+                                        ${report.status || 'pending'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h5 class="font-medium text-gray-900 mb-2">Timeline</h5>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Reported On:</span>
+                                <span class="text-gray-900">${new Date(report.createdAt).toLocaleString()}</span>
+                            </div>
+                            ${report.updatedAt ? `
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Last Updated:</span>
+                                <span class="text-gray-900">${new Date(report.updatedAt).toLocaleString()}</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    
+                    ${report.resolution ? `
+                        <div>
+                            <h5 class="font-medium text-gray-900 mb-2">Resolution</h5>
+                            <div class="bg-green-50 p-4 rounded-lg border-l-4 border-green-500">
+                                <div class="mb-2">
+                                    <strong>Action:</strong> ${report.actionTaken}
+                                </div>
+                                <div>
+                                    <strong>Notes:</strong> ${report.resolution}
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="flex space-x-4 pt-4 border-t">
+                        ${(report.status === 'pending' || report.status === 'reviewing') ? `
+                            <button onclick="resolveReport('${report.id}')" class="flex-1 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                                <i class="fas fa-check mr-2"></i>
+                                Resolve
+                            </button>
+                            <button onclick="dismissReport('${report.id}')" class="flex-1 bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                                <i class="fas fa-times mr-2"></i>
+                                Dismiss
+                            </button>
+                        ` : ''}
+                        <button onclick="viewContent('${report.contentId}', '${report.contentType}')" class="flex-1 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                            <i class="fas fa-external-link-alt mr-2"></i>
+                            View Content
+                        </button>
+                        <button onclick="closeReportModal()" class="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                            <i class="fas fa-times mr-2"></i>
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            modal.classList.remove('hidden');
+        }
+
+        function closeReportModal() {
+            document.getElementById('reportModal').classList.add('hidden');
+        }
+
+        function viewContent(contentId, contentType) {
+            // Navigate to content view based on type
+            switch(contentType) {
+                case 'post':
+                    window.open(`/admin/posts?search=${contentId}`, '_blank');
+                    break;
+                case 'user':
+                    window.open(`/admin/users?search=${contentId}`, '_blank');
+                    break;
+                case 'fanbase':
+                    window.open(`/admin/fanbases?search=${contentId}`, '_blank');
+                    break;
+                default:
+                    showToast('Content type not supported', 'warning');
+            }
+        }
+
+        function viewReporter(reporterId) {
+            window.open(`/admin/users?search=${reporterId}`, '_blank');
+        }
+
+        async function bulkResolve() {
+            if (selectedReports.length === 0) {
+                showToast('Please select reports first', 'warning');
+                return;
+            }
+            
+            const resolution = prompt('Enter resolution for all selected reports:');
+            if (!resolution) return;
+            
+            const actionTaken = prompt('Action taken (content_removed, user_warned, user_banned, no_action):');
+            if (!actionTaken) return;
+            
+            if (!confirmAction(`Are you sure you want to resolve ${selectedReports.length} reports?`)) return;
+            
+            try {
+                showLoading();
+                const response = await axios.post('/admin/reports/bulk-resolve', {
+                    reportIds: selectedReports,
+                    resolution,
+                    actionTaken,
+                    reviewedBy: '<%= user ? user.id : "" %>'
+                });
+                
+                if (response.status === 200) {
+                    showToast('Reports resolved successfully', 'success');
+                    setTimeout(() => window.location.reload(), 1000);
+                }
+            } catch (error) {
+                showToast('Failed to resolve reports: ' + (error.response?.data?.message || error.message), 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function bulkDismiss() {
+            if (selectedReports.length === 0) {
+                showToast('Please select reports first', 'warning');
+                return;
+            }
+            
+            const reason = prompt('Enter dismissal reason for all selected reports:');
+            if (!reason) return;
+            
+            if (!confirmAction(`Are you sure you want to dismiss ${selectedReports.length} reports?`)) return;
+            
+            try {
+                showLoading();
+                const response = await axios.post('/admin/reports/bulk-dismiss', {
+                    reportIds: selectedReports,
+                    reason,
+                    reviewedBy: '<%= user ? user.id : "" %>'
+                });
+                
+                if (response.status === 200) {
+                    showToast('Reports dismissed successfully', 'success');
+                    setTimeout(() => window.location.reload(), 1000);
+                }
+            } catch (error) {
+                showToast('Failed to dismiss reports: ' + (error.response?.data?.message || error.message), 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function exportReports() {
+            const params = new URLSearchParams(window.location.search);
+            exportData('reports', Object.fromEntries(params));
+        }
+
+        function exportData(type, params = {}) {
+            showLoading();
+            const queryString = new URLSearchParams(params).toString();
+            const url = `/admin/${type}/export${queryString ? '?' + queryString : ''}`;
+            
+            // Create download link
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${type}-export-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            setTimeout(() => {
+                hideLoading();
+                showToast(`${type} data exported successfully!`, 'success');
+            }, 1000);
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('reportModal').addEventListener('click', (e) => {
+            if (e.target.id === 'reportModal') {
+                closeReportModal();
+            }
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateSelectedCount();
+            
+            // Auto-refresh for real-time updates every 30 seconds
+            setInterval(async () => {
+                if (document.visibilityState === 'visible') {
+                    try {
+                        const response = await axios.get('/admin/api/reports-stats');
+                        
+                        if (response.status === 200) {
+                            const stats = response.data;
+                            // Update stats in the overview cards
+                            const pendingElement = document.querySelector('.border-red-500 .text-2xl');
+                            const highPriorityElement = document.querySelector('.border-yellow-500 .text-2xl');
+                            const resolvedTodayElement = document.querySelector('.border-green-500 .text-2xl');
+                            const totalElement = document.querySelector('.border-blue-500 .text-2xl');
+                            
+                            if (pendingElement) pendingElement.textContent = stats.pending || 0;
+                            if (highPriorityElement) highPriorityElement.textContent = stats.highPriority || 0;
+                            if (resolvedTodayElement) resolvedTodayElement.textContent = stats.resolvedToday || 0;
+                            if (totalElement) totalElement.textContent = stats.total || 0;
+                        }
+                    } catch (error) {
+                        console.log('Failed to refresh stats:', error);
+                    }
+                }
+            }, 30000);
+
+            // Add fade-in animation to content
+            const main = document.querySelector('main');
+            if (main) {
+                main.style.opacity = '0';
+                main.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    main.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    main.style.opacity = '1';
+                    main.style.transform = 'translateY(0)';
+                }, 100);
+            }
+        });
+    </script>
+</body>
+
+</html>

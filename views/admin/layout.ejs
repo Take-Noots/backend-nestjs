@@ -1,0 +1,574 @@
+<!-- views/admin/layout.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= typeof title !== 'undefined' ? title : 'Admin Dashboard' %> - Noot Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.0/axios.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#667eea',
+                        secondary: '#764ba2',
+                        accent: '#f093fb',
+                        success: '#10b981',
+                        warning: '#f59e0b',
+                        error: '#ef4444',
+                        dark: '#1f2937',
+                        light: '#f9fafb'
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-in': 'slideIn 0.3s ease-out',
+                        'bounce-in': 'bounceIn 0.6s ease-out',
+                        'pulse-dot': 'pulse 2s infinite'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .stat-number {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .sidebar-item {
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .sidebar-item:hover {
+            transform: translateX(4px);
+        }
+        
+        .sidebar-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .data-table th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .data-table tr:hover {
+            background: #f9fafb;
+        }
+        
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .badge.admin { background: #dbeafe; color: #1d4ed8; }
+        .badge.moderator { background: #f3e8ff; color: #7c3aed; }
+        .badge.user { background: #dcfce7; color: #16a34a; }
+        .badge.banned { background: #fee2e2; color: #dc2626; }
+        .badge.active { background: #dcfce7; color: #16a34a; }
+        .badge.pending { background: #fef3c7; color: #d97706; }
+        .badge.resolved { background: #dcfce7; color: #16a34a; }
+        .badge.warning { background: #fef3c7; color: #d97706; }
+        
+        .floating-action {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 50;
+        }
+        
+        .toast {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            max-width: 400px;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .sidebar-mobile-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 40;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar-mobile-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebarOverlay" class="sidebar-mobile-overlay lg:hidden"></div>
+    
+    <!-- Sidebar -->
+    <div id="sidebar" class="sidebar fixed inset-y-0 left-0 z-50 w-64 gradient-bg text-white">
+        <div class="flex items-center justify-between h-16 px-4 border-b border-white/10">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <span class="text-2xl">🎵</span>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold">Noot Admin</h1>
+                    <p class="text-xs text-white/70">Music Social Platform</p>
+                </div>
+            </div>
+            <!-- Mobile Close Button -->
+            <button id="closeSidebar" class="lg:hidden p-2 text-white/70 hover:text-white">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <nav class="mt-8 px-4 space-y-2">
+            <a href="/admin" class="sidebar-item <%= (typeof title !== 'undefined' && title === 'Admin Dashboard') ? 'active' : '' %> flex items-center px-4 py-3 text-sm font-medium rounded-lg <%= (typeof title !== 'undefined' && title === 'Admin Dashboard') ? 'bg-white/10' : 'hover:bg-white/10' %> relative">
+                <i class="fas fa-home w-5 h-5 mr-3"></i>
+                Dashboard
+            </a>
+            <a href="/admin/users" class="sidebar-item <%= (typeof title !== 'undefined' && title === 'User Management') ? 'active' : '' %> flex items-center px-4 py-3 text-sm font-medium rounded-lg <%= (typeof title !== 'undefined' && title === 'User Management') ? 'bg-white/10' : 'hover:bg-white/10' %> relative">
+                <i class="fas fa-users w-5 h-5 mr-3"></i>
+                Users
+                <span class="ml-auto bg-red-500 text-xs px-2 py-1 rounded-full" id="usersCount">0</span>
+            </a>
+            <a href="/admin/posts" class="sidebar-item <%= (typeof title !== 'undefined' && title === 'Content Management') ? 'active' : '' %> flex items-center px-4 py-3 text-sm font-medium rounded-lg <%= (typeof title !== 'undefined' && title === 'Content Management') ? 'bg-white/10' : 'hover:bg-white/10' %> relative">
+                <i class="fas fa-newspaper w-5 h-5 mr-3"></i>
+                Posts
+                <span class="ml-auto bg-blue-500 text-xs px-2 py-1 rounded-full" id="postsCount">0</span>
+            </a>
+            <a href="/admin/reports" class="sidebar-item <%= (typeof title !== 'undefined' && title === 'Reports Management') ? 'active' : '' %> flex items-center px-4 py-3 text-sm font-medium rounded-lg <%= (typeof title !== 'undefined' && title === 'Reports Management') ? 'bg-white/10' : 'hover:bg-white/10' %> relative">
+                <i class="fas fa-flag w-5 h-5 mr-3"></i>
+                Reports
+                <span class="ml-auto bg-yellow-500 text-xs px-2 py-1 rounded-full animate-pulse-dot" id="reportsCount">0</span>
+            </a>
+            <a href="/admin/fanbases" class="sidebar-item <%= (typeof title !== 'undefined' && title === 'Fanbases Management') ? 'active' : '' %> flex items-center px-4 py-3 text-sm font-medium rounded-lg <%= (typeof title !== 'undefined' && title === 'Fanbases Management') ? 'bg-white/10' : 'hover:bg-white/10' %> relative">
+                <i class="fas fa-heart w-5 h-5 mr-3"></i>
+                Fanbases
+                <span class="ml-auto bg-pink-500 text-xs px-2 py-1 rounded-full" id="fanbasesCount">0</span>
+            </a>
+            <a href="/admin/analytics" class="sidebar-item <%= (typeof title !== 'undefined' && title === 'Analytics') ? 'active' : '' %> flex items-center px-4 py-3 text-sm font-medium rounded-lg <%= (typeof title !== 'undefined' && title === 'Analytics') ? 'bg-white/10' : 'hover:bg-white/10' %> relative">
+                <i class="fas fa-chart-bar w-5 h-5 mr-3"></i>
+                Analytics
+            </a>
+            <a href="/admin/settings" class="sidebar-item <%= (typeof title !== 'undefined' && title === 'Admin Settings') ? 'active' : '' %> flex items-center px-4 py-3 text-sm font-medium rounded-lg <%= (typeof title !== 'undefined' && title === 'Admin Settings') ? 'bg-white/10' : 'hover:bg-white/10' %> relative">
+                <i class="fas fa-cog w-5 h-5 mr-3"></i>
+                Settings
+            </a>
+        </nav>
+        
+        <div class="absolute bottom-4 left-4 right-4">
+            <div class="glass-effect rounded-lg p-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                        <i class="fas fa-user text-sm"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <% if (typeof user !== 'undefined' && user) { %>
+                        <p class="text-sm font-medium text-white truncate"><%= user.username || user.email %></p>
+                        <p class="text-xs text-white/70 truncate"><%= user.email %></p>
+                        <% } else { %>
+                        <p class="text-sm font-medium text-white truncate">Admin User</p>
+                        <p class="text-xs text-white/70 truncate">admin@noot.com</p>
+                        <% } %>
+                    </div>
+                </div>
+                <form action="/admin/logout" method="POST" class="mt-3">
+                    <button type="submit" class="w-full px-3 py-2 text-xs font-medium text-white bg-white/10 rounded-lg hover:bg-white/20 transition-colors">
+                        <i class="fas fa-sign-out-alt mr-2"></i>
+                        Logout
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content lg:ml-64">
+        <!-- Top Bar -->
+        <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+            <div class="flex items-center justify-between px-4 lg:px-6 py-4">
+                <div class="flex items-center space-x-4">
+                    <!-- Mobile Menu Button -->
+                    <button id="openSidebar" class="lg:hidden p-2 text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    
+                    <h2 class="text-xl lg:text-2xl font-bold text-gray-900"><%= typeof title !== 'undefined' ? title : 'Admin Dashboard' %></h2>
+                    <span class="hidden sm:inline-flex px-3 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full">
+                        <i class="fas fa-circle text-green-500 mr-1"></i>
+                        All Systems Operational
+                    </span>
+                </div>
+                
+                <div class="flex items-center space-x-2 lg:space-x-4">
+                    <!-- Search -->
+                    <div class="relative hidden md:block">
+                        <input type="text" placeholder="Search..." class="w-48 lg:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                    
+                    <!-- Notifications -->
+                    <button class="relative p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
+                        <i class="fas fa-bell text-lg lg:text-xl"></i>
+                        <span id="notificationBadge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center hidden">0</span>
+                    </button>
+                    
+                    <!-- Profile -->
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-full gradient-bg flex items-center justify-center">
+                            <i class="fas fa-user text-white text-sm"></i>
+                        </div>
+                        <% if (typeof user !== 'undefined' && user) { %>
+                        <span class="hidden sm:inline-flex px-3 py-1 text-sm font-medium text-purple-800 bg-purple-100 rounded-full"><%= user.role %></span>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Alert Messages -->
+        <% if (typeof error !== 'undefined' && error) { %>
+        <div class="mx-4 lg:mx-6 mt-4">
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4 animate-fade-in">
+                <div class="flex items-center">
+                    <i class="fas fa-exclamation-triangle text-red-500 mr-3"></i>
+                    <span class="text-red-800"><%= error %></span>
+                </div>
+            </div>
+        </div>
+        <% } %>
+
+        <% if (typeof success !== 'undefined' && success) { %>
+        <div class="mx-4 lg:mx-6 mt-4">
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4 animate-fade-in">
+                <div class="flex items-center">
+                    <i class="fas fa-check-circle text-green-500 mr-3"></i>
+                    <span class="text-green-800"><%= success %></span>
+                </div>
+            </div>
+        </div>
+        <% } %>
+
+        <!-- Page Content - This is where the included content will be rendered -->
+        <main class="p-4 lg:p-6">
+            <!-- This will be populated by the specific page content -->
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg p-6 flex items-center space-x-3">
+            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            <span class="text-gray-700">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // Global admin utilities
+        function confirmAction(message) {
+            return confirm(message);
+        }
+
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast px-6 py-4 rounded-lg shadow-lg flex items-center space-x-3 ${
+                type === 'success' ? 'bg-green-500 text-white' :
+                type === 'error' ? 'bg-red-500 text-white' :
+                type === 'warning' ? 'bg-yellow-500 text-white' :
+                'bg-blue-500 text-white'
+            }`;
+            
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation' : 'info'}-circle"></i>
+                <span>${message}</span>
+                <button onclick="this.parentElement.remove()" class="ml-4 text-white/70 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 100);
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        function showLoading() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        // Mobile sidebar functionality
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        const openSidebarBtn = document.getElementById('openSidebar');
+        const closeSidebarBtn = document.getElementById('closeSidebar');
+
+        function openSidebar() {
+            sidebar.classList.add('show');
+            sidebarOverlay.classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSidebar() {
+            sidebar.classList.remove('show');
+            sidebarOverlay.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+
+        if (openSidebarBtn) {
+            openSidebarBtn.addEventListener('click', openSidebar);
+        }
+
+        if (closeSidebarBtn) {
+            closeSidebarBtn.addEventListener('click', closeSidebar);
+        }
+
+        if (sidebarOverlay) {
+            sidebarOverlay.addEventListener('click', closeSidebar);
+        }
+
+        // Update sidebar counts
+        async function updateSidebarCounts() {
+            try {
+                const response = await axios.get('/admin/api/counts');
+                if (response.data) {
+                    const counts = response.data;
+                    
+                    const usersCount = document.getElementById('usersCount');
+                    const postsCount = document.getElementById('postsCount');
+                    const reportsCount = document.getElementById('reportsCount');
+                    const fanbasesCount = document.getElementById('fanbasesCount');
+                    const notificationBadge = document.getElementById('notificationBadge');
+                    
+                    if (usersCount) usersCount.textContent = counts.users || 0;
+                    if (postsCount) postsCount.textContent = counts.posts || 0;
+                    if (reportsCount) reportsCount.textContent = counts.reports || 0;
+                    if (fanbasesCount) fanbasesCount.textContent = counts.fanbases || 0;
+                    
+                    // Update notification badge
+                    const totalNotifications = (counts.reports || 0);
+                    if (notificationBadge) {
+                        if (totalNotifications > 0) {
+                            notificationBadge.textContent = totalNotifications;
+                            notificationBadge.classList.remove('hidden');
+                        } else {
+                            notificationBadge.classList.add('hidden');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.log('Failed to update sidebar counts:', error);
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'k':
+                        e.preventDefault();
+                        const searchInput = document.querySelector('input[placeholder="Search..."]');
+                        if (searchInput) searchInput.focus();
+                        break;
+                    case '1':
+                        e.preventDefault();
+                        window.location.href = '/admin';
+                        break;
+                    case '2':
+                        e.preventDefault();
+                        window.location.href = '/admin/users';
+                        break;
+                    case '3':
+                        e.preventDefault();
+                        window.location.href = '/admin/posts';
+                        break;
+                    case '4':
+                        e.preventDefault();
+                        window.location.href = '/admin/reports';
+                        break;
+                }
+            }
+        });
+
+        // Auto-refresh functionality
+        function enableAutoRefresh(interval = 60000) {
+            setInterval(() => {
+                if (document.visibilityState === 'visible') {
+                    updateSidebarCounts();
+                }
+            }, interval);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateSidebarCounts();
+            enableAutoRefresh();
+            
+            // Add fade-in animation to content
+            const main = document.querySelector('main');
+            if (main) {
+                main.style.opacity = '0';
+                main.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    main.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    main.style.opacity = '1';
+                    main.style.transform = 'translateY(0)';
+                }, 100);
+            }
+        });
+
+        // Export functionality
+        function exportData(type, params = {}) {
+            showLoading();
+            const queryString = new URLSearchParams(params).toString();
+            const url = `/admin/${type}/export${queryString ? '?' + queryString : ''}`;
+            
+            // Create download link
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${type}-export-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            setTimeout(() => {
+                hideLoading();
+                showToast(`${type} data exported successfully!`, 'success');
+            }, 1000);
+        }
+
+        // Error handling for forms
+        function handleFormSubmit(form, successMessage = 'Operation completed successfully') {
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                showLoading();
+                
+                try {
+                    const formData = new FormData(form);
+                    const response = await fetch(form.action, {
+                        method: form.method,
+                        body: formData,
+                        credentials: 'include'
+                    });
+                    
+                    if (response.ok) {
+                        showToast(successMessage, 'success');
+                        setTimeout(() => window.location.reload(), 1000);
+                    } else {
+                        const error = await response.json();
+                        showToast(error.message || 'Operation failed', 'error');
+                    }
+                } catch (error) {
+                    showToast('Network error occurred', 'error');
+                } finally {
+                    hideLoading();
+                }
+            });
+        }
+    </script>
+</body>
+</html>
