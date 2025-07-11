@@ -14,3 +14,11 @@ export interface UserType {
   createdAt?: Date;
   updatedAt?: Date;
 }
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: UserType;
+    }
+  }
+}
