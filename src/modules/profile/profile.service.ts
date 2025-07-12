@@ -12,9 +12,10 @@ export class ProfileService {
     @InjectModel(SongPost.name) private songPostModel: Model<SongPostDocument>,
   ) {}
 
-  async getProfileById(id: string): Promise<ProfileDto | null> {
-    const profile = await this.profileModel.findById(id).lean();
+  async getProfileByUserId(userId: string): Promise<ProfileDto | null> {
+    const profile = await this.profileModel.findOne({ userId }).lean();
     if (!profile) return null;
+
     return {
       _id: profile._id,
       userId: profile.userId,
@@ -28,17 +29,7 @@ export class ProfileService {
     };
   }
 
-  async getAlbumArtsById(userId: string): Promise<string[] | null> {
-    // Find all song posts by userId and collect their albumImage fields
-    const posts = await this.songPostModel
-      .find({ userId }, 'albumImage')
-      .lean();
-    if (!posts) return null;
-    // Filter out undefined/null albumImage and return only valid links
-    return posts
-      .map((post) => post.albumImage)
-      .filter(
-        (img): img is string => typeof img === 'string' && img.length > 0,
-      );
+  async getPostsByUserId(userId: string) {
+    return this.songPostModel.find({ userId }).lean();
   }
 }

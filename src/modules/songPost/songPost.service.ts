@@ -12,10 +12,10 @@ export class SongPostService {
 
   async create(createPostDto: CreatePostDto): Promise<SongPostDocument> {
     console.log('Creating new song post:', createPostDto);
-    
+
     const createdPost = new this.songPostModel(createPostDto);
     const savedPost = await createdPost.save();
-    
+
     console.log('Song post created successfully:', savedPost);
     return savedPost;
   }
@@ -32,7 +32,10 @@ export class SongPostService {
     return this.songPostModel.find({ userId }).sort({ createdAt: -1 }).exec();
   }
 
-  async likePost(postId: string, userId: string): Promise<SongPostDocument | null> {
+  async likePost(
+    postId: string,
+    userId: string,
+  ): Promise<SongPostDocument | null> {
     const post = await this.songPostModel.findById(postId);
     if (!post) return null;
 

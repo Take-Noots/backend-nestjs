@@ -4,6 +4,7 @@ import { SpotifyModule } from './modules/spotify/spotify.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { SongPostModule } from './modules/songPost/songPost.module';
 import { SearchModule } from './modules/search/search.module';
+import { ProfileModule } from './modules/profile/profile.module';
 import 'dotenv/config';
 
 const dbUrl: string = process.env.DB_CONN_STRING as string;
@@ -11,10 +12,11 @@ const dbUrl: string = process.env.DB_CONN_STRING as string;
 @Module({
   imports: [
     MongooseModule.forRoot(dbUrl),
-    SpotifyModule, 
+    SpotifyModule,
     AuthModule,
     SongPostModule,
-    SearchModule
-  ]
+    SearchModule,
+    ProfileModule,
+  ],
 })
 export class AppModule {}

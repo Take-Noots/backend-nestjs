@@ -6,25 +6,22 @@ import { ProfileDto } from './dto/profile.dto';
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
 
-  @Get(':id')
-  async getProfile(
-    @Param('id') id: string,
-  ): Promise<ProfileDto | { message: string }> {
-    const profile = await this.profileService.getProfileById(id);
+  @Get(':userId')
+  async getProfileByUserId(
+    @Param('userId') userId: string,
+  ): Promise<ProfileDto | { message: string; error?: string }> {
+    const profile = await this.profileService.getProfileByUserId(userId);
     if (!profile) {
-      return { message: 'Profile not found' };
+      return {
+        message: 'Profile not found',
+        error: 'Profile with the given userId does not exist',
+      };
     }
     return profile;
   }
 
-  @Get(':userId/album-arts')
-  async getAlbumArts(
-    @Param('userId') userId: string,
-  ): Promise<{ albumArts: string[] } | { message: string }> {
-    const albumArts = await this.profileService.getAlbumArtsById(userId);
-    if (!albumArts) {
-      return { message: 'No album arts found for this user' };
-    }
-    return { albumArts };
+  @Get(':userId/posts')
+  async getPostsByUserId(@Param('userId') userId: string) {
+    return this.profileService.getPostsByUserId(userId);
   }
 }
