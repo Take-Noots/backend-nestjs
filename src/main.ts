@@ -25,12 +25,12 @@ async function bootstrap() {
     credentials: true,
   });
   
-  // API validation
-  app.useGlobalPipes(new ValidationPipe({
-    transform: true,
-    whitelist: true,
-    forbidNonWhitelisted: true,
-  }));
+  // API validation (CURRENTLY COMMENTED SO THAT WE CAN TEST THE API WITHOUT VALIDATION)
+  // app.useGlobalPipes(new ValidationPipe({
+  //   transform: true,
+  //   whitelist: true,
+  //   forbidNonWhitelisted: true,
+  // }));
   
   // Admin dashboard setup
   app.useStaticAssets(join(__dirname, '..', 'public'));
