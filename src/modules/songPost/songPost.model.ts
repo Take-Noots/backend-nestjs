@@ -1,15 +1,15 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-export type SongPostDocument = SongPost & Document & {
-  _id: string;
-  createdAt: Date;
-  updatedAt: Date;
-};
+export type SongPostDocument = SongPost &
+  Document & {
+    _id: string;
+    createdAt: Date;
+    updatedAt: Date;
+  };
 
 @Schema({ timestamps: true })
 export class SongPost {
-
   @Prop({ required: true })
   trackId: string;
 

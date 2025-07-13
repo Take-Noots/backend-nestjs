@@ -20,7 +20,7 @@ export class ProfileController {
     return profile;
   }
 
-  @Get(':userId/posts')
+  @Get('posts/:userId')
   async getPostsByUserId(@Param('userId') userId: string) {
     return this.profileService.getPostsByUserId(userId);
   }
