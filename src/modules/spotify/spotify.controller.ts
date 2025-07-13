@@ -129,8 +129,10 @@ export class SpotifyController {
     // If post then => @Post('search/track')
     // If get then => @Get('search/track')
     @Get('search/track')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.User, Role.Admin)
     async searchTracks(
-        @SpotifyToken(SpotifyTokenPipe) spotifyToken: string,
+        @JwtUser() user: JwtUserData,
         @Query('track_name') track_name: string
     ) {
         if (!track_name) {
@@ -138,6 +140,11 @@ export class SpotifyController {
         }
 
         try {
+            // Get Spotify access token using the user ID (which might trigger a refresh)
+            const spotifyToken = await this.sessionService.getAccessToken(user.userId);
+            if (!spotifyToken) {
+                throw new HttpException('No Spotify token found for this user', HttpStatus.UNAUTHORIZED);
+            }
             return await this.searchService.searchTracks(spotifyToken, track_name);
         } catch (error) {
             if (error instanceof HttpException) {
@@ -294,6 +301,54 @@ export class SpotifyController {
                 throw error;
             }
             throw new HttpException('Failed to skip to previous track: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @Post('player/post/play')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.User, Role.Admin)
+    async playPostTrack(
+        @JwtUser() user: JwtUserData,
+        @Body() playTrackDto: PlayTrackDto
+    ) {
+        console.log('playPostTrack called with:', playTrackDto, 'user:', user);
+        try {
+            const spotifyToken = await this.sessionService.getAccessToken(user.userId);
+            if (!spotifyToken) {
+                throw new HttpException('No Spotify token found for this user', HttpStatus.UNAUTHORIZED);
+            }
+            const { track_id, track_position } = playTrackDto;
+            if (!track_id) {
+                return await this.playerService.resumeTrack(spotifyToken);
+            }
+            return await this.playerService.playTrack(spotifyToken, track_id, track_position);
+        } catch (error) {
+            console.error('Error in playPostTrack:', error);
+            if (error instanceof HttpException) {
+                throw error;
+            }
+            throw new HttpException('Failed to play post track: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @Put('player/post/pause')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.User, Role.Admin)
+    async pausePostTrack(
+        @JwtUser() user: JwtUserData
+    ) {
+        try {
+            const spotifyToken = await this.sessionService.getAccessToken(user.userId);
+            if (!spotifyToken) {
+                throw new HttpException('No Spotify token found for this user', HttpStatus.UNAUTHORIZED);
+            }
+            return await this.playerService.pauseTrack(spotifyToken);
+        } catch (error) {
+            console.error('Error in pausePostTrack:', error);
+            if (error instanceof HttpException) {
+                throw error;
+            }
+            throw new HttpException('Failed to pause post track: ' + error.message, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }
