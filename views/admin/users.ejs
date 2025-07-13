@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= title || 'User Management' %> - Noot Admin
+    </title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.0/axios.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#667eea',
+                        secondary: '#764ba2',
+                        accent: '#f093fb',
+                        success: '#10b981',
+                        warning: '#f59e0b',
+                        error: '#ef4444',
+                        dark: '#1f2937',
+                        light: '#f9fafb'
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-in': 'slideIn 0.3s ease-out',
+                        'bounce-in': 'bounceIn 0.6s ease-out',
+                        'pulse-dot': 'pulse 2s infinite'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .stat-number {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .sidebar-item {
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .sidebar-item:hover {
+            transform: translateX(4px);
+        }
+        
+        .sidebar-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .data-table th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .data-table tr:hover {
+            background: #f9fafb;
+        }
+        
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .badge.admin { background: #dbeafe; color: #1d4ed8; }
+        .badge.moderator { background: #f3e8ff; color: #7c3aed; }
+        .badge.user { background: #dcfce7; color: #16a34a; }
+        .badge.banned { background: #fee2e2; color: #dc2626; }
+        .badge.active { background: #dcfce7; color: #16a34a; }
+        .badge.pending { background: #fef3c7; color: #d97706; }
+        .badge.resolved { background: #dcfce7; color: #16a34a; }
+        .badge.warning { background: #fef3c7; color: #d97706; }
+        
+        .floating-action {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 50;
+        }
+        
+        .toast {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            max-width: 400px;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .sidebar-mobile-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 40;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar-mobile-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebarOverlay" class="sidebar-mobile-overlay lg:hidden"></div>
+    
+    <!-- Sidebar -->
+    <div id="sidebar" class="sidebar fixed inset-y-0 left-0 z-50 w-64 gradient-bg text-white">
+        <div class="flex items-center justify-between h-16 px-4 border-b border-white/10">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <span class="text-2xl">🎵</span>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold">Noot Admin</h1>
+                    <p class="text-xs text-white/70">Music Social Platform</p>
+                </div>
+            </div>
+            <!-- Mobile Close Button -->
+            <button id="closeSidebar" class="lg:hidden p-2 text-white/70 hover:text-white">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <nav class="mt-8 px-4 space-y-2">
+            <a href="/admin" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
+                <i class="fas fa-home w-5 h-5 mr-3"></i>
+                Dashboard
+            </a>
+            <a href="/admin/users" class="sidebar-item active flex items-center px-4 py-3 text-sm font-medium rounded-lg bg-white/10 relative">
+                <i class="fas fa-users w-5 h-5 mr-3"></i>
+                Users
+                <span class="ml-auto bg-red-500 text-xs px-2 py-1 rounded-full" id="usersCount">
+                    <%= (users && users.length) || 0 %>
+                </span>
+            </a>
+            <a href="/admin/posts" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
+                <i class="fas fa-newspaper w-5 h-5 mr-3"></i>
+                Posts
+                <span class="ml-auto bg-blue-500 text-xs px-2 py-1 rounded-full" id="postsCount">0</span>
+            </a>
+            <a href="/admin/reports" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
+                <i class="fas fa-flag w-5 h-5 mr-3"></i>
+                Reports
+                <span class="ml-auto bg-yellow-500 text-xs px-2 py-1 rounded-full animate-pulse-dot" id="reportsCount">0</span>
+            </a>
+            <a href="/admin/fanbases" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
+                <i class="fas fa-heart w-5 h-5 mr-3"></i>
+                Fanbases
+                <span class="ml-auto bg-pink-500 text-xs px-2 py-1 rounded-full" id="fanbasesCount">0</span>
+            </a>
+            <a href="/admin/analytics" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
+                <i class="fas fa-chart-bar w-5 h-5 mr-3"></i>
+                Analytics
+            </a>
+            <a href="/admin/settings" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
+                <i class="fas fa-cog w-5 h-5 mr-3"></i>
+                Settings
+            </a>
+        </nav>
+        
+        <div class="absolute bottom-4 left-4 right-4">
+            <div class="glass-effect rounded-lg p-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                        <i class="fas fa-user text-sm"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <% if (typeof user !== 'undefined' && user) { %>
+                        <p class="text-sm font-medium text-white truncate"><%= user.username || user.email %></p>
+                        <p class="text-xs text-white/70 truncate"><%= user.email %></p>
+                        <% } else { %>
+                        <p class="text-sm font-medium text-white truncate">Admin User</p>
+                        <p class="text-xs text-white/70 truncate">admin@noot.com</p>
+                        <% } %>
+                    </div>
+                </div>
+                <form action="/admin/logout" method="POST" class="mt-3">
+                    <button type="submit" class="w-full px-3 py-2 text-xs font-medium text-white bg-white/10 rounded-lg hover:bg-white/20 transition-colors">
+                        <i class="fas fa-sign-out-alt mr-2"></i>
+                        Logout
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content lg:ml-64">
+        <!-- Top Bar -->
+        <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+            <div class="flex items-center justify-between px-4 lg:px-6 py-4">
+                <div class="flex items-center space-x-4">
+                    <!-- Mobile Menu Button -->
+                    <button id="openSidebar" class="lg:hidden p-2 text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    
+                    <h2 class="text-xl lg:text-2xl font-bold text-gray-900">User Management</h2>
+                    <span class="hidden sm:inline-flex px-3 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full">
+                        <i class="fas fa-circle text-green-500 mr-1"></i>
+                        All Systems Operational
+                    </span>
+                </div>
+                
+                <div class="flex items-center space-x-2 lg:space-x-4">
+                    <!-- Search -->
+                    <div class="relative hidden md:block">
+                        <input type="text" placeholder="Search..." class="w-48 lg:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                    
+                    <!-- Notifications -->
+                    <button class="relative p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
+                        <i class="fas fa-bell text-lg lg:text-xl"></i>
+                        <span id="notificationBadge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center hidden">0</span>
+                    </button>
+                    
+                    <!-- Profile -->
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-full gradient-bg flex items-center justify-center">
+                            <i class="fas fa-user text-white text-sm"></i>
+                        </div>
+                        <% if (typeof user !== 'undefined' && user) { %>
+                        <span class="hidden sm:inline-flex px-3 py-1 text-sm font-medium text-purple-800 bg-purple-100 rounded-full"><%= user.role %></span>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <main class="p-4 lg:p-6">
+            <!-- User Management Content -->
+            <div class="space-y-6 animate-fade-in">
+                <!-- User Overview Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-l-4 border-blue-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Total Users</p>
+                                <p class="text-2xl font-bold text-blue-600 mt-1">
+                                    <%= users ? users.length : 0 %>
+                                </p>
+                            </div>
+                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-users text-blue-600 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-l-4 border-green-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Active Users</p>
+                                <p class="text-2xl font-bold text-green-600 mt-1">
+                                    <%= users ? users.filter(u => !u.isBlocked).length : 0 %>
+                                </p>
+                            </div>
+                            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-user-check text-green-600 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-l-4 border-purple-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Moderators</p>
+                                <p class="text-2xl font-bold text-purple-600 mt-1">
+                                    <%= users ? users.filter(u => u.role === 'moderator').length : 0 %>
+                                </p>
+                            </div>
+                            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-user-shield text-purple-600 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-l-4 border-red-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600">Banned Users</p>
+                                <p class="text-2xl font-bold text-red-600 mt-1">
+                                    <%= users ? users.filter(u => u.isBlocked).length : 0 %>
+                                </p>
+                            </div>
+                            <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-user-slash text-red-600 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Filters -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                        <i class="fas fa-filter text-primary mr-2"></i>
+                        User Filters
+                    </h3>
+                    <form method="GET" action="/admin/users" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 items-end">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Search Users</label>
+                            <input type="text" name="search"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                placeholder="Email, username..."
+                                value="<%= (typeof searchQuery !== 'undefined' && searchQuery) ? searchQuery : '' %>">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                            <select name="role"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <option value="">All Roles</option>
+                                <option value="admin" <%= (typeof currentRole !== 'undefined' && currentRole === 'admin') ? 'selected' : '' %>>Admin</option>
+                                <option value="moderator" <%= (typeof currentRole !== 'undefined' && currentRole === 'moderator') ? 'selected' : '' %>>Moderator</option>
+                                <option value="user" <%= (typeof currentRole !== 'undefined' && currentRole === 'user') ? 'selected' : '' %>>User</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                            <select name="status"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <option value="">All Status</option>
+                                <option value="active" <%= (typeof currentStatus !== 'undefined' && currentStatus === 'active') ? 'selected' : '' %>>Active</option>
+                                <option value="blocked" <%= (typeof currentStatus !== 'undefined' && currentStatus === 'blocked') ? 'selected' : '' %>>Blocked</option>
+                                <option value="new" <%= (typeof currentStatus !== 'undefined' && currentStatus === 'new') ? 'selected' : '' %>>New (< 7 days)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Registration Date</label>
+                            <select name="dateRange"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <option value="">All Time</option>
+                                <option value="today" <%= (typeof currentDateRange !== 'undefined' && currentDateRange === 'today') ? 'selected' : '' %>>Today</option>
+                                <option value="week" <%= (typeof currentDateRange !== 'undefined' && currentDateRange === 'week') ? 'selected' : '' %>>This Week</option>
+                                <option value="month" <%= (typeof currentDateRange !== 'undefined' && currentDateRange === 'month') ? 'selected' : '' %>>This Month</option>
+                            </select>
+                        </div>
+
+                        <div class="flex space-x-2">
+                            <button type="submit"
+                                class="flex-1 bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center">
+                                <i class="fas fa-search mr-2"></i>
+                                Filter
+                            </button>
+                            <a href="/admin/users"
+                                class="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center">
+                                <i class="fas fa-times mr-2"></i>
+                                Clear
+                            </a>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                        <i class="fas fa-bolt text-primary mr-2"></i>
+                        Quick Actions
+                    </h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <button onclick="showCreateUserModal()"
+                            class="flex flex-col items-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg hover:from-green-100 hover:to-green-200 transition-all duration-300 group">
+                            <i class="fas fa-user-plus text-2xl text-green-600 mb-2 group-hover:scale-110 transition-transform"></i>
+                            <span class="text-sm font-medium text-green-700">Create User</span>
+                        </button>
+                        <button onclick="bulkAction('promote')"
+                            class="flex flex-col items-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg hover:from-blue-100 hover:to-blue-200 transition-all duration-300 group">
+                            <i class="fas fa-arrow-up text-2xl text-blue-600 mb-2 group-hover:scale-110 transition-transform"></i>
+                            <span class="text-sm font-medium text-blue-700">Bulk Promote</span>
+                        </button>
+                        <button onclick="bulkAction('block')"
+                            class="flex flex-col items-center p-4 bg-gradient-to-br from-red-50 to-red-100 rounded-lg hover:from-red-100 hover:to-red-200 transition-all duration-300 group">
+                            <i class="fas fa-ban text-2xl text-red-600 mb-2 group-hover:scale-110 transition-transform"></i>
+                            <span class="text-sm font-medium text-red-700">Bulk Block</span>
+                        </button>
+                        <button onclick="exportUsers()"
+                            class="flex flex-col items-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg hover:from-purple-100 hover:to-purple-200 transition-all duration-300 group">
+                            <i class="fas fa-download text-2xl text-purple-600 mb-2 group-hover:scale-110 transition-transform"></i>
+                            <span class="text-sm font-medium text-purple-700">Export Data</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Users Table -->
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">
+                            <i class="fas fa-users text-primary mr-2"></i>
+                            Users
+                            <% if (pagination && pagination.totalUsers) { %>
+                                <span class="text-sm font-normal text-gray-500">(<%= pagination.totalUsers %> total)</span>
+                            <% } else if (users) { %>
+                                <span class="text-sm font-normal text-gray-500">(<%= users.length %> total)</span>
+                            <% } %>
+                        </h3>
+                        <div class="flex items-center space-x-4">
+                            <label class="flex items-center space-x-2">
+                                <input type="checkbox" id="selectAll" onchange="toggleSelectAll()"
+                                    class="rounded border-gray-300 focus:ring-primary">
+                                <span class="text-sm text-gray-600">Select All</span>
+                            </label>
+                            <span class="text-sm px-3 py-1 bg-gray-100 rounded-full" id="selectedCount">0 selected</span>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <% if (users && users.length > 0) { %>
+                            <table class="data-table w-full">
+                                <thead>
+                                    <tr class="bg-gray-50">
+                                        <th class="w-12">
+                                            <input type="checkbox" id="selectAllHeader" onchange="toggleSelectAll()"
+                                                class="rounded border-gray-300 focus:ring-primary">
+                                        </th>
+                                        <th class="text-left">User</th>
+                                        <th class="text-left">Role</th>
+                                        <th class="text-left">Status</th>
+                                        <th class="text-left">Joined</th>
+                                        <th class="text-left">Last Active</th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% users.forEach(function(userItem, index) { %>
+                                        <tr class="hover:bg-gray-50 transition-colors" data-user-id="<%= userItem.id %>">
+                                            <td>
+                                                <input type="checkbox"
+                                                    class="user-checkbox rounded border-gray-300 focus:ring-primary"
+                                                    value="<%= userItem.id %>" onchange="updateSelectedCount()">
+                                            </td>
+                                            <td>
+                                                <div class="flex items-center space-x-3">
+                                                    <div class="w-10 h-10 rounded-full gradient-bg flex items-center justify-center text-white font-medium">
+                                                        <%= (userItem.username || userItem.email).charAt(0).toUpperCase() %>
+                                                    </div>
+                                                    <div>
+                                                        <div class="font-medium text-gray-900">
+                                                            <%= userItem.username || userItem.email.split('@')[0] %>
+                                                        </div>
+                                                        <div class="text-sm text-gray-500">
+                                                            <%= userItem.email %>
+                                                        </div>
+                                                        <div class="text-xs text-gray-400">ID: <%= userItem.id %></div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge <%= 
+                                    userItem.role === 'admin' ? 'admin' : 
+                                    userItem.role === 'moderator' ? 'moderator' : 'user' 
+                                %>">
+                                                    <i class="fas fa-<%= 
+                                        userItem.role === 'admin' ? 'crown' : 
+                                        userItem.role === 'moderator' ? 'shield-alt' : 'user' 
+                                    %> mr-1"></i>
+                                                    <%= userItem.role %>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <% if (userItem.isBlocked) { %>
+                                                    <span class="badge banned">
+                                                        <i class="fas fa-ban mr-1"></i>
+                                                        Blocked
+                                                    </span>
+                                                <% } else { %>
+                                                    <span class="badge active">
+                                                        <i class="fas fa-check-circle mr-1"></i>
+                                                        Active
+                                                    </span>
+                                                <% } %>
+                                            </td>
+                                            <td>
+                                                <div class="text-sm text-gray-900">
+                                                    <%= new Date(userItem.createdAt).toLocaleDateString() %>
+                                                </div>
+                                                <div class="text-xs text-gray-500">
+                                                    <%= new Date(userItem.createdAt).toLocaleTimeString() %>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="text-sm text-gray-900">
+                                                    <%= userItem.lastActiveAt ? new Date(userItem.lastActiveAt).toLocaleDateString() : 'Never' %>
+                                                </div>
+                                                <div class="text-xs text-gray-500">
+                                                    <%= userItem.lastActiveAt ? new Date(userItem.lastActiveAt).toLocaleTimeString() : '-' %>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="flex items-center justify-center space-x-2">
+                                                    <button onclick="viewUser('<%= userItem.id %>')"
+                                                        class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                        title="View Details">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                    <button onclick="editUser('<%= userItem.id %>')"
+                                                        class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                                        title="Edit User">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <% if (userItem.role !== 'admin') { %>
+                                                        <button onclick="toggleUserStatus('<%= userItem.id %>')"
+                                                            data-user-blocked="<%= userItem.isBlocked %>"
+                                                            class="p-2 <%= userItem.isBlocked ? 'text-green-600 hover:bg-green-50' : 'text-red-600 hover:bg-red-50' %> rounded-lg transition-colors"
+                                                            title="<%= userItem.isBlocked ? 'Unblock' : 'Block' %> User">
+                                                            <i class="fas fa-<%= userItem.isBlocked ? 'check' : 'ban' %>"></i>
+                                                        </button>
+                                                    <% } %>
+                                                    <button onclick="deleteUser('<%= userItem.id %>')"
+                                                        class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Delete User">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <% }); %>
+                                </tbody>
+                            </table>
+                        <% } else { %>
+                            <div class="text-center py-12">
+                                <i class="fas fa-users text-gray-300 text-6xl mb-4"></i>
+                                <h3 class="text-lg font-medium text-gray-900 mb-2">No Users Found</h3>
+                                <p class="text-gray-500 mb-4">No users match your current filters.</p>
+                                <div class="space-x-4">
+                                    <a href="/admin/users"
+                                        class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                                        <i class="fas fa-refresh mr-2"></i>
+                                        View All Users
+                                    </a>
+                                    <button onclick="showCreateUserModal()"
+                                        class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                                        <i class="fas fa-plus mr-2"></i>
+                                        Create First User
+                                    </button>
+                                </div>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+
+                <!-- Pagination -->
+                <% if (pagination && pagination.total > 1) { %>
+                    <div class="flex items-center justify-between bg-white px-6 py-4 rounded-xl shadow-sm">
+                        <div class="text-sm text-gray-700">
+                            Showing <%= ((pagination.current - 1) * pagination.limit) + 1 %> to
+                                <%= Math.min(pagination.current * pagination.limit, pagination.totalUsers) %> of
+                                    <%= pagination.totalUsers %> users
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <% if (pagination.current > 1) { %>
+                                <a href="?page=<%= pagination.current - 1 %>"
+                                    class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                    <i class="fas fa-chevron-left mr-1"></i>
+                                    Previous
+                                </a>
+                            <% } %>
+
+                            <% for (let i = Math.max(1, pagination.current - 2); i <= Math.min(pagination.total, pagination.current + 2); i++) { %>
+                                <a href="?page=<%= i %>"
+                                    class="px-3 py-2 text-sm font-medium <%= i === pagination.current ? 'text-white bg-primary' : 'text-gray-500 bg-white hover:bg-gray-50' %> border border-gray-300 rounded-lg transition-colors">
+                                    <%= i %>
+                                </a>
+                            <% } %>
+
+                            <% if (pagination.current < pagination.total) { %>
+                                <a href="?page=<%= pagination.current + 1 %>"
+                                    class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                    Next
+                                    <i class="fas fa-chevron-right ml-1"></i>
+                                </a>
+                            <% } %>
+                        </div>
+                    </div>
+                <% } %>
+            </div>
+        </main>
+    </div>
+
+    <!-- User Detail Modal -->
+    <div id="userModal"
+        class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">
+                    <i class="fas fa-user text-primary mr-2"></i>
+                    User Details
+                </h3>
+                <button onclick="closeUserModal()"
+                    class="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="userModalContent" class="p-6">
+                <!-- Content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Create User Modal -->
+    <div id="createUserModal"
+        class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md">
+            <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">
+                    <i class="fas fa-user-plus text-primary mr-2"></i>
+                    Create New User
+                </h3>
+                <button onclick="hideCreateUserModal()"
+                    class="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="createUserForm" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                    <input type="email" name="email" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                        placeholder="user@example.com">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                    <input type="text" name="username" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                        placeholder="username">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                    <input type="password" name="password" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                        placeholder="Password">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                    <select name="role" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <option value="user">User</option>
+                        <option value="moderator">Moderator</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <input type="checkbox" name="isActive" id="isActive" checked
+                        class="rounded border-gray-300 focus:ring-primary">
+                    <label for="isActive" class="text-sm text-gray-700">Active (allow login)</label>
+                </div>
+                <div class="flex space-x-4 pt-4">
+                    <button type="button" onclick="hideCreateUserModal()"
+                        class="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="flex-1 bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                        Create User
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg p-6 flex items-center space-x-3">
+            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            <span class="text-gray-700">Loading...</span>
+        </div>
+    </div>
+
+    <script>
+        let selectedUsers = [];
+
+        // Mobile sidebar functionality
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        const openSidebarBtn = document.getElementById('openSidebar');
+        const closeSidebarBtn = document.getElementById('closeSidebar');
+
+        function openSidebar() {
+            sidebar.classList.add('show');
+            sidebarOverlay.classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSidebar() {
+            sidebar.classList.remove('show');
+            sidebarOverlay.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+
+        if (openSidebarBtn) {
+            openSidebarBtn.addEventListener('click', openSidebar);
+        }
+
+        if (closeSidebarBtn) {
+            closeSidebarBtn.addEventListener('click', closeSidebar);
+        }
+
+        if (sidebarOverlay) {
+            sidebarOverlay.addEventListener('click', closeSidebar);
+        }
+
+        // Toast notifications
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast px-6 py-4 rounded-lg shadow-lg flex items-center space-x-3 ${
+                type === 'success' ? 'bg-green-500 text-white' :
+                type === 'error' ? 'bg-red-500 text-white' :
+                type === 'warning' ? 'bg-yellow-500 text-white' :
+                'bg-blue-500 text-white'
+            }`;
+            
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation' : 'info'}-circle"></i>
+                <span>${message}</span>
+                <button onclick="this.parentElement.remove()" class="ml-4 text-white/70 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 100);
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        function showLoading() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        function confirmAction(message) {
+            return confirm(message);
+        }
+
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('selectAll') || document.getElementById('selectAllHeader');
+            const checkboxes = document.querySelectorAll('.user-checkbox');
+
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAll.checked;
+            });
+
+            updateSelectedCount();
+        }
+
+        function updateSelectedCount() {
+            const checkboxes = document.querySelectorAll('.user-checkbox:checked');
+            selectedUsers = Array.from(checkboxes).map(cb => cb.value);
+
+            document.getElementById('selectedCount').textContent = `${selectedUsers.length} selected`;
+
+            // Update select all checkbox state
+            const allCheckboxes = document.querySelectorAll('.user-checkbox');
+            const selectAllCheckboxes = [document.getElementById('selectAll'), document.getElementById('selectAllHeader')];
+
+            selectAllCheckboxes.forEach(checkbox => {
+                if (checkbox) {
+                    checkbox.checked = selectedUsers.length === allCheckboxes.length;
+                    checkbox.indeterminate = selectedUsers.length > 0 && selectedUsers.length < allCheckboxes.length;
+                }
+            });
+        }
+
+        async function toggleUserStatus(userId, block) {
+            // If block parameter is not provided, get it from the button's data attribute
+            if (block === undefined) {
+                const button = event.target.closest('button');
+                const isCurrentlyBlocked = button.getAttribute('data-user-blocked') === 'true';
+                block = !isCurrentlyBlocked; // If currently blocked, we want to unblock (false), if not blocked, we want to block (true)
+            }
+
+            const action = block ? 'block' : 'unblock';
+            const reason = prompt(`Enter reason to ${action} this user:`);
+            if (!reason) return;
+
+            if (!confirmAction(`Are you sure you want to ${action} this user?`)) return;
+
+            try {
+                showLoading();
+                const response = await axios.post(`/admin/users/${userId}/${action}`, {
+                    reason,
+                    actionBy: '<%= user ? user.id : "" %>'
+                });
+
+                if (response.status === 200) {
+                    showToast(`User ${action}ed successfully`, 'success');
+                    setTimeout(() => window.location.reload(), 1000);
+                }
+            } catch (error) {
+                showToast(`Failed to ${action} user: ` + (error.response?.data?.message || error.message), 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function deleteUser(userId) {
+            const reason = prompt('Enter deletion reason:');
+            if (!reason) return;
+
+            if (!confirmAction('Are you sure you want to delete this user? This action cannot be undone.')) return;
+
+            try {
+                showLoading();
+                const response = await axios.delete(`/admin/users/${userId}`, {
+                    data: {
+                        reason,
+                        deletedBy: '<%= user ? user.id : "" %>'
+                    }
+                });
+
+                if (response.status === 200) {
+                    showToast('User deleted successfully', 'success');
+                    setTimeout(() => window.location.reload(), 1000);
+                }
+            } catch (error) {
+                showToast('Failed to delete user: ' + (error.response?.data?.message || error.message), 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function viewUser(userId) {
+            try {
+                showLoading();
+                const response = await axios.get(`/admin/users/${userId}`);
+
+                if (response.status === 200) {
+                    const user = response.data;
+                    showUserModal(user);
+                }
+            } catch (error) {
+                showToast('Failed to load user details: ' + (error.response?.data?.message || error.message), 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function showUserModal(user) {
+            const modal = document.getElementById('userModal');
+            const content = document.getElementById('userModalContent');
+
+            content.innerHTML = `
+                <div class="space-y-6">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-16 h-16 rounded-full gradient-bg flex items-center justify-center text-white text-2xl font-bold">
+                            ${(user.username || user.email).charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-semibold text-gray-900">${user.username || user.email.split('@')[0]}</h4>
+                            <p class="text-gray-600">${user.email}</p>
+                            <div class="flex items-center space-x-2 mt-2">
+                                <span class="badge ${user.role === 'admin' ? 'admin' : user.role === 'moderator' ? 'moderator' : 'user'}">
+                                    ${user.role}
+                                </span>
+                                <span class="badge ${user.isBlocked ? 'banned' : 'active'}">
+                                    ${user.isBlocked ? 'Blocked' : 'Active'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-6">
+                        <div>
+                            <h5 class="font-medium text-gray-900 mb-2">Account Information</h5>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">User ID:</span>
+                                    <span class="font-mono text-gray-900">${user.id}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Joined:</span>
+                                    <span class="text-gray-900">${new Date(user.createdAt).toLocaleDateString()}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Last Active:</span>
+                                    <span class="text-gray-900">${user.lastActiveAt ? new Date(user.lastActiveAt).toLocaleDateString() : 'Never'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h5 class="font-medium text-gray-900 mb-2">Activity Stats</h5>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Posts:</span>
+                                    <span class="text-gray-900">${user.postsCount || 0}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Comments:</span>
+                                    <span class="text-gray-900">${user.commentsCount || 0}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Reports:</span>
+                                    <span class="text-gray-900">${user.reportsCount || 0}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-4 pt-4 border-t">
+                        <button onclick="editUser('${user.id}')" class="flex-1 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                            <i class="fas fa-edit mr-2"></i>
+                            Edit User
+                        </button>
+                        ${user.role !== 'admin' ? `
+                        <button onclick="toggleUserStatus('${user.id}', ${!user.isBlocked})" class="flex-1 bg-${user.isBlocked ? 'green' : 'red'}-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                            <i class="fas fa-${user.isBlocked ? 'check' : 'ban'} mr-2"></i>
+                            ${user.isBlocked ? 'Unblock' : 'Block'} User
+                        </button>
+                        ` : ''}
+                        <button onclick="closeUserModal()" class="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                            <i class="fas fa-times mr-2"></i>
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeUserModal() {
+            document.getElementById('userModal').classList.add('hidden');
+        }
+
+        function showCreateUserModal() {
+            document.getElementById('createUserModal').classList.remove('hidden');
+        }
+
+        function hideCreateUserModal() {
+            document.getElementById('createUserModal').classList.add('hidden');
+            document.getElementById('createUserForm').reset();
+        }
+
+        function editUser(userId) {
+            // Implement edit functionality
+            showToast('Edit functionality coming soon', 'info');
+        }
+
+        async function bulkAction(action) {
+            if (selectedUsers.length === 0) {
+                showToast('Please select users first', 'warning');
+                return;
+            }
+
+            const reason = prompt(`Enter reason for ${action}:`);
+            if (!reason) return;
+
+            if (!confirmAction(`Are you sure you want to ${action} ${selectedUsers.length} users?`)) return;
+
+            try {
+                showLoading();
+                const response = await axios.post(`/admin/users/bulk-${action}`, {
+                    userIds: selectedUsers,
+                    reason,
+                    actionBy: '<%= user ? user.id : "" %>'
+                });
+
+                if (response.status === 200) {
+                    showToast(`Bulk ${action} completed successfully`, 'success');
+                    setTimeout(() => window.location.reload(), 1000);
+                }
+            } catch (error) {
+                showToast(`Failed to ${action} users: ` + (error.response?.data?.message || error.message), 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function exportUsers() {
+            const params = new URLSearchParams(window.location.search);
+            exportData('users', Object.fromEntries(params));
+        }
+
+        function exportData(type, params = {}) {
+            showLoading();
+            const queryString = new URLSearchParams(params).toString();
+            const url = `/admin/${type}/export${queryString ? '?' + queryString : ''}`;
+            
+            // Create download link
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${type}-export-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            setTimeout(() => {
+                hideLoading();
+                showToast(`${type} data exported successfully!`, 'success');
+            }, 1000);
+        }
+
+        // Create user form submission
+        document.getElementById('createUserForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+            const userData = {
+                email: formData.get('email'),
+                username: formData.get('username'),
+                password: formData.get('password'),
+                role: formData.get('role'),
+                isActive: formData.has('isActive'),
+                createdBy: '<%= user ? user.id : "" %>'
+            };
+
+            try {
+                showLoading();
+                const response = await axios.post('/admin/users', userData);
+
+                if (response.status === 201) {
+                    showToast('User created successfully', 'success');
+                    hideCreateUserModal();
+                    setTimeout(() => window.location.reload(), 1000);
+                }
+            } catch (error) {
+                showToast('Failed to create user: ' + (error.response?.data?.message || error.message), 'error');
+            } finally {
+                hideLoading();
+            }
+        });
+
+        // Close modals when clicking outside
+        document.getElementById('userModal').addEventListener('click', (e) => {
+            if (e.target.id === 'userModal') {
+                closeUserModal();
+            }
+        });
+
+        document.getElementById('createUserModal').addEventListener('click', (e) => {
+            if (e.target.id === 'createUserModal') {
+                hideCreateUserModal();
+            }
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function () {
+            updateSelectedCount();
+
+            // Auto-refresh user counts every 60 seconds
+            setInterval(async () => {
+                if (document.visibilityState === 'visible') {
+                    try {
+                        const response = await axios.get('/admin/api/users-stats');
+
+                        if (response.status === 200) {
+                            const stats = response.data;
+                            // Update stats in the overview cards
+                            const totalElement = document.querySelector('.border-blue-500 .text-2xl');
+                            const activeElement = document.querySelector('.border-green-500 .text-2xl');
+                            const moderatorsElement = document.querySelector('.border-purple-500 .text-2xl');
+                            const bannedElement = document.querySelector('.border-red-500 .text-2xl');
+
+                            if (totalElement) totalElement.textContent = stats.total || 0;
+                            if (activeElement) activeElement.textContent = stats.active || 0;
+                            if (moderatorsElement) moderatorsElement.textContent = stats.moderators || 0;
+                            if (bannedElement) bannedElement.textContent = stats.banned || 0;
+                        }
+                    } catch (error) {
+                        console.log('Failed to refresh user stats:', error);
+                    }
+                }
+            }, 60000);
+
+            // Add fade-in animation to content
+            const main = document.querySelector('main');
+            if (main) {
+                main.style.opacity = '0';
+                main.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    main.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    main.style.opacity = '1';
+                    main.style.transform = 'translateY(0)';
+                }, 100);
+            }
+        });
+    </script>
+</body>
+
+</html>
