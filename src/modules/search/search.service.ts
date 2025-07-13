@@ -1,20 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import * as fs from 'fs';
-import * as path from 'path';
+import { UserService } from '@modules/user/user.service';
 
 @Injectable()
 export class SearchService {
-  private data: any[];
+  constructor(private readonly userService: UserService) {}
 
-  constructor() {
-    const filePath = path.join(process.cwd(), 'src', 'search', 'search-data.json');
-    this.data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  }
-
-  search(query: string) {
+  async search(query: string) {
     if (!query) return [];
-    return this.data.filter(item =>
-      item.name.toLowerCase().includes(query.toLowerCase())
-    );
+    const users = await this.userService.findAllWithPagination({ username: { $regex: query, $options: 'i' } });
+    return users.map(user => ({ id: user._id, name: user.username, type: 'user' }));
   }
 }
