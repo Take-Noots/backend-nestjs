@@ -7,11 +7,11 @@ import { SongPost, SongPostSchema } from './songPost.model';
 @Module({
   imports: [
     MongooseModule.forFeature([
-      { name: SongPost.name, schema: SongPostSchema }
-    ])
+      { name: SongPost.name, schema: SongPostSchema },
+    ]),
   ],
   controllers: [SongPostController],
   providers: [SongPostService],
-  exports: [SongPostService]
+  exports: [SongPostService],
 })
 export class SongPostModule {}

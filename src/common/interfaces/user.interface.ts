@@ -5,6 +5,12 @@ export interface UserType {
   username: string;
   password: string;
   role: string;
+  profileImage?: string;
+  posts?: number;
+  followers?: number;
+  following?: number;
+  albumArts?: string[];
+  profileBio?: string[];
   isBlocked?: boolean;
   banReason?: string;
   bannedBy?: string;
