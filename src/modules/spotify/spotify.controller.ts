@@ -62,7 +62,6 @@ export class SpotifyController {
         const loginParams = this.authService.login(state);
         res.redirect(`https://accounts.spotify.com/authorize?${loginParams}`);
     }
-  }
 
 
     @Get('callback')
@@ -180,35 +179,35 @@ export class SpotifyController {
             throw new HttpException('Failed to search tracks', HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-  }
 
   @Get('search/artists/top-tracks')
   async searchArtistsFamousTracks(
     @SpotifyToken(SpotifyTokenPipe) spotifyToken: string,
     @Body() body: { artist_name: string },
   ) {
-    const { artist_name } = body;
+        const { artist_name } = body;
 
-    if (!artist_name) {
-      throw new HttpException(
-        'artist_name is required in request body',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+        if (!artist_name) {
+        throw new HttpException(
+            'artist_name is required in request body',
+            HttpStatus.BAD_REQUEST,
+        );
+        }
 
-    try {
-      return await this.searchService.searchArtistsFamousTracks(
-        spotifyToken,
-        artist_name,
-      );
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new HttpException(
-        'Failed to get artist tracks',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+        try {
+        return await this.searchService.searchArtistsFamousTracks(
+            spotifyToken,
+            artist_name,
+        );
+        } catch (error) {
+        if (error instanceof HttpException) {
+            throw error;
+        }
+        throw new HttpException(
+            'Failed to get artist tracks',
+            HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+        }
     }
 
     // ---------- PLAYER ENDPOINTS ----------

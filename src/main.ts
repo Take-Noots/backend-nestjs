@@ -14,21 +14,23 @@ async function bootstrap() {
   
   // CORS configuration
   app.enableCors({
-    origin: [
-      'http://localhost:3000',  // Backend
-      'http://localhost:3001',  // Admin dashboard (if separate)
-      'http://localhost:5173',  // Vite frontend
-      process.env.FRONTEND_URL, // Production frontend
-    ].filter(Boolean),
+    // At this point we are not in production so no need to define specific origins
+    // origin: [
+    //   'http://localhost:3000',
+    //   'http://localhost:3001',
+    //   'http://localhost:5173',
+    //   process.env.FRONTEND_URL,
+    // ].filter(Boolean) as (string | RegExp)[],
+    origin: true,
     credentials: true,
   });
   
-  // API validation
-  app.useGlobalPipes(new ValidationPipe({
-    transform: true,
-    whitelist: true,
-    forbidNonWhitelisted: true,
-  }));
+  // API validation (CURRENTLY COMMENTED SO THAT WE CAN TEST THE API WITHOUT VALIDATION)
+  // app.useGlobalPipes(new ValidationPipe({
+  //   transform: true,
+  //   whitelist: true,
+  //   forbidNonWhitelisted: true,
+  // }));
   
   // Admin dashboard setup
   app.useStaticAssets(join(__dirname, '..', 'public'));
