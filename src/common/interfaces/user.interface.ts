@@ -1,3 +1,4 @@
+// src/common/interfaces/user.interface.ts
 export interface UserType {
   _id: string;
   email: string;
@@ -10,4 +11,20 @@ export interface UserType {
   following?: number;
   albumArts?: string[];
   profileBio?: string[];
+  isBlocked?: boolean;
+  banReason?: string;
+  bannedBy?: string;
+  bannedAt?: Date;
+  banUntil?: Date;
+  lastActive?: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: UserType;
+    }
+  }
 }
