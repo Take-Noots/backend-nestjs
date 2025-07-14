@@ -14,6 +14,7 @@ import { UserModule } from './modules/user/user.module';
 import { PostModule } from './modules/posts/posts.module';
 import { FanbaseModule } from './modules/fanbases/fanbase.module';
 import { ReportModule } from './modules/reports/reports.module';
+import { RequestModule } from './modules/request/request.module';
 
 import 'dotenv/config';
 
@@ -31,7 +32,8 @@ const dbUrl: string = process.env.DB_CONN_STRING as string;
     PostModule,
     FanbaseModule,
     ReportModule,
-    AdminModule
+    AdminModule,
+    RequestModule
   ]
 })
 export class AppModule {}
