@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Put, Body } from '@nestjs/common';
 import { ProfileService } from './profile.service';
 import { ProfileDto } from './dto/profile.dto';
 
@@ -23,5 +23,13 @@ export class ProfileController {
   @Get('posts/:userId')
   async getPostsByUserId(@Param('userId') userId: string) {
     return this.profileService.getPostsByUserId(userId);
+  }
+
+  @Put(':userId')
+  async updateProfile(
+    @Param('userId') userId: string,
+    @Body() updateData: any,
+  ) {
+    return this.profileService.updateProfileByUserId(userId, updateData);
   }
 }
