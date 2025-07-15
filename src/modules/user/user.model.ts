@@ -1,13 +1,13 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { Types } from 'mongoose';
+import mongoose from 'mongoose';
 
 export type UserDocument = HydratedDocument<User>;
 
 @Schema()
 export class User {
-  @Prop({ type: Types.ObjectId, auto: true })
-  _id: Types.ObjectId;
+  @Prop({ type: mongoose.Schema.Types.ObjectId })
+  _id: mongoose.Schema.Types.ObjectId;
 
   @Prop({ required: true, unique: true })
   email: string;
@@ -28,8 +28,8 @@ export class User {
   @Prop({ required: false })
   banReason: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: false })
-  bannedBy: Types.ObjectId;
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false })
+  bannedBy: mongoose.Schema.Types.ObjectId;
 
   @Prop({ required: false })
   bannedAt: Date;

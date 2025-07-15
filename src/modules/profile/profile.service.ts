@@ -32,4 +32,34 @@ export class ProfileService {
   async getPostsByUserId(userId: string) {
     return this.songPostModel.find({ userId }).lean();
   }
+
+  async updateProfileByUserId(userId: string, updateData: any) {
+    // Only allow updating certain fields
+    const allowedFields = ['name', 'username', 'bio', 'profileImage'];
+    const update: any = {};
+    for (const field of allowedFields) {
+      if (updateData[field] !== undefined) {
+        // Map 'name' to 'username' if needed
+        if (field === 'name') {
+          update['username'] = updateData['name'];
+        } else {
+          update[field] = updateData[field];
+        }
+      }
+    }
+    update.updatedAt = new Date();
+
+    const result = await this.profileModel
+      .findOneAndUpdate({ userId }, { $set: update }, { new: true })
+      .lean();
+
+    if (!result) {
+      return { success: false, message: 'Profile not found' };
+    }
+    return {
+      success: true,
+      message: 'Profile updated successfully',
+      profile: result,
+    };
+  }
 }
