@@ -12,6 +12,6 @@ import { SongPost, SongPostSchema } from './songPost.model';
   ],
   controllers: [SongPostController],
   providers: [SongPostService],
-  exports: [SongPostService],
+  exports: [SongPostService, MongooseModule],
 })
 export class SongPostModule {}
