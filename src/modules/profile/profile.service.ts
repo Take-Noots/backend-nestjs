@@ -49,17 +49,30 @@ export class ProfileService {
     }
     update.updatedAt = new Date();
 
-    const result = await this.profileModel
-      .findOneAndUpdate({ userId }, { $set: update }, { new: true })
-      .lean();
+    // Debug: log userId and update object
+    console.log('Updating profile for userId:', userId, 'with:', update);
 
-    if (!result) {
-      return { success: false, message: 'Profile not found' };
+    try {
+      const result = await this.profileModel
+        .findOneAndUpdate({ userId: userId }, { $set: update }, { new: true })
+        .lean();
+
+      if (!result) {
+        return { success: false, message: 'Profile not found' };
+      }
+      return {
+        success: true,
+        message: 'Profile updated successfully',
+        profile: result,
+      };
+    } catch (err) {
+      // Log error for debugging
+      console.error('Profile update error:', err);
+      return {
+        success: false,
+        message: 'Failed to update profile',
+        error: err?.message,
+      };
     }
-    return {
-      success: true,
-      message: 'Profile updated successfully',
-      profile: result,
-    };
   }
 }
