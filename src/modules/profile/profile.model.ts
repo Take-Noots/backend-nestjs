@@ -13,9 +13,6 @@ export class Profile {
   @Prop({ required: true, unique: true }) // Same userId used in SongPost
   userId: string;
 
-  @Prop({ required: true, unique: true }) // Used in SongPost
-  username: string;
-
   @Prop()
   profileImage?: string;
 
