@@ -314,8 +314,13 @@ export class UserService {
       updatedAt: user.updatedAt,
     };
   }
-}
 
+
+  async getUsernameById(userId: string): Promise<string | null> {
+    const user = await this.userModel.findById(userId).select('username').lean();
+    return user ? user.username : null;
+  }
+}
 
 // OLD USER SERVICE 
 

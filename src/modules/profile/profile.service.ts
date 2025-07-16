@@ -28,8 +28,6 @@ export class ProfileService {
     return {
       _id: profile._id,
       userId: profile.userId,
-      username: user.username,
-      email: user.email ?? '',
       profileImage: profile.profileImage ?? '',
       bio: profile.bio ?? '',
       posts: profile.posts,
@@ -43,45 +41,6 @@ export class ProfileService {
     return this.songPostModel.find({ userId }).lean();
   }
 
-  async updateProfileByUserId(userId: string, updateData: any) {
-    const allowedProfileFields = ['bio', 'profileImage'];
-    const profileUpdate: any = {};
-
-    for (const field of allowedProfileFields) {
-      if (updateData[field] !== undefined) {
-        profileUpdate[field] = updateData[field];
-      }
-    }
-    profileUpdate.updatedAt = new Date();
-
-    // Update username and email in User collection
-    const userUpdate: any = {};
-    if (updateData.username !== undefined)
-      userUpdate.username = updateData.username;
-    if (updateData.email !== undefined) userUpdate.email = updateData.email;
-
-    if (Object.keys(userUpdate).length > 0) {
-      await this.userModel.updateOne({ _id: userId }, { $set: userUpdate });
-    }
-
-    const updatedProfile = await this.profileModel
-      .findOneAndUpdate({ userId }, { $set: profileUpdate }, { new: true })
-      .lean();
-
-    if (!updatedProfile) {
-      return { success: false, message: 'Profile not found' };
-    }
-
-    const user = await this.userModel.findById(userId).lean();
-
-    return {
-      success: true,
-      message: 'Profile updated successfully',
-      profile: {
-        ...updatedProfile,
-        email: user?.email ?? '',
-        username: user?.username ?? '',
-      },
-    };
-  }
+ 
 }
+ 
