@@ -3,12 +3,14 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Request, RequestDocument, RequestRespondStatus } from './request.model';
 import { UserService } from '../user/user.service';
+import { ProfileService } from '../profile/profile.service';
 
 @Injectable()
 export class RequestService {
   constructor(
     @InjectModel(Request.name) private readonly requestModel: Model<RequestDocument>,
     private readonly userService: UserService,
+    private readonly profileService: ProfileService,
   ) {}
 
   async getPendingRequests() {
@@ -36,7 +38,8 @@ export class RequestService {
       { respond: RequestRespondStatus.CONFIRM },
       { new: true }
     );
-    
+    // Add follower relationship
+    await this.profileService.addFollowers(requestReceiveUserId, requestSendUserId);
     return updated;
   }
 } 
