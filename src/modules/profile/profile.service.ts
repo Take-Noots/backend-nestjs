@@ -19,7 +19,6 @@ export class ProfileService {
     return {
       _id: profile._id,
       userId: profile.userId,
-      username: profile.username,
       profileImage: profile.profileImage ?? '',
       bio: profile.bio ?? '',
       posts: profile.posts,
@@ -32,4 +31,7 @@ export class ProfileService {
   async getPostsByUserId(userId: string) {
     return this.songPostModel.find({ userId }).lean();
   }
+
+ 
 }
+ 
