@@ -44,51 +44,44 @@ export class ProfileService {
   }
 
   async updateProfileByUserId(userId: string, updateData: any) {
-    // Only allow updating certain fields (remove username)
-    const allowedFields = ['name', 'bio', 'profileImage'];
-    const update: any = {};
-    for (const field of allowedFields) {
+    const allowedProfileFields = ['bio', 'profileImage'];
+    const profileUpdate: any = {};
+
+    for (const field of allowedProfileFields) {
       if (updateData[field] !== undefined) {
-        // Map 'name' to nothing, since username is not stored in profile anymore
-        if (field === 'name') {
-          // Do nothing, username is not stored in profile
-        } else {
-          update[field] = updateData[field];
-        }
+        profileUpdate[field] = updateData[field];
       }
     }
-    update.updatedAt = new Date();
+    profileUpdate.updatedAt = new Date();
 
-    // Debug: log userId and update object
-    console.log('Updating profile for userId:', userId, 'with:', update);
+    // Update username and email in User collection
+    const userUpdate: any = {};
+    if (updateData.username !== undefined)
+      userUpdate.username = updateData.username;
+    if (updateData.email !== undefined) userUpdate.email = updateData.email;
 
-    try {
-      const result = await this.profileModel
-        .findOneAndUpdate({ userId: userId }, { $set: update }, { new: true })
-        .lean();
-
-      if (!result) {
-        return { success: false, message: 'Profile not found' };
-      }
-      // Fetch username from users collection for response
-      const user = await this.userModel.findById(result.userId).lean();
-
-      return {
-        success: true,
-        message: 'Profile updated successfully',
-        profile: {
-          ...result,
-          username: user?.username ?? '',
-        },
-      };
-    } catch (err) {
-      // Log error for debugging
-      console.error('Profile update error:', err);
-      return {
-        success: false,
-        message: 'Failed to update profile',
-        error: err?.message,
-      };
+    if (Object.keys(userUpdate).length > 0) {
+      await this.userModel.updateOne({ _id: userId }, { $set: userUpdate });
     }
+
+    const updatedProfile = await this.profileModel
+      .findOneAndUpdate({ userId }, { $set: profileUpdate }, { new: true })
+      .lean();
+
+    if (!updatedProfile) {
+      return { success: false, message: 'Profile not found' };
+    }
+
+    const user = await this.userModel.findById(userId).lean();
+
+    return {
+      success: true,
+      message: 'Profile updated successfully',
+      profile: {
+        ...updatedProfile,
+        email: user?.email ?? '',
+        username: user?.username ?? '',
+      },
+    };
   }
 }
