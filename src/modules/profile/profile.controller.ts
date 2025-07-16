@@ -6,6 +6,20 @@ import { ProfileDto } from './dto/profile.dto';
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
 
+  @Get('posts/:userId')
+  async getPostsByUserId(@Param('userId') userId: string) {
+    return this.profileService.getPostsByUserId(userId);
+  }
+
+  @Put(':userId')
+  async updateProfile(
+    @Param('userId') userId: string,
+    @Body() updateData: any,
+  ) {
+    // Pass username in updateData if present
+    return this.profileService.updateProfileByUserId(userId, updateData);
+  }
+
   @Get(':userId')
   async getProfileByUserId(
     @Param('userId') userId: string,
