@@ -32,6 +32,18 @@ export class ProfileService {
     return this.songPostModel.find({ userId }).lean();
   }
 
+  async addFollowers(userId: string, followerId: string): Promise<void> {
+    // Add followerId to userId's followers array
+    await this.profileModel.updateOne(
+      { userId },
+      { $addToSet: { followers: followerId } }
+    );
+    // Add userId to followerId's following array
+    await this.profileModel.updateOne(
+      { userId: followerId },
+      { $addToSet: { following: userId } }
+    );
+  }
  
 }
  
