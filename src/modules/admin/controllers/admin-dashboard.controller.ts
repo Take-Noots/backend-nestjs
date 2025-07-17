@@ -18,12 +18,16 @@ import { Request, Response } from 'express';
 import { AdminGuard } from '../guards/admin.guard';
 import { AdminService } from '../services/admin.service';
 import { AuthService } from '../../auth/auth.service';
+import { FanbaseService } from '../../fanbases/fanbase.service'; 
+import { SongPostService } from '../../songPost/songPost.service'; // Add SongPostService
 
 @Controller('admin')
 export class AdminDashboardController {
   constructor(
     private readonly adminService: AdminService,
-    private readonly authService: AuthService
+    private readonly authService: AuthService,
+    private readonly fanbaseService: FanbaseService,
+    private readonly songPostService: SongPostService // Add SongPostService
   ) {}
 
   // ==================== PUBLIC ROUTES (NO GUARD) ====================
@@ -224,7 +228,7 @@ export class AdminDashboardController {
     }
   }
 
-  // Posts Management Page
+  // Posts Management Page - Updated for SongPosts
   @Get('posts')
   @UseGuards(AdminGuard)
   @Render('admin/posts')
@@ -234,7 +238,10 @@ export class AdminDashboardController {
     @Query('reported') reported?: boolean
   ) {
     try {
+      console.log('📊 Loading posts page...');
       const postsData = await this.adminService.getAllPosts(page, 20, reported);
+      console.log('📈 Posts found:', postsData.posts.length);
+      
       return {
         title: 'Content Management',
         user: req['user'],
@@ -243,10 +250,11 @@ export class AdminDashboardController {
         showReported: reported
       };
     } catch (error) {
+      console.error('❌ Failed to load posts:', error);
       return {
         title: 'Content Management',
         user: req['user'],
-        error: 'Failed to load posts',
+        error: 'Failed to load posts: ' + error.message,
         posts: [],
         pagination: null
       };
@@ -294,19 +302,34 @@ export class AdminDashboardController {
     @Query('status') status?: string
   ) {
     try {
-      const fanbasesData = await this.adminService.getAllFanbases(page, 20, status);
+      console.log('📊 Loading fanbases page...');
+      
+      // Use FanbaseService directly instead of AdminService
+      const skip = (page - 1) * 20;
+      const fanbases = await this.fanbaseService.findAllWithPagination({}, skip, 20);
+      const total = await this.fanbaseService.countFanbases({});
+      
+      console.log('📈 Fanbases found:', fanbases.length);
+      console.log('📊 Total fanbases:', total);
+      
       return {
         title: 'Fanbases Management',
         user: req['user'],
-        fanbases: fanbasesData.fanbases,
-        pagination: fanbasesData.pagination,
+        fanbases: fanbases, // Direct fanbase data with correct field names
+        pagination: {
+          current: page,
+          total: Math.ceil(total / 20),
+          totalFanbases: total,
+          limit: 20
+        },
         currentStatus: status
       };
     } catch (error) {
+      console.error('❌ Failed to load fanbases:', error);
       return {
         title: 'Fanbases Management',
         user: req['user'],
-        error: 'Failed to load fanbases',
+        error: 'Failed to load fanbases: ' + error.message,
         fanbases: [],
         pagination: null
       };
@@ -437,16 +460,29 @@ export class AdminDashboardController {
     }
   }
 
-  // Content Management API
+  // Content Management API - Updated for SongPosts
   @Delete('posts/:id')
   @UseGuards(AdminGuard)
   async deletePost(@Param('id') id: string, @Body() deleteData: any) {
     try {
-      return await this.adminService.deletePost(id, deleteData);
+      return await this.adminService.deletePost(id, deleteData.reason, deleteData.deletedBy);
     } catch (error) {
       throw new HttpException(
         `Failed to delete post: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Get('posts/:id')
+  @UseGuards(AdminGuard)
+  async getPostById(@Param('id') id: string) {
+    try {
+      return await this.adminService.getPostById(id);
+    } catch (error) {
+      throw new HttpException(
+        `Failed to fetch post: ${error.message}`,
+        HttpStatus.NOT_FOUND
       );
     }
   }
@@ -479,27 +515,32 @@ export class AdminDashboardController {
   }
 
   // Fanbase Management API
-  @Delete('fanbases/:id')
+  @Post('fanbases')
   @UseGuards(AdminGuard)
-  async deleteFanbase(@Param('id') id: string, @Body() deleteData: any) {
+  async createFanbase(@Body() fanbaseData: any) {
     try {
-      return await this.adminService.deleteFanbase(id, deleteData);
+      // Use FanbaseService directly to create fanbase
+      return await this.fanbaseService.create(fanbaseData);
     } catch (error) {
       throw new HttpException(
-        `Failed to delete fanbase: ${error.message}`,
+        `Failed to create fanbase: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
 
-  @Post('fanbases/:id/toggle-status')
+  @Get('fanbases/:id')
   @UseGuards(AdminGuard)
-  async toggleFanbaseStatus(@Param('id') id: string, @Body() statusData: { isActive: boolean }) {
+  async getFanbaseById(@Param('id') id: string) {
     try {
-      return await this.adminService.toggleFanbaseStatus(id, statusData.isActive);
+      const fanbase = await this.fanbaseService.findById(id);
+      if (!fanbase) {
+        throw new HttpException('Fanbase not found', HttpStatus.NOT_FOUND);
+      }
+      return fanbase;
     } catch (error) {
       throw new HttpException(
-        `Failed to toggle fanbase status: ${error.message}`,
+        `Failed to fetch fanbase: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
@@ -533,5 +574,27 @@ export class AdminDashboardController {
   @UseGuards(AdminGuard)
   async getReportsStatsApi() {
     return await this.adminService.getReportMetrics();
+  }
+
+  @Get('api/posts-stats')
+  @UseGuards(AdminGuard)
+  async getPostsStatsApi() {
+    try {
+      const allPosts = await this.songPostService.findAll();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      return {
+        total: allPosts.length,
+        reported: 0, // Since songPost model doesn't have isReported field
+        popular: allPosts.filter(p => (p.likes || 0) > 10).length,
+        today: allPosts.filter(p => new Date(p.createdAt) >= today).length
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to fetch post stats: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 }
