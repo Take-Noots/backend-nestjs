@@ -24,14 +24,9 @@ export class CreatePostDto {
   @IsString()
   @IsNotEmpty()
   userId: string;
-
-  @IsString()
-  @IsNotEmpty()
-  username: string;
 }
 
 export class AddCommentDto {
   userId: string;
-  username: string;
   text: string;
 }
