@@ -11,6 +11,7 @@ export class SongPostController {
   @UsePipes(new ValidationPipe())
   async create(@Body() createPostDto: CreatePostDto): Promise<SongPostDocument> {
     console.log('Received create post request:', createPostDto);
+    // username will be fetched in the service, not from DTO
     const createdPost = await this.songPostService.create(createPostDto);
     
     
@@ -18,11 +19,8 @@ export class SongPostController {
   }
 
   @Get()
-  async findAll(): Promise<SongPostDocument[]> {
-    const posts = await this.songPostService.findAll();
-    
-    
-    return posts;
+  async findAll(): Promise<any[]> {
+    return this.songPostService.findAllWithUsernames();
   }
 
   @Get(':id')
@@ -49,6 +47,7 @@ export class SongPostController {
     @Param('id') postId: string,
     @Body() addCommentDto: AddCommentDto
   ) {
+    // username will be fetched in the service, not from DTO
     const post = await this.songPostService.addComment(postId, addCommentDto);
     if (!post) {
       return { success: false, message: 'Post not found' };

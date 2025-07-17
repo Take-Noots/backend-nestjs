@@ -14,9 +14,6 @@ export class Comment {
   userId: string;
 
   @Prop({ required: true })
-  username: string;
-
-  @Prop({ required: true })
   text: string;
 
   @Prop({ default: Date.now })
@@ -50,9 +47,6 @@ export class SongPost {
 
   @Prop({ required: true })
   userId: string;
-
-  @Prop({ required: true })
-  username: string;
 
   @Prop({ default: 0 })
   likes: number;
