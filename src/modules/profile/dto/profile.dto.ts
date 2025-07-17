@@ -1,12 +1,11 @@
 export class ProfileDto {
   _id: string;
   userId: string;
-  username: string;
   profileImage: string;
   bio: string;
   email: string;
   posts: number;
-  followers: number;
-  following: number;
+  followers: string[];
+  following: string[];
   albumArts: string[];
 }

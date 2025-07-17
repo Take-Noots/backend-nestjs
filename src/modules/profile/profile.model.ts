@@ -10,8 +10,10 @@ export type ProfileDocument = Profile &
 
 @Schema({ timestamps: true })
 export class Profile {
-  @Prop({ required: true, unique: true }) // Same userId used in SongPost
+  @Prop({ required: true, unique: true })
   userId: string;
+
+  // username removed
 
   @Prop()
   profileImage?: string;
@@ -22,11 +24,11 @@ export class Profile {
   @Prop({ default: 0 })
   posts: number;
 
-  @Prop({ default: 0 })
-  followers: number;
+  @Prop({ type: [String], default: [] })
+  followers: string[];
 
-  @Prop({ default: 0 })
-  following: number;
+  @Prop({ type: [String], default: [] })
+  following: string[];
 
   @Prop({ type: [String], default: [] })
   albumArts: string[];
