@@ -33,7 +33,7 @@ export class ProfileService {
       username: user.username,
       email: user.email ?? '',
       // ---
-      
+
       profileImage: profile.profileImage ?? '',
       bio: profile.bio ?? '',
       posts: profile.posts,
@@ -46,7 +46,6 @@ export class ProfileService {
   async getPostsByUserId(userId: string) {
     return this.songPostModel.find({ userId }).lean();
   }
-
 
   async updateProfileByUserId(userId: string, updateData: any) {
     const allowedProfileFields = ['bio', 'profileImage'];
@@ -90,20 +89,17 @@ export class ProfileService {
     };
   }
 
-// COMMENTED OUT THIS FUNCTION... UNCOMMENT IF NEEDED
-//   async addFollowers(userId: string, followerId: string): Promise<void> {
-//     // Add followerId to userId's followers array
-//     await this.profileModel.updateOne(
-//       { userId },
-//       { $addToSet: { followers: followerId } }
-//     );
-//     // Add userId to followerId's following array
-//     await this.profileModel.updateOne(
-//       { userId: followerId },
-//       { $addToSet: { following: userId } }
-//     );
-//   }
- 
-
+  // COMMENTED OUT THIS FUNCTION... UNCOMMENT IF NEEDED
+  async addFollowers(userId: string, followerId: string): Promise<void> {
+    // Add followerId to userId's followers array
+    await this.profileModel.updateOne(
+      { userId },
+      { $addToSet: { followers: followerId } },
+    );
+    // Add userId to followerId's following array
+    await this.profileModel.updateOne(
+      { userId: followerId },
+      { $addToSet: { following: userId } },
+    );
+  }
 }
- 
