@@ -125,31 +125,6 @@
             border-radius: 0 4px 4px 0;
         }
 
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .data-table th,
-        .data-table td {
-            padding: 1rem;
-            text-align: left;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .data-table th {
-            background: #f9fafb;
-            font-weight: 600;
-            color: #374151;
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .data-table tr:hover {
-            background: #f9fafb;
-        }
-
         .badge {
             display: inline-flex;
             align-items: center;
@@ -376,11 +351,7 @@
                     </button>
 
                     <h2 class="text-xl lg:text-2xl font-bold text-gray-900">Fanbases Management</h2>
-                    <span
-                        class="hidden sm:inline-flex px-3 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full">
-                        <i class="fas fa-circle text-green-500 mr-1"></i>
-                        All Systems Operational
-                    </span>
+                    
                 </div>
 
                 <div class="flex items-center space-x-2 lg:space-x-4">
@@ -425,7 +396,7 @@
                             <div>
                                 <p class="text-sm font-medium text-gray-600">Active Fanbases</p>
                                 <p class="text-2xl font-bold text-blue-600 mt-1">
-                                    <%= fanbases ? fanbases.filter(f=> f.isActive).length : 0 %>
+                                    <%= fanbases ? fanbases.filter(f=> f.isActive !== false).length : 0 %>
                                 </p>
                             </div>
                             <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -437,13 +408,13 @@
                     <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-l-4 border-yellow-500">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-sm font-medium text-gray-600">Inactive Fanbases</p>
+                                <p class="text-sm font-medium text-gray-600">Total Posts</p>
                                 <p class="text-2xl font-bold text-yellow-600 mt-1">
-                                    <%= fanbases ? fanbases.filter(f=> !f.isActive).length : 0 %>
+                                    <%= fanbases ? fanbases.reduce((sum, f)=> sum + (f.numberOfPosts || 0), 0) : 0 %>
                                 </p>
                             </div>
                             <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-pause-circle text-yellow-600 text-xl"></i>
+                                <i class="fas fa-newspaper text-yellow-600 text-xl"></i>
                             </div>
                         </div>
                     </div>
@@ -451,13 +422,13 @@
                     <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-l-4 border-green-500">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-sm font-medium text-gray-600">Total Members</p>
+                                <p class="text-sm font-medium text-gray-600">Total Likes</p>
                                 <p class="text-2xl font-bold text-green-600 mt-1">
-                                    <%= fanbases ? fanbases.reduce((sum, f)=> sum + (f.membersCount || 0), 0) : 0 %>
+                                    <%= fanbases ? fanbases.reduce((sum, f)=> sum + (f.numberOfLikes || 0), 0) : 0 %>
                                 </p>
                             </div>
                             <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-users text-green-600 text-xl"></i>
+                                <i class="fas fa-thumbs-up text-green-600 text-xl"></i>
                             </div>
                         </div>
                     </div>
@@ -489,7 +460,7 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">Search Fanbases</label>
                             <input type="text" name="search"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                                placeholder="Name or description..."
+                                placeholder="Name or topic..."
                                 value="<%= (typeof searchQuery !== 'undefined' && searchQuery) ? searchQuery : '' %>">
                         </div>
 
@@ -500,24 +471,8 @@
                                 <option value="">All Status</option>
                                 <option value="active" <%=(typeof currentStatus !=='undefined' &&
                                     currentStatus==='active' ) ? 'selected' : '' %>>Active</option>
-                                <option value="inactive" <%=(typeof currentStatus !=='undefined' &&
-                                    currentStatus==='inactive' ) ? 'selected' : '' %>>Inactive</option>
                                 <option value="new" <%=(typeof currentStatus !=='undefined' && currentStatus==='new' )
                                     ? 'selected' : '' %>>New (< 7 days)</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Size</label>
-                            <select name="size"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-                                <option value="">All Sizes</option>
-                                <option value="small" <%=(typeof currentSize !=='undefined' && currentSize==='small' )
-                                    ? 'selected' : '' %>>Small (< 50 members)</option>
-                                <option value="medium" <%=(typeof currentSize !=='undefined' && currentSize==='medium' )
-                                    ? 'selected' : '' %>>Medium (50-500 members)</option>
-                                <option value="large" <%=(typeof currentSize !=='undefined' && currentSize==='large' )
-                                    ? 'selected' : '' %>>Large (500+ members)</option>
                             </select>
                         </div>
 
@@ -527,31 +482,27 @@
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
                                 <option value="">All Activity</option>
                                 <option value="high" <%=(typeof currentActivity !=='undefined' &&
-                                    currentActivity==='high' ) ? 'selected' : '' %>>High Activity (10+ posts/week)
+                                    currentActivity==='high' ) ? 'selected' : '' %>>High Activity (10+ posts)
                                 </option>
                                 <option value="medium" <%=(typeof currentActivity !=='undefined' &&
-                                    currentActivity==='medium' ) ? 'selected' : '' %>>Medium Activity (1-10 posts/week)
+                                    currentActivity==='medium' ) ? 'selected' : '' %>>Medium Activity (1-10 posts)
                                 </option>
                                 <option value="low" <%=(typeof currentActivity !=='undefined' && currentActivity==='low'
-                                    ) ? 'selected' : '' %>>Low Activity (< 1 post/week)</option>
+                                    ) ? 'selected' : '' %>>Low Activity (< 1 post)</option>
                             </select>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                            <select name="category"
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Popularity</label>
+                            <select name="popularity"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-                                <option value="">All Categories</option>
-                                <option value="artist" <%=(typeof currentCategory !=='undefined' &&
-                                    currentCategory==='artist' ) ? 'selected' : '' %>>Artist/Band</option>
-                                <option value="genre" <%=(typeof currentCategory !=='undefined' &&
-                                    currentCategory==='genre' ) ? 'selected' : '' %>>Music Genre</option>
-                                <option value="album" <%=(typeof currentCategory !=='undefined' &&
-                                    currentCategory==='album' ) ? 'selected' : '' %>>Album</option>
-                                <option value="general" <%=(typeof currentCategory !=='undefined' &&
-                                    currentCategory==='general' ) ? 'selected' : '' %>>General Music</option>
-                                <option value="other" <%=(typeof currentCategory !=='undefined' &&
-                                    currentCategory==='other' ) ? 'selected' : '' %>>Other</option>
+                                <option value="">All Popularity</option>
+                                <option value="high" <%=(typeof currentPopularity !=='undefined' &&
+                                    currentPopularity==='high' ) ? 'selected' : '' %>>High (50+ likes)</option>
+                                <option value="medium" <%=(typeof currentPopularity !=='undefined' &&
+                                    currentPopularity==='medium' ) ? 'selected' : '' %>>Medium (10-50 likes)</option>
+                                <option value="low" <%=(typeof currentPopularity !=='undefined' &&
+                                    currentPopularity==='low' ) ? 'selected' : '' %>>Low (< 10 likes)</option>
                             </select>
                         </div>
 
@@ -561,6 +512,9 @@
                                 <i class="fas fa-search mr-2"></i>
                                 Filter
                             </button>
+                        </div>
+
+                        <div class="flex space-x-2">
                             <a href="/admin/fanbases"
                                 class="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center">
                                 <i class="fas fa-times mr-2"></i>
@@ -583,23 +537,23 @@
                                 class="fas fa-plus text-2xl text-green-600 mb-2 group-hover:scale-110 transition-transform"></i>
                             <span class="text-sm font-medium text-green-700">Create Fanbase</span>
                         </button>
-                        <button onclick="bulkToggleStatus('activate')"
+                        <button onclick="refreshData()"
                             class="flex flex-col items-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg hover:from-blue-100 hover:to-blue-200 transition-all duration-300 group">
                             <i
-                                class="fas fa-check-circle text-2xl text-blue-600 mb-2 group-hover:scale-110 transition-transform"></i>
-                            <span class="text-sm font-medium text-blue-700">Bulk Activate</span>
-                        </button>
-                        <button onclick="bulkToggleStatus('deactivate')"
-                            class="flex flex-col items-center p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg hover:from-yellow-100 hover:to-yellow-200 transition-all duration-300 group">
-                            <i
-                                class="fas fa-pause-circle text-2xl text-yellow-600 mb-2 group-hover:scale-110 transition-transform"></i>
-                            <span class="text-sm font-medium text-yellow-700">Bulk Deactivate</span>
+                                class="fas fa-sync-alt text-2xl text-blue-600 mb-2 group-hover:scale-110 transition-transform"></i>
+                            <span class="text-sm font-medium text-blue-700">Refresh Data</span>
                         </button>
                         <button onclick="exportFanbases()"
                             class="flex flex-col items-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg hover:from-purple-100 hover:to-purple-200 transition-all duration-300 group">
                             <i
                                 class="fas fa-download text-2xl text-purple-600 mb-2 group-hover:scale-110 transition-transform"></i>
                             <span class="text-sm font-medium text-purple-700">Export Data</span>
+                        </button>
+                        <button onclick="showAnalytics()"
+                            class="flex flex-col items-center p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg hover:from-yellow-100 hover:to-yellow-200 transition-all duration-300 group">
+                            <i
+                                class="fas fa-chart-line text-2xl text-yellow-600 mb-2 group-hover:scale-110 transition-transform"></i>
+                            <span class="text-sm font-medium text-yellow-700">View Analytics</span>
                         </button>
                     </div>
                 </div>
@@ -634,20 +588,19 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 <% fanbases.forEach(function(fanbase, index) { %>
                                     <div class="bg-gray-50 rounded-lg p-6 card-hover transition-all duration-300 relative"
-                                        data-fanbase-id="<%= fanbase.id %>">
+                                        data-fanbase-id="<%= fanbase._id %>">
                                         <!-- Selection Checkbox -->
                                         <div class="absolute top-4 left-4 z-10">
                                             <input type="checkbox"
                                                 class="fanbase-checkbox rounded border-gray-300 focus:ring-primary"
-                                                value="<%= fanbase.id %>" onchange="updateSelectedCount()">
+                                                value="<%= fanbase._id %>" onchange="updateSelectedCount()">
                                         </div>
 
                                         <!-- Status Badge -->
                                         <div class="absolute top-4 right-4 z-10">
-                                            <span class="badge <%= fanbase.isActive ? 'active' : 'pending' %>">
-                                                <i
-                                                    class="fas fa-<%= fanbase.isActive ? 'check-circle' : 'pause-circle' %> mr-1"></i>
-                                                <%= fanbase.isActive ? 'Active' : 'Inactive' %>
+                                            <span class="badge active">
+                                                <i class="fas fa-check-circle mr-1"></i>
+                                                Active
                                             </span>
                                         </div>
 
@@ -655,45 +608,42 @@
                                         <div class="flex items-center justify-center mb-4 mt-6">
                                             <div
                                                 class="w-16 h-16 bg-gradient-to-br from-pink-400 to-red-500 rounded-xl flex items-center justify-center shadow-lg">
-                                                <i class="fas fa-heart text-white text-2xl"></i>
+                                                <% if (fanbase.fanbasePhotoUrl && fanbase.fanbasePhotoUrl !=='assets/images/favicon.png' ) { %>
+                                                    <img src="<%= fanbase.fanbasePhotoUrl %>" alt="<%= fanbase.fanbaseName %>" 
+                                                         class="w-full h-full object-cover rounded-xl">
+                                                <% } else { %>
+                                                    <i class="fas fa-heart text-white text-2xl"></i>
+                                                <% } %>
                                             </div>
                                         </div>
 
                                         <!-- Fanbase Info -->
                                         <div class="text-center mb-4">
                                             <h4 class="font-semibold text-gray-900 text-lg mb-2 line-clamp-1">
-                                                <%= fanbase.name %>
+                                                <%= fanbase.fanbaseName %>
                                             </h4>
                                             <p class="text-sm text-gray-600 line-clamp-3 mb-3 min-h-[3.6rem]">
-                                                <% if (fanbase.description && fanbase.description.length> 100) { %>
-                                                    <%= fanbase.description.substring(0, 100) %>...
-                                                        <button onclick="viewFanbase('<%= fanbase.id %>')"
+                                                <% if (fanbase.topic && fanbase.topic.length> 100) { %>
+                                                    <%= fanbase.topic.substring(0, 100) %>...
+                                                        <button onclick="viewFanbase('<%= fanbase._id %>')"
                                                             class="text-primary hover:underline text-xs ml-1">
                                                             more
                                                         </button>
                                                         <% } else { %>
-                                                            <%= fanbase.description || 'No description provided' %>
+                                                            <%= fanbase.topic || 'No topic provided' %>
                                                                 <% } %>
                                             </p>
-
-                                            <!-- Category Badge -->
-                                            <div class="mb-3">
-                                                <span class="badge user">
-                                                    <i class="fas fa-tag mr-1"></i>
-                                                    <%= fanbase.category || 'General' %>
-                                                </span>
-                                            </div>
 
                                             <!-- Stats -->
                                             <div
                                                 class="flex items-center justify-center space-x-4 text-sm text-gray-500 mb-3">
                                                 <span class="flex items-center">
-                                                    <i class="fas fa-users mr-1"></i>
-                                                    <%= fanbase.membersCount || 0 %>
+                                                    <i class="fas fa-thumbs-up mr-1"></i>
+                                                    <%= fanbase.numberOfLikes || 0 %> likes
                                                 </span>
                                                 <span class="flex items-center">
                                                     <i class="fas fa-newspaper mr-1"></i>
-                                                    <%= fanbase.postsCount || 0 %>
+                                                    <%= fanbase.numberOfPosts || 0 %> posts
                                                 </span>
                                             </div>
                                         </div>
@@ -703,29 +653,27 @@
                                             <div class="text-xs text-gray-500 space-y-1 text-center">
                                                 <div>Created: <%= new Date(fanbase.createdAt).toLocaleDateString() %>
                                                 </div>
-                                                <div>ID: <%= fanbase.id %>
+                                                <div>ID: <%= fanbase._id %>
                                                 </div>
-                                                <div>Creator: <%= (fanbase.createdBy || '' ).substring(0, 8) %>...</div>
+                                                <div>Creator: <%= (fanbase.createdUserId || '' ).substring(0, 8) %>...</div>
                                             </div>
                                         </div>
 
                                         <!-- Action Buttons -->
                                         <div class="space-y-2">
-                                            <button onclick="viewFanbase('<%= fanbase.id %>')"
+                                            <button onclick="viewFanbase('<%= fanbase._id %>')"
                                                 class="w-full bg-blue-500 text-white text-sm px-3 py-2 rounded-lg hover:bg-blue-600 transition-colors">
                                                 <i class="fas fa-eye mr-2"></i>
                                                 View Details
                                             </button>
 
                                             <div class="grid grid-cols-2 gap-2">
-                                                <button onclick="toggleFanbaseStatus('<%= fanbase.id %>')"
-                                                    data-fanbase-active="<%= fanbase.isActive %>"
-                                                    class="bg-<%= fanbase.isActive ? 'yellow' : 'green' %>-500 text-white text-sm px-3 py-2 rounded-lg hover:bg-<%= fanbase.isActive ? 'yellow' : 'green' %>-600 transition-colors">
-                                                    <i
-                                                        class="fas fa-<%= fanbase.isActive ? 'pause' : 'play' %> mr-1"></i>
-                                                    <%= fanbase.isActive ? 'Pause' : 'Activate' %>
+                                                <button onclick="editFanbase('<%= fanbase._id %>')"
+                                                    class="bg-green-500 text-white text-sm px-3 py-2 rounded-lg hover:bg-green-600 transition-colors">
+                                                    <i class="fas fa-edit mr-1"></i>
+                                                    Edit
                                                 </button>
-                                                <button onclick="deleteFanbase('<%= fanbase.id %>')"
+                                                <button onclick="deleteFanbase('<%= fanbase._id %>')"
                                                     class="bg-red-500 text-white text-sm px-3 py-2 rounded-lg hover:bg-red-600 transition-colors">
                                                     <i class="fas fa-trash mr-1"></i>
                                                     Delete
@@ -833,32 +781,21 @@
             <form id="createFanbaseForm" class="p-6 space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Fanbase Name</label>
-                    <input type="text" name="name" required
+                    <input type="text" name="fanbaseName" required
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                         placeholder="Enter fanbase name...">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                    <textarea name="description" rows="4" required
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Topic/Description</label>
+                    <textarea name="topic" rows="4" required
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                        placeholder="Describe the fanbase..."></textarea>
+                        placeholder="Describe the fanbase topic..."></textarea>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                    <select name="category" required
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-                        <option value="">Select Category</option>
-                        <option value="artist">Artist/Band</option>
-                        <option value="genre">Music Genre</option>
-                        <option value="album">Album</option>
-                        <option value="general">General Music</option>
-                        <option value="other">Other</option>
-                    </select>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <input type="checkbox" name="isActive" id="isActive" checked
-                        class="rounded border-gray-300 focus:ring-primary">
-                    <label for="isActive" class="text-sm text-gray-700">Active (allow new members)</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Photo URL</label>
+                    <input type="url" name="fanbasePhotoUrl"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                        placeholder="https://example.com/image.jpg">
                 </div>
                 <div class="flex space-x-4 pt-4">
                     <button type="button" onclick="hideCreateFanbaseModal()"
@@ -987,36 +924,6 @@
             }
         }
 
-        async function toggleFanbaseStatus(fanbaseId) {
-            // Get current status from button's data attribute
-            const button = event.target.closest('button');
-            const isCurrentlyActive = button.getAttribute('data-fanbase-active') === 'true';
-            const action = isCurrentlyActive ? 'deactivate' : 'activate';
-
-            const reason = prompt(`Enter reason to ${action} this fanbase:`);
-            if (!reason) return;
-
-            if (!confirmAction(`Are you sure you want to ${action} this fanbase?`)) return;
-
-            try {
-                showLoading();
-                const response = await axios.post(`/admin/fanbases/${fanbaseId}/toggle-status`, {
-                    isActive: !isCurrentlyActive,
-                    reason,
-                    actionBy: '<%= user ? user.id : "" %>'
-                });
-
-                if (response.status === 200) {
-                    showToast(`Fanbase ${action}d successfully`, 'success');
-                    setTimeout(() => window.location.reload(), 1000);
-                }
-            } catch (error) {
-                showToast(`Failed to ${action} fanbase: ` + (error.response?.data?.message || error.message), 'error');
-            } finally {
-                hideLoading();
-            }
-        }
-
         async function deleteFanbase(fanbaseId) {
             const reason = prompt('Enter deletion reason:');
             if (!reason) return;
@@ -1038,6 +945,22 @@
                 }
             } catch (error) {
                 showToast('Failed to delete fanbase: ' + (error.response?.data?.message || error.message), 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function editFanbase(fanbaseId) {
+            try {
+                showLoading();
+                const response = await axios.get(`/admin/fanbases/${fanbaseId}`);
+
+                if (response.status === 200) {
+                    const fanbase = response.data;
+                    showEditFanbaseModal(fanbase);
+                }
+            } catch (error) {
+                showToast('Failed to load fanbase details: ' + (error.response?.data?.message || error.message), 'error');
             } finally {
                 hideLoading();
             }
@@ -1067,32 +990,35 @@
                 <div class="space-y-6">
                     <div class="flex items-center space-x-4">
                         <div class="w-20 h-20 bg-gradient-to-br from-pink-400 to-red-500 rounded-xl flex items-center justify-center shadow-lg">
-                            <i class="fas fa-heart text-white text-3xl"></i>
+                            ${fanbase.fanbasePhotoUrl && fanbase.fanbasePhotoUrl !== 'assets/images/favicon.png' ? 
+                                `<img src="${fanbase.fanbasePhotoUrl}" alt="${fanbase.fanbaseName}" class="w-full h-full object-cover rounded-xl">` : 
+                                `<i class="fas fa-heart text-white text-3xl"></i>`
+                            }
                         </div>
                         <div class="flex-1">
-                            <h4 class="text-xl font-semibold text-gray-900">${fanbase.name}</h4>
-                            <p class="text-gray-600 mb-2">${fanbase.category || 'General'}</p>
+                            <h4 class="text-xl font-semibold text-gray-900">${fanbase.fanbaseName}</h4>
+                            <p class="text-gray-600 mb-2">Fanbase Community</p>
                             <div class="flex items-center space-x-4 text-sm">
                                 <span class="flex items-center text-blue-500">
-                                    <i class="fas fa-users mr-1"></i>
-                                    ${fanbase.membersCount || 0} members
+                                    <i class="fas fa-thumbs-up mr-1"></i>
+                                    ${fanbase.numberOfLikes || 0} likes
                                 </span>
                                 <span class="flex items-center text-green-500">
                                     <i class="fas fa-newspaper mr-1"></i>
-                                    ${fanbase.postsCount || 0} posts
+                                    ${fanbase.numberOfPosts || 0} posts
                                 </span>
-                                <span class="badge ${fanbase.isActive ? 'active' : 'pending'}">
-                                    ${fanbase.isActive ? 'Active' : 'Inactive'}
+                                <span class="badge active">
+                                    Active
                                 </span>
                             </div>
                         </div>
                     </div>
                     
                     <div>
-                        <h5 class="font-medium text-gray-900 mb-2">Description</h5>
+                        <h5 class="font-medium text-gray-900 mb-2">Topic/Description</h5>
                         <div class="bg-gray-50 p-4 rounded-lg">
                             <p class="text-gray-700 leading-relaxed">
-                                ${fanbase.description || 'No description provided'}
+                                ${fanbase.topic || 'No topic provided'}
                             </p>
                         </div>
                     </div>
@@ -1103,11 +1029,11 @@
                             <div class="space-y-2 text-sm">
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">Fanbase ID:</span>
-                                    <span class="font-mono text-gray-900">${fanbase.id}</span>
+                                    <span class="font-mono text-gray-900">${fanbase._id}</span>
                                 </div>
                                 <div class="flex justify-between">
-                                    <span class="text-gray-600">Category:</span>
-                                    <span class="text-gray-900">${fanbase.category || 'General'}</span>
+                                    <span class="text-gray-600">Name:</span>
+                                    <span class="text-gray-900">${fanbase.fanbaseName}</span>
                                 </div>
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">Created:</span>
@@ -1115,7 +1041,7 @@
                                 </div>
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">Creator:</span>
-                                    <span class="font-mono text-gray-900 text-xs">${fanbase.createdBy || 'Unknown'}</span>
+                                    <span class="font-mono text-gray-900 text-xs">${fanbase.createdUserId || 'Unknown'}</span>
                                 </div>
                             </div>
                         </div>
@@ -1124,22 +1050,22 @@
                             <h5 class="font-medium text-gray-900 mb-2">Community Stats</h5>
                             <div class="space-y-2 text-sm">
                                 <div class="flex justify-between">
-                                    <span class="text-gray-600">Members:</span>
-                                    <span class="text-gray-900">${fanbase.membersCount || 0}</span>
+                                    <span class="text-gray-600">Likes:</span>
+                                    <span class="text-gray-900">${fanbase.numberOfLikes || 0}</span>
                                 </div>
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">Posts:</span>
-                                    <span class="text-gray-900">${fanbase.postsCount || 0}</span>
+                                    <span class="text-gray-900">${fanbase.numberOfPosts || 0}</span>
                                 </div>
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">Activity Level:</span>
-                                    <span class="text-gray-900">${(fanbase.postsCount || 0) > 50 ? 'High' :
-                    (fanbase.postsCount || 0) > 10 ? 'Medium' : 'Low'
+                                    <span class="text-gray-900">${(fanbase.numberOfPosts || 0) > 10 ? 'High' :
+                    (fanbase.numberOfPosts || 0) > 5 ? 'Medium' : 'Low'
                 }</span>
                                 </div>
                                 <div class="flex justify-between">
-                                    <span class="text-gray-600">Growth Rate:</span>
-                                    <span class="text-gray-900">${(fanbase.membersCount || 0) > 100 ? 'Growing' : 'Stable'
+                                    <span class="text-gray-600">Engagement:</span>
+                                    <span class="text-gray-900">${(fanbase.numberOfLikes || 0) > 20 ? 'High' : 'Growing'
                 }</span>
                                 </div>
                             </div>
@@ -1147,13 +1073,12 @@
                     </div>
                     
                     <div class="flex space-x-4 pt-4 border-t">
-                        <button onclick="toggleFanbaseStatus('${fanbase.id}')" 
-                                data-fanbase-active="${fanbase.isActive}"
-                                class="flex-1 bg-${fanbase.isActive ? 'yellow' : 'green'}-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
-                            <i class="fas fa-${fanbase.isActive ? 'pause' : 'play'} mr-2"></i>
-                            ${fanbase.isActive ? 'Deactivate' : 'Activate'} Fanbase
+                        <button onclick="editFanbase('${fanbase._id}')" 
+                                class="flex-1 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                            <i class="fas fa-edit mr-2"></i>
+                            Edit Fanbase
                         </button>
-                        <button onclick="deleteFanbase('${fanbase.id}')" class="flex-1 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                        <button onclick="deleteFanbase('${fanbase._id}')" class="flex-1 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
                             <i class="fas fa-trash mr-2"></i>
                             Delete Fanbase
                         </button>
@@ -1181,36 +1106,9 @@
             document.getElementById('createFanbaseForm').reset();
         }
 
-        async function bulkToggleStatus(action) {
-            if (selectedFanbases.length === 0) {
-                showToast('Please select fanbases first', 'warning');
-                return;
-            }
-
-            const isActive = action === 'activate';
-            const reason = prompt(`Enter reason to ${action} ${selectedFanbases.length} fanbases:`);
-            if (!reason) return;
-
-            if (!confirmAction(`Are you sure you want to ${action} ${selectedFanbases.length} fanbases?`)) return;
-
-            try {
-                showLoading();
-                const response = await axios.post('/admin/fanbases/bulk-toggle', {
-                    fanbaseIds: selectedFanbases,
-                    isActive,
-                    reason,
-                    actionBy: '<%= user ? user.id : "" %>'
-                });
-
-                if (response.status === 200) {
-                    showToast(`Fanbases ${action}d successfully`, 'success');
-                    setTimeout(() => window.location.reload(), 1000);
-                }
-            } catch (error) {
-                showToast(`Failed to ${action} fanbases: ` + (error.response?.data?.message || error.message), 'error');
-            } finally {
-                hideLoading();
-            }
+        function refreshData() {
+            showLoading();
+            window.location.reload();
         }
 
         function exportFanbases() {
@@ -1237,24 +1135,28 @@
             }, 1000);
         }
 
+        function showAnalytics() {
+            window.location.href = '/admin/analytics?focus=fanbases';
+        }
+
         // Create fanbase form submission
         document.getElementById('createFanbaseForm').addEventListener('submit', async function (e) {
             e.preventDefault();
 
             const formData = new FormData(e.target);
             const fanbaseData = {
-                name: formData.get('name'),
-                description: formData.get('description'),
-                category: formData.get('category'),
-                isActive: formData.has('isActive'),
-                createdBy: '<%= user ? user.id : "" %>'
+                fanbaseName: formData.get('fanbaseName'),
+                topic: formData.get('topic'),
+                fanbasePhotoUrl: formData.get('fanbasePhotoUrl') || 'assets/images/favicon.png',
+                createdUserId: '<%= user ? user.id : "" %>'
             };
 
             try {
                 showLoading();
-                const response = await axios.post('/admin/fanbases', fanbaseData);
+                // Updated API route to match fanbase controller
+                const response = await axios.post('/fanbase', fanbaseData);
 
-                if (response.status === 201) {
+                if (response.status === 201 || response.status === 200) {
                     showToast('Fanbase created successfully', 'success');
                     hideCreateFanbaseModal();
                     setTimeout(() => window.location.reload(), 1000);
@@ -1265,6 +1167,39 @@
                 hideLoading();
             }
         });
+
+        // Auto-refresh fanbase stats every 60 seconds
+        setInterval(async () => {
+            if (document.visibilityState === 'visible') {
+                try {
+                    // Updated API route to get fanbase stats
+                    const response = await axios.get('/fanbase?limit=1000'); // Get all fanbases for stats
+
+                    if (response.status === 200) {
+                        const fanbases = response.data;
+                        
+                        // Calculate stats from the returned data
+                        const totalFanbases = fanbases.length;
+                        const totalLikes = fanbases.reduce((sum, f) => sum + (f.numberOfLikes || 0), 0);
+                        const totalPosts = fanbases.reduce((sum, f) => sum + (f.numberOfPosts || 0), 0);
+                        const activeFanbases = totalFanbases; // All are considered active
+                        
+                        // Update stats in the overview cards
+                        const activeElement = document.querySelector('.border-blue-500 .text-2xl');
+                        const postsElement = document.querySelector('.border-yellow-500 .text-2xl');
+                        const likesElement = document.querySelector('.border-green-500 .text-2xl');
+                        const totalElement = document.querySelector('.border-purple-500 .text-2xl');
+
+                        if (activeElement) activeElement.textContent = activeFanbases;
+                        if (postsElement) postsElement.textContent = totalPosts;
+                        if (likesElement) likesElement.textContent = totalLikes;
+                        if (totalElement) totalElement.textContent = totalFanbases;
+                    }
+                } catch (error) {
+                    console.log('Failed to refresh fanbase stats:', error);
+                }
+            }
+        }, 60000);
 
         // Close modals when clicking outside
         document.getElementById('fanbaseModal').addEventListener('click', (e) => {
@@ -1282,31 +1217,6 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', function () {
             updateSelectedCount();
-
-            // Auto-refresh fanbase stats every 60 seconds
-            setInterval(async () => {
-                if (document.visibilityState === 'visible') {
-                    try {
-                        const response = await axios.get('/admin/api/fanbases-stats');
-
-                        if (response.status === 200) {
-                            const stats = response.data;
-                            // Update stats in the overview cards
-                            const activeElement = document.querySelector('.border-blue-500 .text-2xl');
-                            const inactiveElement = document.querySelector('.border-yellow-500 .text-2xl');
-                            const membersElement = document.querySelector('.border-green-500 .text-2xl');
-                            const totalElement = document.querySelector('.border-purple-500 .text-2xl');
-
-                            if (activeElement) activeElement.textContent = stats.active || 0;
-                            if (inactiveElement) inactiveElement.textContent = stats.inactive || 0;
-                            if (membersElement) membersElement.textContent = stats.totalMembers || 0;
-                            if (totalElement) totalElement.textContent = stats.total || 0;
-                        }
-                    } catch (error) {
-                        console.log('Failed to refresh fanbase stats:', error);
-                    }
-                }
-            }, 60000);
 
             // Add fade-in animation to content
             const main = document.querySelector('main');
