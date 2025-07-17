@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Put, Body } from '@nestjs/common';
+import { Controller, Get, Param, Put, Body, Post } from '@nestjs/common';
 import { ProfileService } from './profile.service';
 import { ProfileDto } from './dto/profile.dto';
 
@@ -32,5 +32,17 @@ export class ProfileController {
       };
     }
     return profile;
+  }
+
+  @Post()
+  async createProfile(
+    @Body()
+    createProfileDto: {
+      userId: string;
+      bio?: string;
+      profileImage?: string;
+    },
+  ) {
+    return this.profileService.createProfile(createProfileDto);
   }
 }

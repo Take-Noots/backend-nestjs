@@ -89,6 +89,43 @@ export class ProfileService {
     };
   }
 
+  async createProfile(createProfileDto: {
+    userId: string;
+    bio?: string;
+    profileImage?: string;
+  }) {
+    const { userId, bio, profileImage } = createProfileDto;
+
+    // Check if profile already exists
+    const existingProfile = await this.profileModel.findOne({ userId }).lean();
+    if (existingProfile) {
+      return {
+        success: false,
+        message: 'Profile already exists for this user',
+      };
+    }
+
+    // Optionally, check if user exists
+    const user = await this.userModel.findById(userId).lean();
+    if (!user) {
+      return { success: false, message: 'User not found' };
+    }
+
+    const profile = new this.profileModel({
+      userId,
+      bio: bio ?? '',
+      profileImage: profileImage ?? '',
+      posts: 0,
+      followers: [],
+      following: [],
+      albumArts: [],
+    });
+
+    await profile.save();
+
+    return { success: true, message: 'Profile created successfully', profile };
+  }
+
   // COMMENTED OUT THIS FUNCTION... UNCOMMENT IF NEEDED
   async addFollowers(userId: string, followerId: string): Promise<void> {
     // Add followerId to userId's followers array
