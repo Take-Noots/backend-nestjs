@@ -9,11 +9,13 @@ import { PostModule } from '../posts/posts.module';
 import { FanbaseModule } from '../fanbases/fanbase.module';
 import { ReportModule } from '../reports/reports.module';
 import { AuthModule } from '../auth/auth.module';
+import { SongPostModule } from '../songPost/songPost.module';
 
 @Module({
   imports: [
     UserModule,
     PostModule,
+    SongPostModule,
     FanbaseModule,
     ReportModule,
     AuthModule, // This provides AuthService for login

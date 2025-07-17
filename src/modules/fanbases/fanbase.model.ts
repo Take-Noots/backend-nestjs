@@ -11,51 +11,41 @@ export class Fanbase {
   _id: Types.ObjectId;
 
   @Prop({ required: true, unique: true })
-  name: string;
+  fanbaseName: string;
 
   @Prop({ required: true })
-  description: string;
+  topic: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  createdBy: Types.ObjectId;
-
-  @Prop({ required: false })
-  imageUrl: string;
+  @Prop({ required: true })
+  createdUserId: string; // Match database field name
 
   @Prop({ required: false })
-  category: string; // genre, artist, mood, etc.
+  fanbasePhotoUrl: string;
 
-  // Members and activity
+  // Likes tracking
   @Prop({ default: 0 })
-  membersCount: number;
+  numberOfLikes: number;
 
+  @Prop([{ type: String }]) // Array of user IDs who liked
+  likedUserIds: string[];
+
+  // Posts tracking  
   @Prop({ default: 0 })
-  postsCount: number;
+  numberOfPosts: number; // Number of posts in this fanbase
 
-  @Prop([{ type: Types.ObjectId, ref: 'User' }])
-  moderators: Types.ObjectId[];
+  @Prop([{ type: String }]) // Array of post IDs
+  postIds: string[];
 
-  // Privacy and moderation
-  @Prop({ default: 'public' })
-  visibility: string; // 'public', 'private'
-
-  @Prop({ default: false })
-  isActive: boolean;
-
-  @Prop({ default: false })
-  isDeleted: boolean;
-
-  @Prop({ required: false })
-  deletedReason: string;
-
-  @Prop({ type: Types.ObjectId, ref: 'User', required: false })
-  deletedBy: Types.ObjectId;
+  // Comments tracking
+  @Prop({ default: 0 })
+  numberOfComments: number; // Total comments across all posts in this fanbase
 
   @Prop({ default: Date.now })
   createdAt: Date;
 
-  @Prop({ default: Date.now })
-  updatedAt: Date;
+  // Mongoose version field
+  @Prop({ default: 0 })
+  __v: number;
 }
 
 export const FanbaseSchema = SchemaFactory.createForClass(Fanbase);
