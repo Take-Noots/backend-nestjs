@@ -27,8 +27,8 @@ export class User {
   @Prop({ required: false })
   banReason: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: false })
-  bannedBy: Types.ObjectId;
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false })
+  bannedBy: mongoose.Schema.Types.ObjectId;
 
   @Prop({ required: false })
   bannedAt: Date;

@@ -3,6 +3,7 @@ export class ProfileDto {
   userId: string;
   profileImage: string;
   bio: string;
+  email: string;
   posts: number;
   followers: string[];
   following: string[];
