@@ -22,7 +22,9 @@ export class FanbaseController {
   @Get(':id')
   async getFanbaseById(@Param('id') id: string) {
     try {
+      console.log("CALLING GET FANBASE BY ID", id);
       const fanbase = await this.fanbaseService.findById(id);
+      console.log("FANBASE FOUND", fanbase);
       if (!fanbase) {
         throw new HttpException('Fanbase not found', HttpStatus.NOT_FOUND);
       }
