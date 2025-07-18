@@ -102,8 +102,8 @@ export class AdminService {
   async getAllPosts(page: number = 1, limit: number = 10, reported?: boolean) {
     const skip = (page - 1) * limit;
     
-        // Get all posts with usernames from SongPostService
-        const allPostsWithUsernames = await this.songPostService.findAllWithUsernames();
+    // Get all posts with usernames from SongPostService
+    const allPostsWithUsernames = await this.songPostService.findAllWithUsernames();
     
     // Apply filters
     let filteredPosts = allPostsWithUsernames;
