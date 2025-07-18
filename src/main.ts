@@ -1,5 +1,5 @@
-import * as dns from 'dns'
-dns.setServers(['1.1.1.1']);
+// import * as dns from 'dns'
+// dns.setServers(['1.1.1.1']);
 
 // src/main.ts
 import { NestFactory } from '@nestjs/core';
