@@ -4,6 +4,7 @@ import { SongPostController } from './songPost.controller';
 import { SongPostService } from './songPost.service';
 import { SongPost, SongPostSchema } from './songPost.model';
 import { UserModule } from '../user/user.module';
+import { ProfileModule } from '../profile/profile.module';
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { UserModule } from '../user/user.module';
       { name: SongPost.name, schema: SongPostSchema },
     ]),
     UserModule,
+    ProfileModule,
   ],
   controllers: [SongPostController],
   providers: [SongPostService],
