@@ -1,74 +1,43 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { DesSongPost, DesSongPostDocument } from './desSongPost.model';
-import { CreateDesSongPostDto, AddDesCommentDto } from './dto/create-despost.dto';
+import { CreateDesSongPostDto } from './dto/create-despost.dto';
+import { AddDesCommentDto } from './dto/create-comment.dto';
 
 @Injectable()
 export class DesSongPostService {
   constructor(
     @InjectModel(DesSongPost.name)
-    private readonly desSongPostModel: Model<DesSongPostDocument>,
+    private readonly desPostModel: Model<DesSongPostDocument>,
   ) {}
 
-  async create(dto: CreateDesSongPostDto): Promise<DesSongPost> {
-    const created = new this.desSongPostModel(dto);
-    return await created.save();
+  async createPost(dto: CreateDesSongPostDto) {
+    console.log('Incoming DTO:', dto);
+    const post = new this.desPostModel({
+      ...dto,
+      likes: 0,
+      likedBy: [],
+    });
+    return await post.save();
   }
 
-  async findAll(): Promise<DesSongPost[]> {
-    return this.desSongPostModel.find().sort({ createdAt: -1 }).exec();
-  }
+  async addComment(dto: AddDesCommentDto) {
+    const post = await this.desPostModel.findById(dto.postId);
+    if (!post) throw new NotFoundException('Post not found');
 
-  async findById(id: string): Promise<DesSongPost | null> {
-    return this.desSongPostModel.findById(id).exec();
-  }
-
-  async findByUserId(userId: string): Promise<DesSongPost[]> {
-    return this.desSongPostModel.find({ userId }).exec();
-  }
-
-  async likePost(postId: string, userId: string): Promise<DesSongPost | null> {
-    const post = await this.desSongPostModel.findById(postId);
-    if (!post) return null;
-
-    if (!post.likedUserIds.includes(userId)) {
-      post.likedUserIds.push(userId);
-      post.likes += 1;
-      await post.save();
-    }
-
-    return post;
-  }
-
-  async addComment(postId: string, dto: AddDesCommentDto): Promise<DesSongPost | null> {
-    const post = await this.desSongPostModel.findById(postId);
-    if (!post) return null;
-
-    post.comments.push({
+    const comment = {
+      id: new Types.ObjectId(),
       userId: dto.userId,
       text: dto.text,
-      username: '', // Fetch separately if needed
-      likes: 0,
-      likedUserIds: [],
       createdAt: new Date(),
-    });
+      updatedAt: new Date(),
+      likes: 0,
+      likedBy: [],
+    };
 
+    post.comments.push(comment);
     await post.save();
-    return post;
-  }
-
-  async likeComment(postId: string, commentId: string, userId: string): Promise<DesSongPost | null> {
-    const post = await this.desSongPostModel.findById(postId);
-    if (!post) return null;
-
-    const comment = post.comments.id(commentId);
-    if (!comment || comment.likedUserIds.includes(userId)) return null;
-
-    comment.likedUserIds.push(userId);
-    comment.likes += 1;
-
-    await post.save();
-    return post;
+    return comment;
   }
 }
