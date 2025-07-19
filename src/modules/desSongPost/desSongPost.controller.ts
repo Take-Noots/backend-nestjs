@@ -1,54 +1,24 @@
-import {
-  Controller, Post, Get, Param, Body, UsePipes, ValidationPipe,
-} from '@nestjs/common';
+import { Body, Controller, UsePipes, Post } from '@nestjs/common';
 import { DesSongPostService } from './desSongPost.service';
-import { CreateDesSongPostDto, AddDesCommentDto } from './dto/create-despost.dto'
-import { DesSongPost } from './desSongPost.model';
+import { CreateDesSongPostDto } from './dto/create-despost.dto';
+import { AddDesCommentDto } from './dto/create-comment.dto';
+import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
+// import { DesSongPostDocument } from './desSongPost.model';
 
 @Controller('des-song-posts')
 export class DesSongPostController {
   constructor(private readonly desSongPostService: DesSongPostService) {}
 
   @Post()
-  @UsePipes(new ValidationPipe())
-  async create(@Body() dto: CreateDesSongPostDto): Promise<DesSongPost> {
-    return this.desSongPostService.create(dto);
+  @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+  async create(@Body() createDesPostDto: CreateDesSongPostDto) {
+    console.log('BODY RECEIVED:', createDesPostDto);
+    return this.desSongPostService.createPost(createDesPostDto);
   }
 
-  @Get()
-  async findAll(): Promise<DesSongPost[]> {
-    return this.desSongPostService.findAll();
-  }
-
-  @Get(':id')
-  async findById(@Param('id') id: string): Promise<DesSongPost | null> {
-    return this.desSongPostService.findById(id);
-  }
-
-  @Get('user/:userId')
-  async findByUserId(@Param('userId') userId: string): Promise<DesSongPost[]> {
-    return this.desSongPostService.findByUserId(userId);
-  }
-
-  @Post(':id/like')
-  async likePost(@Param('id') id: string, @Body('userId') userId: string) {
-    const post = await this.desSongPostService.likePost(id, userId);
-    return post ? { success: true, data: post } : { success: false, message: 'Post not found' };
-  }
-
-  @Post(':id/comment')
-  async addComment(@Param('id') id: string, @Body() dto: AddDesCommentDto) {
-    const post = await this.desSongPostService.addComment(id, dto);
-    return post ? { success: true, data: post } : { success: false, message: 'Post not found' };
-  }
-
-  @Post(':postId/comment/:commentId/like')
-  async likeComment(
-    @Param('postId') postId: string,
-    @Param('commentId') commentId: string,
-    @Body('userId') userId: string,
-  ) {
-    const post = await this.desSongPostService.likeComment(postId, commentId, userId);
-    return post ? { success: true, data: post } : { success: false, message: 'Comment or post not found' };
+  @Post('/comment')
+  
+  addComment(@Body() dto: AddDesCommentDto) {
+    return this.desSongPostService.addComment(dto);
   }
 }

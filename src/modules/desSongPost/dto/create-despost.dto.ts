@@ -1,29 +1,34 @@
-import { IsNotEmpty, IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsNotEmpty } from 'class-validator';
 
 export class CreateDesSongPostDto {
-  @IsNotEmpty()
+
   @IsString()
+  @IsNotEmpty()
+  songName: string;
+
+  @IsString()
+  @IsNotEmpty()
+  albumImage: string;
+
+  @IsString()
+  @IsNotEmpty()
+  artists: string;
+
+  @IsString()
+  @IsNotEmpty()
+  trackid: string;
+
+  @IsString()
+  @IsNotEmpty()
   userId: string;
 
-  @IsNotEmpty()
-  @IsString()
-  songTitle: string;
-
-  @IsNotEmpty()
-  @IsString()
-  albumArtUrl: string;
-
+  @IsString({ each: true })
   @IsOptional()
+  topic: string;
+
   @IsString()
-  description?: string;
+  @IsNotEmpty()
+  description: string;
 }
 
-export class AddDesCommentDto {
-  @IsNotEmpty()
-  @IsString()
-  userId: string;
 
-  @IsNotEmpty()
-  @IsString()
-  text: string;
-}
