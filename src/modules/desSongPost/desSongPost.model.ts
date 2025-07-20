@@ -47,6 +47,12 @@ export class DesSongPost {
     default: [],
   })
   comments: any[];
+
+  @Prop({ default: false })
+  inAFanbase: boolean;
+
+  @Prop({ default: null })
+  FanbaseID: string;
 }
 
 export const DesSongPostSchema = SchemaFactory.createForClass(DesSongPost);
