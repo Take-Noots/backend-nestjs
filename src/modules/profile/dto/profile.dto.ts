@@ -4,6 +4,7 @@ export class ProfileDto {
   username: string;
   profileImage: string;
   bio: string;
+  email: string;
   posts: number;
   followers: number;
   following: number;
