@@ -34,16 +34,5 @@ export class ProfileController {
     return profile;
   }
 
-  @Get('posts/:userId')
-  async getPostsByUserId(@Param('userId') userId: string) {
-    return this.profileService.getPostsByUserId(userId);
-  }
 
-  @Put(':userId')
-  async updateProfile(
-    @Param('userId') userId: string,
-    @Body() updateData: any,
-  ) {
-    return this.profileService.updateProfileByUserId(userId, updateData);
-  }
 }

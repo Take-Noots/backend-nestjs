@@ -102,12 +102,12 @@ export class AdminService {
   async getAllPosts(page: number = 1, limit: number = 10, reported?: boolean) {
     const skip = (page - 1) * limit;
     
-        // Get all posts with usernames from SongPostService
-        const allPostsWithUsernames = await this.songPostService.findAllWithUsernames();
+    // Get all posts with usernames from SongPostService
+    const allPostsWithUsernames = await this.songPostService.findAllWithUsernames();
     
     // Apply filters
     let filteredPosts = allPostsWithUsernames;
-    let filteredPosts = allPostsWithUsernames;
+
     if (reported) {
       // For now, we'll assume all posts are not reported since songPost model doesn't have isReported field
       // You may need to add this field to your songPost model if you want reporting functionality
@@ -151,14 +151,14 @@ export class AdminService {
     // Get username separately since it's not in the post document
     const username = await this.userService.getUsernameById(post.userId);
 
-    // Get username separately since it's not in the post document
-    const username = await this.userService.getUsernameById(post.userId);
+
 
     return {
       id: post._id,
       userId: post.userId,
       username: username || '',
-      username: username || '',
+
+
       songTitle: post.songName,
       artistName: post.artists,
       albumArt: post.albumImage,
