@@ -126,7 +126,11 @@ export class SongPostService {
         username: username || '',
       };
     }));
-    console.log('Follower posts with usernames:', postsWithUsernames); // Print to terminal
+    //console.log('Follower posts with usernames:', postsWithUsernames); 
     return postsWithUsernames;
+  }
+
+  async countPostsByUser(userId: string): Promise<number> {
+    return this.songPostModel.countDocuments({ userId }).exec();
   }
 }
