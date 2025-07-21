@@ -37,6 +37,7 @@ export class SongPostController {
     return this.songPostService.findByUserId(userId);
   }
 
+
   @Post(':id/like')
   async likePost(@Param('id') postId: string, @Body('userId') userId: string) {
     const post = await this.songPostService.likePost(postId, userId);
@@ -81,4 +82,14 @@ export class SongPostController {
     // 3. Print to terminal (already done in service)
     return { success: true, data: posts }; 
   }
+
+
+    /*
+  @Get('user/:userId/count')
+  async countPostsByUser(@Param('userId') userId: string) {
+    const count = await this.songPostService.countPostsByUser(userId);
+    return { userId, postCount: count };
+  }
+  */
+
 }
