@@ -29,7 +29,9 @@ export class RequestService {
   }
 
   async confirmRequest(requestSendUserId: string, requestReceiveUserId: string) {
-    const updated = await this.requestModel.findOneAndUpdate(
+    
+    try{
+      const updated = await this.requestModel.findOneAndUpdate(
       {
         requestSendUserId,
         requestReceiveUserId,
@@ -38,8 +40,14 @@ export class RequestService {
       { respond: RequestRespondStatus.CONFIRM },
       { new: true }
     );
-    // Add follower relationship
     await this.profileService.addFollowers(requestReceiveUserId, requestSendUserId);
     return updated;
+  }
+  catch(e){
+    console.log("confirm Request error: ", e.message);
+    
+  }
+    // Add follower relationship
+    
   }
 } 

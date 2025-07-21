@@ -82,12 +82,14 @@ export class SongPostService {
     const post = await this.songPostModel.findById(postId);
     if (!post) return null;
     // Fetch username from UserService (for future use, but not stored in comment)
-    // const username = await this.userService.getUsernameById(addCommentDto.userId);
-    // if (!username) {
-    //   throw new Error('User not found for given userId');
-    // }
+    const username = await this.userService.getUsernameById(addCommentDto.userId);
+    if (!username) {
+      throw new Error('User not found for given userId');
+    }
+    
     post.comments.push({
       ...addCommentDto,
+      username,
       createdAt: new Date(),
       likes: 0,
       likedBy: [],
@@ -111,5 +113,20 @@ export class SongPostService {
     comment.likes = comment.likedBy.length;
     await post.save();
     return post;
+  }
+
+  async getPostsByUserIds(userIds: string[]): Promise<any[]> {
+    // Find posts where userId is in the userIds array
+    const posts = await this.songPostModel.find({ userId: { $in: userIds } }).sort({ createdAt: -1 }).lean();
+    // Attach username for each post
+    const postsWithUsernames = await Promise.all(posts.map(async post => {
+      const username = await this.userService.getUsernameById(post.userId);
+      return {
+        ...post,
+        username: username || '',
+      };
+    }));
+    console.log('Follower posts with usernames:', postsWithUsernames); // Print to terminal
+    return postsWithUsernames;
   }
 }

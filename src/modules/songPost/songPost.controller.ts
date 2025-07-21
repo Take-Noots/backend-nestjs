@@ -2,10 +2,14 @@ import { Controller, Post, Get, Body, Param, UsePipes, ValidationPipe } from '@n
 import { SongPostService } from './songPost.service';
 import { CreatePostDto, AddCommentDto } from './dto/create-post.dto';
 import { SongPost, SongPostDocument } from './songPost.model';
+import { ProfileService } from '../profile/profile.service';
 
 @Controller('song-posts')
 export class SongPostController {
-  constructor(private readonly songPostService: SongPostService) {}
+  constructor(
+    private readonly songPostService: SongPostService,
+    private readonly profileService: ProfileService,
+  ) {}
 
   @Post()
   @UsePipes(new ValidationPipe())
@@ -66,5 +70,15 @@ export class SongPostController {
       return { success: false, message: 'Post or comment not found' };
     }
     return { success: true, data: post };
+  }
+
+  @Get('followers/:userId')
+  async getFollowerPosts(@Param('userId') userId: string) {
+    // 1. Get followers
+    const followers = await this.profileService.getFollowers(userId);
+    // 2. Get posts by followers
+    const posts = await this.songPostService.getPostsByUserIds(followers);
+    // 3. Print to terminal (already done in service)
+    return { success: true, data: posts }; 
   }
 }

@@ -139,4 +139,10 @@ export class ProfileService {
       { $addToSet: { following: userId } },
     );
   }
+
+  async getFollowers(userId: string): Promise<string[]> {
+    const profile = await this.profileModel.findOne({ userId }).lean();
+    return profile?.followers ?? [];
+  }
 }
+

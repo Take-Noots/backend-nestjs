@@ -3,7 +3,7 @@ import { Controller, Get, Post, Delete, Param, Body, Query, HttpException, HttpS
 import { FanbaseService } from './fanbase.service';
 import { CreateFanbaseDTO } from './dto/create-fanbase.dto';
 
-@Controller('fanbases')
+@Controller('fanbase') // Changed from 'fanbases' to 'fanbase' to match frontend
 export class FanbaseController {
   constructor(private readonly fanbaseService: FanbaseService) {}
 
@@ -22,7 +22,9 @@ export class FanbaseController {
   @Get(':id')
   async getFanbaseById(@Param('id') id: string) {
     try {
+      console.log("CALLING GET FANBASE BY ID", id);
       const fanbase = await this.fanbaseService.findById(id);
+      console.log("FANBASE FOUND", fanbase);
       if (!fanbase) {
         throw new HttpException('Fanbase not found', HttpStatus.NOT_FOUND);
       }
@@ -51,16 +53,15 @@ export class FanbaseController {
     }
   }
 
+  // Main route that frontend calls - GET /fanbase
   @Get()
   async getAllFanbases(
     @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
-    @Query('category') category?: string
+    @Query('limit') limit: number = 10
   ) {
     try {
       const skip = (page - 1) * limit;
-      const filter = category ? { category, isDeleted: false, isActive: true } : { isDeleted: false, isActive: true };
-      return await this.fanbaseService.findAllWithPagination(filter, skip, limit);
+      return await this.fanbaseService.findAllWithPagination({}, skip, limit);
     } catch (error) {
       throw new HttpException(
         `Failed to fetch fanbases: ${error.message}`,
