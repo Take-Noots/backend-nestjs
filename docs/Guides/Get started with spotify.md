@@ -161,7 +161,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 You can run this cURL command in the terminal
 
 ```
-curl -X GET localhost:3000/spotify/whoami -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ODVmYjc1MGNjMDg0YmE3ZTBlZjg1MzMiLCJleHAiOjE3NTE5MjExODUsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzUxOTIwMjg1fQ.-0lvMENsJtwmNVCdmo2ACOzibJ_lAFZWDQlwdsNMlQs"
+curl -X GET localhost:3000/spotify/whoami -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ODZmNTQ5M2JlZjIyNDhjODIxZWNiNzciLCJlbWFpbCI6ImlydXNoaXB1bnNhcmFuaXdhQGdtYWlsLmNvbSIsImV4cCI6MTc1MjgyMzU1Nywicm9sZSI6InVzZXIiLCJpYXQiOjE3NTI4MjI2NTd9.QRhldukHR6WYBuw4z1ESqeH_YgDsi-EDtF4D6D-MZLU"
 ```
 
 Make sure your `Authorization` header follows this exact format:

@@ -19,7 +19,7 @@ import { AdminGuard } from '../guards/admin.guard';
 import { AdminService } from '../services/admin.service';
 import { AuthService } from '../../auth/auth.service';
 import { FanbaseService } from '../../fanbases/fanbase.service'; 
-import { SongPostService } from '../../songPost/songPost.service'; // Add SongPostService
+import { SongPostService } from '../../songPost/songPost.service';
 
 @Controller('admin')
 export class AdminDashboardController {
@@ -27,7 +27,7 @@ export class AdminDashboardController {
     private readonly adminService: AdminService,
     private readonly authService: AuthService,
     private readonly fanbaseService: FanbaseService,
-    private readonly songPostService: SongPostService // Add SongPostService
+    private readonly songPostService: SongPostService
   ) {}
 
   // ==================== PUBLIC ROUTES (NO GUARD) ====================
@@ -228,7 +228,7 @@ export class AdminDashboardController {
     }
   }
 
-  // Posts Management Page - Updated for SongPosts
+  // Posts Management Page - Fixed for SongPosts
   @Get('posts')
   @UseGuards(AdminGuard)
   @Render('admin/posts')
@@ -596,5 +596,4 @@ export class AdminDashboardController {
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
-  }
-}
+  }}
