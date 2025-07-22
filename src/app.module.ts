@@ -16,6 +16,7 @@ import { PostModule } from './modules/posts/posts.module';
 import { FanbaseModule } from './modules/fanbases/fanbase.module';
 import { ReportModule } from './modules/reports/reports.module';
 import { RequestModule } from './modules/request/request.module';
+import { ChatModule } from './modules/chat/chat.module';
 
 import 'dotenv/config';
 
@@ -35,7 +36,8 @@ const dbUrl: string = process.env.DB_CONN_STRING as string;
     FanbaseModule,
     ReportModule,
     AdminModule,
-    RequestModule
+    RequestModule,
+    ChatModule
   ]
 })
 export class AppModule {}
