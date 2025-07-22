@@ -36,19 +36,27 @@ export class SongPostService {
   }
 
   async findAllWithUsernames(): Promise<any[]> {
-    const posts = await this.songPostModel.find().sort({ createdAt: -1 }).lean();
+    const posts = await this.songPostModel
+      .find()
+      .sort({ createdAt: -1 })
+      .lean();
     // Assuming you have access to userService
-    return Promise.all(posts.map(async post => {
-      const username = await this.userService.getUsernameById(post.userId);
-      return {
-        ...post,
-        username: username || '', // fallback if not found
-        comments: await Promise.all((post.comments || []).map(async comment => ({
-          ...comment,
-          username: await this.userService.getUsernameById(comment.userId) || '',
-        }))),
-      };
-    }));
+    return Promise.all(
+      posts.map(async (post) => {
+        const username = await this.userService.getUsernameById(post.userId);
+        return {
+          ...post,
+          username: username || '', // fallback if not found
+          comments: await Promise.all(
+            (post.comments || []).map(async (comment) => ({
+              ...comment,
+              username:
+                (await this.userService.getUsernameById(comment.userId)) || '',
+            })),
+          ),
+        };
+      }),
+    );
   }
 
   async findById(id: string): Promise<SongPostDocument | null> {
@@ -78,15 +86,20 @@ export class SongPostService {
     return post;
   }
 
-  async addComment(postId: string, addCommentDto: AddCommentDto): Promise<SongPostDocument | null> {
+  async addComment(
+    postId: string,
+    addCommentDto: AddCommentDto,
+  ): Promise<SongPostDocument | null> {
     const post = await this.songPostModel.findById(postId);
     if (!post) return null;
     // Fetch username from UserService (for future use, but not stored in comment)
-    const username = await this.userService.getUsernameById(addCommentDto.userId);
+    const username = await this.userService.getUsernameById(
+      addCommentDto.userId,
+    );
     if (!username) {
       throw new Error('User not found for given userId');
     }
-    
+
     post.comments.push({
       ...addCommentDto,
       username,
@@ -98,10 +111,16 @@ export class SongPostService {
     return post;
   }
 
-  async likeComment(postId: string, commentId: string, userId: string): Promise<SongPostDocument | null> {
+  async likeComment(
+    postId: string,
+    commentId: string,
+    userId: string,
+  ): Promise<SongPostDocument | null> {
     const post = await this.songPostModel.findById(postId);
     if (!post) return null;
-    const comment = post.comments.find((c: any) => c._id?.toString() === commentId);
+    const comment = post.comments.find(
+      (c: any) => c._id?.toString() === commentId,
+    );
     if (!comment) return null;
 
     const index = comment.likedBy.indexOf(userId);
@@ -117,20 +136,21 @@ export class SongPostService {
 
   async getPostsByUserIds(userIds: string[]): Promise<any[]> {
     // Find posts where userId is in the userIds array
-    const posts = await this.songPostModel.find({ userId: { $in: userIds } }).sort({ createdAt: -1 }).lean();
+    const posts = await this.songPostModel
+      .find({ userId: { $in: userIds } })
+      .sort({ createdAt: -1 })
+      .lean();
     // Attach username for each post
-    const postsWithUsernames = await Promise.all(posts.map(async post => {
-      const username = await this.userService.getUsernameById(post.userId);
-      return {
-        ...post,
-        username: username || '',
-      };
-    }));
-    //console.log('Follower posts with usernames:', postsWithUsernames); 
+    const postsWithUsernames = await Promise.all(
+      posts.map(async (post) => {
+        const username = await this.userService.getUsernameById(post.userId);
+        return {
+          ...post,
+          username: username || '',
+        };
+      }),
+    );
+    //console.log('Follower posts with usernames:', postsWithUsernames);
     return postsWithUsernames;
-  }
-
-  async countPostsByUser(userId: string): Promise<number> {
-    return this.songPostModel.countDocuments({ userId }).exec();
   }
 }

@@ -16,7 +16,7 @@ export class ProfileController {
     @Param('userId') userId: string,
     @Body() updateData: any,
   ) {
-    // Pass username in updateData if present
+    // Pass username and fullName in updateData if present
     return this.profileService.updateProfileByUserId(userId, updateData);
   }
 
@@ -41,8 +41,25 @@ export class ProfileController {
       userId: string;
       bio?: string;
       profileImage?: string;
+      fullName?: string;
     },
   ) {
     return this.profileService.createProfile(createProfileDto);
+  }
+
+  @Get(':userId/post_count')
+  async countPostsByUser(@Param('userId') userId: string) {
+    const count = await this.profileService.countPostsByUser(userId);
+    return { userId, postCount: count };
+  }
+
+  @Get(':userId/followers')
+  async getFollowersListWithDetails(@Param('userId') userId: string) {
+    return this.profileService.getFollowersListWithDetails(userId);
+  }
+
+  @Get(':userId/following')
+  async getFollowingListWithDetails(@Param('userId') userId: string) {
+    return this.profileService.getFollowingListWithDetails(userId);
   }
 }

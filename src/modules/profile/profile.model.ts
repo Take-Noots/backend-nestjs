@@ -13,7 +13,8 @@ export class Profile {
   @Prop({ required: true, unique: true })
   userId: string;
 
-  // username removed
+  @Prop()
+  fullName?: string;
 
   @Prop()
   profileImage?: string;

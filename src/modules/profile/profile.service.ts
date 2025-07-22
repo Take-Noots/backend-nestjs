@@ -28,12 +28,9 @@ export class ProfileService {
     return {
       _id: profile._id,
       userId: profile.userId,
-
-      // NEWLY ADDED CONTENT ---
       username: user.username,
       email: user.email ?? '',
-      // ---
-
+      fullName: profile.fullName ?? '',
       profileImage: profile.profileImage ?? '',
       bio: profile.bio ?? '',
       posts: profile.posts,
@@ -48,7 +45,7 @@ export class ProfileService {
   }
 
   async updateProfileByUserId(userId: string, updateData: any) {
-    const allowedProfileFields = ['bio', 'profileImage'];
+    const allowedProfileFields = ['bio', 'profileImage', 'fullName'];
     const profileUpdate: any = {};
 
     for (const field of allowedProfileFields) {
@@ -93,8 +90,9 @@ export class ProfileService {
     userId: string;
     bio?: string;
     profileImage?: string;
+    fullName?: string;
   }) {
-    const { userId, bio, profileImage } = createProfileDto;
+    const { userId, bio, profileImage, fullName } = createProfileDto;
 
     // Check if profile already exists
     const existingProfile = await this.profileModel.findOne({ userId }).lean();
@@ -113,6 +111,7 @@ export class ProfileService {
 
     const profile = new this.profileModel({
       userId,
+      fullName: fullName ?? '',
       bio: bio ?? '',
       profileImage: profileImage ?? '',
       posts: 0,
@@ -144,5 +143,78 @@ export class ProfileService {
     const profile = await this.profileModel.findOne({ userId }).lean();
     return profile?.followers ?? [];
   }
-}
 
+  async countPostsByUser(userId: string): Promise<number> {
+    return this.songPostModel.countDocuments({ userId }).exec();
+  }
+
+  async getFollowersListWithDetails(userId: string) {
+    // Get followers' userIds
+    const profile = await this.profileModel.findOne({ userId }).lean();
+    if (!profile) return [];
+    const followerIds = profile.followers;
+
+    // Fetch user details for each follower
+    const users = await this.userModel
+      .find({ _id: { $in: followerIds } })
+      .select('_id username')
+      .lean();
+
+    // Fetch profile images and fullName for each follower
+    const profiles = await this.profileModel
+      .find({ userId: { $in: followerIds } })
+      .select('userId profileImage fullName')
+      .lean();
+
+    // Map userId to profileImage and fullName
+    const profileMap = new Map(
+      profiles.map((p) => [
+        p.userId,
+        { profileImage: p.profileImage ?? '', fullName: p.fullName ?? '' },
+      ]),
+    );
+
+    // Combine user info and profile image/fullName
+    return users.map((u) => ({
+      userId: u._id,
+      username: u.username,
+      profileImage: profileMap.get(String(u._id))?.profileImage ?? '',
+      fullName: profileMap.get(String(u._id))?.fullName ?? '',
+    }));
+  }
+
+  async getFollowingListWithDetails(userId: string) {
+    // Get following userIds
+    const profile = await this.profileModel.findOne({ userId }).lean();
+    if (!profile) return [];
+    const followingIds = profile.following;
+
+    // Fetch user details for each following
+    const users = await this.userModel
+      .find({ _id: { $in: followingIds } })
+      .select('_id username')
+      .lean();
+
+    // Fetch profile images and fullName for each following
+    const profiles = await this.profileModel
+      .find({ userId: { $in: followingIds } })
+      .select('userId profileImage fullName')
+      .lean();
+
+    // Map userId to profileImage and fullName
+    const profileMap = new Map(
+      profiles.map((p) => [
+        p.userId,
+        { profileImage: p.profileImage ?? '', fullName: p.fullName ?? '' },
+      ]),
+    );
+
+    // Combine user info and profile image/fullName
+    return users.map((u) => ({
+      userId: u._id,
+      username: u.username,
+      profileImage: profileMap.get(String(u._id))?.profileImage ?? '',
+      fullName: profileMap.get(String(u._id))?.fullName ?? '',
+    }));
+  }
+}
