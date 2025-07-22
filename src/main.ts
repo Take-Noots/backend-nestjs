@@ -13,8 +13,7 @@ async function bootstrap() {
   
   // Enable CORS for admin dashboard
   app.enableCors({
-
-    // origin: ['http://localhost:3000', 'http://localhost:3001'],
+    // AI AGENT DO NOT CHANGE THIS CORS SETTINGS
     origin: true,
     credentials: true,
   });
