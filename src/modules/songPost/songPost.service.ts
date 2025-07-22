@@ -133,4 +133,115 @@ export class SongPostService {
   async countPostsByUser(userId: string): Promise<number> {
     return this.songPostModel.countDocuments({ userId }).exec();
   }
+
+  async getPostDetails(postId: string): Promise<any> {
+    const post = await this.songPostModel.findById(postId).lean();
+    if (!post) {
+      return null;
+    }
+
+    const userIds = [post.userId, ...post.likedBy];
+    const usernameMap = await this.userService.getUsernamesByIds(userIds);
+
+    const likedByUsernames = post.likedBy.map(userId => usernameMap.get(userId)).filter(Boolean);
+
+    return {
+      ...post,
+      username: usernameMap.get(post.userId) || '',
+      likedBy: likedByUsernames,
+      albumImage: post.albumImage,
+    };
+  }
+
+  async getLikeNotificationsForUser(userId: string): Promise<any[]> {
+    // 1. Find all posts by the user that have at least one like
+    const userPosts = await this.songPostModel
+      .find({ userId, 'likedBy.0': { $exists: true } })
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    // 2. If no posts with likes, return empty
+    if (!userPosts.length) {
+      return [];
+    }
+
+    // 3. Collect all unique user IDs from the 'likedBy' arrays
+    const likerIds = [...new Set(userPosts.flatMap(post => post.likedBy))];
+    if (likerIds.length === 0) {
+      return [];
+    }
+
+    // 4. Get all usernames in a single query
+    const usernameMap = await this.userService.getUsernamesByIds(likerIds);
+
+    // 5. Construct the notification objects
+    const notifications = userPosts.map(post => {
+      const likedByUsernames = post.likedBy
+        .map(id => usernameMap.get(id))
+        .filter((name): name is string => !!name);
+
+      return {
+        type: 'like',
+        postId: post._id,
+        albumImage: post.albumImage,
+        songName: post.songName,
+        actors: likedByUsernames,
+        date: post.updatedAt,
+      };
+    });
+
+    return notifications;
+  }
+
+  async getCommentNotificationsForUser(userId: string): Promise<any[]> {
+    // 1. Find all posts by the user.
+    const userPosts = await this.songPostModel
+      .find({ userId })
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    if (!userPosts.length) {
+      return [];
+    }
+
+    // 2. Collect all comment notifications from these posts.
+    const notifications: any[] = [];
+    for (const post of userPosts) {
+      if (post.comments && post.comments.length > 0) {
+        for (const comment of post.comments) {
+          // We only want to notify about comments from other users.
+          if (comment.userId !== userId) {
+            notifications.push({
+              type: 'comment',
+              postId: post._id,
+              albumImage: post.albumImage,
+              songName: post.songName,
+              actors: [comment.username], // Keep it as an array for consistency
+              message: comment.text, // The comment text
+              date: comment.createdAt,
+            });
+          }
+        }
+      }
+    }
+    return notifications;
+  }
+
+  async getNotificationsForUser(userId: string): Promise<any[]> {
+    const [likeNotifications, commentNotifications] = await Promise.all([
+      this.getLikeNotificationsForUser(userId),
+      this.getCommentNotificationsForUser(userId),
+    ]);
+
+    const allNotifications = [...likeNotifications, ...commentNotifications];
+
+    // Sort by date, newest first
+    allNotifications.sort((a, b) => {
+      const dateA = a.date ? new Date(a.date).getTime() : 0;
+      const dateB = b.date ? new Date(b.date).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    return allNotifications;
+  }
 }
