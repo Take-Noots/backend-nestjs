@@ -40,6 +40,7 @@ export class ProfileController {
   }
 
 
+
   @Post()
   async createProfile(
     @Body()
@@ -69,3 +70,4 @@ export class ProfileController {
     return this.profileService.getFollowingListWithDetails(userId);
   }
 }
+

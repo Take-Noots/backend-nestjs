@@ -133,132 +133,70 @@ export class AdminService {
 
   // ===== CONTENT MODERATION (FIXED FOR POSTS) =====
   async getAllPosts(page: number = 1, limit: number = 10, reported?: boolean) {
-    try {
-      console.log('📊 AdminService.getAllPosts called');
-      const skip = (page - 1) * limit;
-      
-      // Get all posts from SongPostService - but don't use findAllWithUsernames to avoid the error
-      console.log('🔄 Getting posts without usernames first...');
-      const allPosts = await this.songPostService.findAll();
-      console.log(`📈 Found ${allPosts.length} posts from SongPostService`);
-      
-      // Apply filters
-      let filteredPosts = allPosts;
-      if (reported) {
-        // Since songPost model doesn't have isReported field, return empty array for now
-        filteredPosts = [];
-
-      }
-      
-      // Apply pagination
-      const paginatedPosts = filteredPosts.slice(skip, skip + limit);
-      const total = filteredPosts.length;
-      
-      console.log(`📊 Processing ${paginatedPosts.length} posts after pagination`);
-      
-      // Process posts with safe username lookup and ID cleaning
-      const processedPosts = await Promise.all(paginatedPosts.map(async (post) => {
-        try {
-          // Clean the userId before processing
-          const cleanUserId = this.cleanObjectId(post.userId);
-          console.log(`🔍 Processing post ${post._id} with userId: "${post.userId}" -> cleaned: "${cleanUserId}"`);
-          
-          const username = cleanUserId ? await this.safeGetUsername(cleanUserId) : 'Unknown User';
-          
-          return {
-            id: post._id,
-            userId: cleanUserId || post.userId,
-            username: username,
-            songTitle: post.songName,
-            artistName: post.artists,
-            albumArt: post.albumImage,
-            description: post.caption,
-            likesCount: post.likes || 0,
-            commentsCount: post.comments ? post.comments.length : 0,
-            sharesCount: 0, // Not in songPost model
-            trackId: post.trackId,
-            isReported: false, // Placeholder - add this field to songPost model if needed
-            createdAt: post.createdAt,
-            updatedAt: post.updatedAt
-          };
-        } catch (error) {
-          console.error(`❌ Error processing post ${post._id}:`, error.message);
-          // Return post with default values if processing fails
-          return {
-            id: post._id,
-            userId: post.userId,
-            username: 'Error Loading User',
-            songTitle: post.songName || 'Unknown Song',
-            artistName: post.artists || 'Unknown Artist',
-            albumArt: post.albumImage,
-            description: post.caption,
-            likesCount: post.likes || 0,
-            commentsCount: post.comments ? post.comments.length : 0,
-            sharesCount: 0,
-            trackId: post.trackId,
-            isReported: false,
-            createdAt: post.createdAt,
-            updatedAt: post.updatedAt
-          };
-        }
-      }));
-      
-      console.log(`✅ Successfully processed ${processedPosts.length} posts`);
-      
-      return {
-        posts: processedPosts,
-        pagination: {
-          current: page,
-          total: Math.ceil(total / limit),
-          count: paginatedPosts.length,
-          totalPosts: total
-        }
-      };
-    } catch (error) {
-      console.error('❌ Error in AdminService.getAllPosts:', error.message);
-      throw new Error(`Failed to fetch posts: ${error.message}`);
+    const skip = (page - 1) * limit;
+    
+        // Get all posts with usernames from SongPostService
+        const allPostsWithUsernames = await this.songPostService.findAllWithUsernames();
+    
+    // Apply filters
+    let filteredPosts = allPostsWithUsernames;
+    if (reported) {
+      // For now, we'll assume all posts are not reported since songPost model doesn't have isReported field
+      // You may need to add this field to your songPost model if you want reporting functionality
+      filteredPosts = [];
     }
+    
+    // Apply pagination
+    const paginatedPosts = filteredPosts.slice(skip, skip + limit);
+    const total = filteredPosts.length;
+    
+    return {
+      posts: paginatedPosts.map(post => ({
+        id: post._id,
+        userId: post.userId,
+        username: post.username,
+        songTitle: post.songName, // Map songName to songTitle for admin interface
+        artistName: post.artists, // Map artists to artistName
+        albumArt: post.albumImage, // Map albumImage to albumArt
+        description: post.caption, // Map caption to description
+        likesCount: post.likes,
+        commentsCount: post.comments ? post.comments.length : 0,
+        isReported: false, // Placeholder - add this field to songPost model if needed
+        createdAt: post.createdAt,
+        updatedAt: post.updatedAt
+      })),
+      pagination: {
+        current: page,
+        total: Math.ceil(total / limit),
+        count: paginatedPosts.length,
+        totalPosts: total
+      }
+    };
   }
 
   async getPostById(postId: string) {
-    try {
-      console.log(`📊 AdminService.getPostById called with: ${postId}`);
-      
-      const cleanPostId = this.cleanObjectId(postId);
-      if (!cleanPostId) {
-        throw new Error(`Invalid post ID: ${postId}`);
-      }
-      
-      const post = await this.songPostService.findById(cleanPostId);
-      if (!post) {
-        throw new Error('Post not found');
-      }
-
-      // Get username safely with cleaned userId
-      const cleanUserId = this.cleanObjectId(post.userId);
-      const username = cleanUserId ? await this.safeGetUsername(cleanUserId) : 'Unknown User';
-
-      return {
-        id: post._id,
-        userId: cleanUserId || post.userId,
-        username: username,
-        songTitle: post.songName,
-        artistName: post.artists,
-        albumArt: post.albumImage,
-        description: post.caption,
-        likesCount: post.likes || 0,
-        commentsCount: post.comments ? post.comments.length : 0,
-        sharesCount: 0, // Not in songPost model
-        trackId: post.trackId,
-        isReported: false,
-        createdAt: post.createdAt,
-        updatedAt: post.updatedAt
-      };
-    } catch (error) {
-      console.error(`❌ Error in AdminService.getPostById:`, error.message);
-      throw error;
+    const post = await this.songPostService.findById(postId);
+    if (!post) {
+      throw new Error('Post not found');
     }
 
+    // Get username separately since it's not in the post document
+    const username = await this.userService.getUsernameById(post.userId);
+
+    return {
+      id: post._id,
+      userId: post.userId,
+      username: username || '',
+      songTitle: post.songName,
+      artistName: post.artists,
+      albumArt: post.albumImage,
+      description: post.caption,
+      likesCount: post.likes,
+      commentsCount: post.comments ? post.comments.length : 0,
+      isReported: false, // Placeholder
+      createdAt: post.createdAt,
+      updatedAt: post.updatedAt
+    };
   }
 
   async deletePost(postId: string, reason: string, deletedBy: string) {
