@@ -14,6 +14,9 @@ export class Comment {
   userId: string;
 
   @Prop({ required: true })
+  username: string;
+
+  @Prop({ required: true })
   text: string;
 
   @Prop({ default: Date.now })

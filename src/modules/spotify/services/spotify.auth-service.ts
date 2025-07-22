@@ -114,6 +114,7 @@ export class SpotifyAuthService {
     }
 
     async refreshToken(refresh_token: string): Promise<{ access_token: string, new_refresh_token: string }> {
+        console.log("Debug [at.spotify.auth.service] : Refresh token is", refresh_token);
         if (!refresh_token) {
             throw new Error('Refresh token is required');
         }
@@ -123,7 +124,8 @@ export class SpotifyAuthService {
                 querystring.stringify({
                     grant_type: 'refresh_token',
                     refresh_token: refresh_token as string,
-                    client_id: CLIENT_ID
+                    client_id: CLIENT_ID,
+                    client_secret: CLIENT_SECRET 
                 }), {
                     headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
@@ -135,7 +137,7 @@ export class SpotifyAuthService {
             return { access_token, new_refresh_token };
             
         } catch (error: any) {
-            throw new Error(`Failed to refresh token: ${error.message}`);
+            throw new Error(`Failed to refresh token [at.spotify.auth.service]: ${error.message}`);
         }
     }
 

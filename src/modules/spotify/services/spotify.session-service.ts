@@ -102,7 +102,7 @@ export class SpotifySessionService {
         const refreshToken = await this.getRefreshToken(userId);
         
         if (!refreshToken) {
-          return null; // No refresh token available
+          throw new Error('No refresh token available for user: ' + userId);
         }
         
         // Import SpotifyAuthService to prevent circular dependency
@@ -122,12 +122,12 @@ export class SpotifySessionService {
         
         return access_token;
       } catch (error) {
-        console.error('Failed to refresh access token:', error);
-        return null;
+        console.error('Failed to refresh access token [at.spotify.session.service] :', error);
+        return "";
       }
     }
     
-    return null; // This line should never be reached, but TypeScript needs it
+    return ""; // This line should never be reached, but TypeScript needs it
   }
 
   // Save or update refresh token in database

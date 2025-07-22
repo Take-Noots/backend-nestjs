@@ -1,14 +1,13 @@
 // src/modules/fanbases/fanbase.model.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import mongoose, { HydratedDocument } from 'mongoose';
 import { Types } from 'mongoose';
 
 export type FanbaseDocument = HydratedDocument<Fanbase>;
 
 @Schema()
 export class Fanbase {
-  @Prop({ type: Types.ObjectId, auto: true })
-  _id: Types.ObjectId;
+  _id: mongoose.Types.ObjectId;
 
   @Prop({ required: true, unique: true })
   fanbaseName: string;

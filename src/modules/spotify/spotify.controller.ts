@@ -120,10 +120,10 @@ export class SpotifyController {
 //     }
 //   }
 
-  @Get('refresh')
+  @Get('/old/refresh')
   @SkipSpotifyAuth()
   async refresh(
-    @SpotifyRefreshToken(SpotifyRefreshTokenPipe) refresh_token: string,
+    @Body('refresh_token') refresh_token: string,
     @Res() res: Response,
   ): Promise<void> {
     try {
@@ -143,7 +143,7 @@ export class SpotifyController {
       res.json({ message: 'Refresh Successful' });
     } catch (error) {
       throw new HttpException(
-        `Failed to refresh token : ${error.message}`,
+        `Failed to refresh token [at.spotify.controller]: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

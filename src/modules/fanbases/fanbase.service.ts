@@ -26,7 +26,6 @@ export class FanbaseService {
     return fanbase ? this.toFanbaseType(fanbase) : null;
   }
 
-  // ===== BASIC CRUD OPERATIONS =====
   async findAllWithPagination(filter: any = {}, skip: number = 0, limit: number = 10): Promise<FanbaseType[]> {
     const fanbases = await this.fanbaseModel.find(filter)
       .skip(skip)
@@ -36,16 +35,16 @@ export class FanbaseService {
     return fanbases.map(fanbase => this.toFanbaseType(fanbase));
   }
 
-  async countFanbases(filter: any = {}): Promise<number> {
-    return await this.fanbaseModel.countDocuments(filter).exec();
-  }
-
   async getTopFanbases(limit: number = 10): Promise<FanbaseType[]> {
     const fanbases = await this.fanbaseModel.find()
       .sort({ numberOfLikes: -1, numberOfPosts: -1, numberOfComments: -1 })
       .limit(limit)
       .exec();
     return fanbases.map(fanbase => this.toFanbaseType(fanbase));
+  }
+
+  async countFanbases(filter: any = {}): Promise<number> {
+    return await this.fanbaseModel.countDocuments(filter).exec();
   }
 
   private toFanbaseType(fanbase: FanbaseDocument): FanbaseType {
