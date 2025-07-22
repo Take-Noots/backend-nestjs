@@ -17,6 +17,8 @@ export interface UserType {
   bannedAt?: Date;
   banUntil?: Date;
   lastActive?: Date;
+  isOnline?: boolean; 
+  lastSeen?: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }
