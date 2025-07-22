@@ -14,7 +14,8 @@ async function bootstrap() {
   // Enable CORS for admin dashboard
   app.enableCors({
 
-    origin: ['http://localhost:3000', 'http://localhost:3001'],
+    // origin: ['http://localhost:3000', 'http://localhost:3001'],
+    origin: true,
     credentials: true,
   });
   
