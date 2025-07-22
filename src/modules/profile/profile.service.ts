@@ -5,6 +5,7 @@ import { Profile, ProfileDocument } from './profile.model';
 import { ProfileDto } from './dto/profile.dto';
 import { SongPost, SongPostDocument } from '../songPost/songPost.model';
 import { User, UserDocument } from '../user/user.model'; // <-- fix import
+import { Post, PostDocument } from '../posts/post.model'; // <-- add import
 
 @Injectable()
 export class ProfileService {
@@ -12,6 +13,7 @@ export class ProfileService {
     @InjectModel(Profile.name) private profileModel: Model<ProfileDocument>,
     @InjectModel(SongPost.name) private songPostModel: Model<SongPostDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>, // <-- inject User model
+    @InjectModel(Post.name) private postModel: Model<PostDocument>, // <-- inject Post model
   ) {}
 
   async getProfileByUserId(userId: string): Promise<ProfileDto | null> {
@@ -142,6 +144,37 @@ export class ProfileService {
   async getFollowers(userId: string): Promise<string[]> {
     const profile = await this.profileModel.findOne({ userId }).lean();
     return profile?.followers ?? [];
+  }
+
+  /**
+   * Get total number of likes, comments, and all comments for each post by userId
+   * Returns an array of objects: { postId, type, likes, commentsCount, comments }
+   * type: 'SongPost' | 'Post'
+   */
+  async getPostStatsByUserId(userId: string) {
+    // SongPost posts
+    const songPosts = await this.songPostModel.find({ userId }).lean();
+    const songPostStats = songPosts.map((post) => ({
+      postId: post._id?.toString(),
+      type: 'SongPost',
+      likes: post.likes || 0,
+      commentsCount: post.comments ? post.comments.length : 0,
+      comments: post.comments || [],
+    }));
+
+    // Post posts
+    const posts = await this.postModel.find({ userId }).lean();
+    // Note: Post model only has likesCount/commentsCount, not actual comments array
+    const postStats = posts.map((post) => ({
+      postId: post._id?.toString(),
+      type: 'Post',
+      likes: post.likesCount || 0,
+      commentsCount: post.commentsCount || 0,
+      comments: [], // No comments array in Post model
+    }));
+
+    // Combine and return
+    return [...songPostStats, ...postStats];
   }
 
   async countPostsByUser(userId: string): Promise<number> {

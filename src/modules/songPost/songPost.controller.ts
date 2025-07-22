@@ -41,6 +41,15 @@ export class SongPostController {
     return this.songPostService.findById(id);
   }
 
+  @Get(':id/details')
+  async getPostDetails(@Param('id') id: string) {
+    const details = await this.songPostService.getPostDetails(id);
+    if (!details) {
+      return { success: false, message: 'Post not found' };
+    }
+    return { success: true, data: details };
+  }
+
   @Get('user/:userId')
   async findByUserId(
     @Param('userId') userId: string,
@@ -96,4 +105,19 @@ export class SongPostController {
     // 3. Print to terminal (already done in service)
     return { success: true, data: posts };
   }
+
+  @Get('notifications/:userId')
+  async getNotifications(@Param('userId') userId: string) {
+    const notifications =
+      await this.songPostService.getNotificationsForUser(userId);
+    return { success: true, data: notifications };
+  }
+
+  /*
+  @Get('user/:userId/count')
+  async countPostsByUser(@Param('userId') userId: string) {
+    const count = await this.songPostService.countPostsByUser(userId);
+    return { userId, postCount: count };
+  }
+  */
 }

@@ -20,6 +20,11 @@ export class ProfileController {
     return this.profileService.updateProfileByUserId(userId, updateData);
   }
 
+  @Get('post-stats/:userId')
+  async getPostStatsByUserId(@Param('userId') userId: string) {
+    return this.profileService.getPostStatsByUserId(userId);
+  }
+
   @Get(':userId')
   async getProfileByUserId(
     @Param('userId') userId: string,

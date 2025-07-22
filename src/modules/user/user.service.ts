@@ -320,6 +320,15 @@ export class UserService {
     const user = await this.userModel.findById(userId).select('username').lean();
     return user ? user.username : null;
   }
+
+  async getUsernamesByIds(userIds: string[]): Promise<Map<string, string>> {
+    const users = await this.userModel.find({ _id: { $in: userIds } }).select('_id username').lean();
+    const usernameMap = new Map<string, string>();
+    users.forEach(user => {
+      usernameMap.set(user._id.toString(), user.username);
+    });
+    return usernameMap;
+  }
 }
 
 // OLD USER SERVICE 
