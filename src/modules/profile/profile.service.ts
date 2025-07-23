@@ -84,6 +84,7 @@ export class ProfileService {
         ...updatedProfile,
         email: user?.email ?? '',
         username: user?.username ?? '',
+        fullName: updatedProfile.fullName ?? '',
       },
     };
   }
