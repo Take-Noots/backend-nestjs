@@ -108,7 +108,7 @@ Using curl, we will call the endpoint with the access token we retrieved from th
 To call this endpoint, use the following command in your terminal:
 
 ```
-curl -X POST http://localhost:3000/spotify/login -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ODdiYzAxMDljYjc3MzFhMjNmMGQ4ODEiLCJlbWFpbCI6ImlydXNoaXB1bnNhcmFuaXdhQGdtYWlsLmNvbSIsImV4cCI6MTc1Mjk0MTQ2Niwicm9sZSI6InVzZXIiLCJpYXQiOjE3NTI5NDA1NjZ9.4IrXR176fUV0WgFN5dt7dU2zdpsym4_IrDD8mffQrGY"
+curl -X POST http://localhost:3000/spotify/login -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ODc3ZDk0NDQyMmEyN2FiNDJkYjA1MzEiLCJlbWFpbCI6Im5ldGhtaUBnbWFpbC5jb20iLCJleHAiOjE3NTMxNzAwNTksInJvbGUiOiJhZG1pbiIsImlhdCI6MTc1MzE2OTE1OX0.UcXPZaAXzDkj6E0yCzf8rPZl6Iprp5AAW7ChX_QNeTE"
 ```
 
 Make sure your `Authorization` header follows this exact format:
