@@ -56,6 +56,11 @@ export class SearchService {
         username,
         userImage,
         trackId: post.trackId,
+        likes: post.likes || 0,
+        comments: post.comments || [],
+        commentsCount: post.comments ? post.comments.length : 0,
+        likedBy: post.likedBy || [],
+        updatedAt: post.updatedAt || new Date(),
       };
     }));
     return {
