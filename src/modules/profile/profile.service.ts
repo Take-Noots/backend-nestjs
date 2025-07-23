@@ -5,6 +5,7 @@ import { Profile, ProfileDocument } from './profile.model';
 import { ProfileDto } from './dto/profile.dto';
 import { SongPost, SongPostDocument } from '../songPost/songPost.model';
 import { User, UserDocument } from '../user/user.model'; // <-- fix import
+import { Post, PostDocument } from '../posts/post.model'; // <-- add import
 
 @Injectable()
 export class ProfileService {
@@ -12,6 +13,7 @@ export class ProfileService {
     @InjectModel(Profile.name) private profileModel: Model<ProfileDocument>,
     @InjectModel(SongPost.name) private songPostModel: Model<SongPostDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>, // <-- inject User model
+    @InjectModel(Post.name) private postModel: Model<PostDocument>, // <-- inject Post model
   ) {}
 
   async getProfileByUserId(userId: string): Promise<ProfileDto | null> {
@@ -28,12 +30,9 @@ export class ProfileService {
     return {
       _id: profile._id,
       userId: profile.userId,
-
-      // NEWLY ADDED CONTENT ---
       username: user.username,
       email: user.email ?? '',
-      // ---
-
+      fullName: profile.fullName ?? '',
       profileImage: profile.profileImage ?? '',
       bio: profile.bio ?? '',
       posts: profile.posts,
@@ -48,7 +47,7 @@ export class ProfileService {
   }
 
   async updateProfileByUserId(userId: string, updateData: any) {
-    const allowedProfileFields = ['bio', 'profileImage'];
+    const allowedProfileFields = ['bio', 'profileImage', 'fullName'];
     const profileUpdate: any = {};
 
     for (const field of allowedProfileFields) {
@@ -89,6 +88,45 @@ export class ProfileService {
     };
   }
 
+  async createProfile(createProfileDto: {
+    userId: string;
+    bio?: string;
+    profileImage?: string;
+    fullName?: string;
+  }) {
+    const { userId, bio, profileImage, fullName } = createProfileDto;
+
+    // Check if profile already exists
+    const existingProfile = await this.profileModel.findOne({ userId }).lean();
+    if (existingProfile) {
+      return {
+        success: false,
+        message: 'Profile already exists for this user',
+      };
+    }
+
+    // Optionally, check if user exists
+    const user = await this.userModel.findById(userId).lean();
+    if (!user) {
+      return { success: false, message: 'User not found' };
+    }
+
+    const profile = new this.profileModel({
+      userId,
+      fullName: fullName ?? '',
+      bio: bio ?? '',
+      profileImage: profileImage ?? '',
+      posts: 0,
+      followers: [],
+      following: [],
+      albumArts: [],
+    });
+
+    await profile.save();
+
+    return { success: true, message: 'Profile created successfully', profile };
+  }
+
   // COMMENTED OUT THIS FUNCTION... UNCOMMENT IF NEEDED
   async addFollowers(userId: string, followerId: string): Promise<void> {
     // Add followerId to userId's followers array
@@ -107,5 +145,109 @@ export class ProfileService {
     const profile = await this.profileModel.findOne({ userId }).lean();
     return profile?.followers ?? [];
   }
-}
 
+  /**
+   * Get total number of likes, comments, and all comments for each post by userId
+   * Returns an array of objects: { postId, type, likes, commentsCount, comments }
+   * type: 'SongPost' | 'Post'
+   */
+  async getPostStatsByUserId(userId: string) {
+    // SongPost posts
+    const songPosts = await this.songPostModel.find({ userId }).lean();
+    const songPostStats = songPosts.map((post) => ({
+      postId: post._id?.toString(),
+      type: 'SongPost',
+      likes: post.likes || 0,
+      commentsCount: post.comments ? post.comments.length : 0,
+      comments: post.comments || [],
+    }));
+
+    // Post posts
+    const posts = await this.postModel.find({ userId }).lean();
+    // Note: Post model only has likesCount/commentsCount, not actual comments array
+    const postStats = posts.map((post) => ({
+      postId: post._id?.toString(),
+      type: 'Post',
+      likes: post.likesCount || 0,
+      commentsCount: post.commentsCount || 0,
+      comments: [], // No comments array in Post model
+    }));
+
+    // Combine and return
+    return [...songPostStats, ...postStats];
+  }
+
+  async countPostsByUser(userId: string): Promise<number> {
+    return this.songPostModel.countDocuments({ userId }).exec();
+  }
+
+  async getFollowersListWithDetails(userId: string) {
+    // Get followers' userIds
+    const profile = await this.profileModel.findOne({ userId }).lean();
+    if (!profile) return [];
+    const followerIds = profile.followers;
+
+    // Fetch user details for each follower
+    const users = await this.userModel
+      .find({ _id: { $in: followerIds } })
+      .select('_id username')
+      .lean();
+
+    // Fetch profile images and fullName for each follower
+    const profiles = await this.profileModel
+      .find({ userId: { $in: followerIds } })
+      .select('userId profileImage fullName')
+      .lean();
+
+    // Map userId to profileImage and fullName
+    const profileMap = new Map(
+      profiles.map((p) => [
+        p.userId,
+        { profileImage: p.profileImage ?? '', fullName: p.fullName ?? '' },
+      ]),
+    );
+
+    // Combine user info and profile image/fullName
+    return users.map((u) => ({
+      userId: u._id,
+      username: u.username,
+      profileImage: profileMap.get(String(u._id))?.profileImage ?? '',
+      fullName: profileMap.get(String(u._id))?.fullName ?? '',
+    }));
+  }
+
+  async getFollowingListWithDetails(userId: string) {
+    // Get following userIds
+    const profile = await this.profileModel.findOne({ userId }).lean();
+    if (!profile) return [];
+    const followingIds = profile.following;
+
+    // Fetch user details for each following
+    const users = await this.userModel
+      .find({ _id: { $in: followingIds } })
+      .select('_id username')
+      .lean();
+
+    // Fetch profile images and fullName for each following
+    const profiles = await this.profileModel
+      .find({ userId: { $in: followingIds } })
+      .select('userId profileImage fullName')
+      .lean();
+
+    // Map userId to profileImage and fullName
+    const profileMap = new Map(
+      profiles.map((p) => [
+        p.userId,
+        { profileImage: p.profileImage ?? '', fullName: p.fullName ?? '' },
+      ]),
+    );
+
+    // Combine user info and profile image/fullName
+    return users.map((u) => ({
+      userId: u._id,
+      username: u.username,
+      profileImage: profileMap.get(String(u._id))?.profileImage ?? '',
+      fullName: profileMap.get(String(u._id))?.fullName ?? '',
+    }));
+  }
+}
