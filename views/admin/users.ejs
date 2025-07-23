@@ -357,7 +357,7 @@
                             <div>
                                 <p class="text-sm font-medium text-gray-600">Moderators</p>
                                 <p class="text-2xl font-bold text-purple-600 mt-1">
-                                    <%= users ? users.filter(u => u.role === 'moderator').length : 0 %>
+                                    <%= users ? users.filter(u => u.role === 'admin').length : 0 %>
                                 </p>
                             </div>
                             <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
