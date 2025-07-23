@@ -16,6 +16,6 @@ import { ProfileModule } from '../profile/profile.module';
   ],
   controllers: [SongPostController],
   providers: [SongPostService],
-  exports: [SongPostService],
+  exports: [SongPostService, MongooseModule],
 })
 export class SongPostModule {}

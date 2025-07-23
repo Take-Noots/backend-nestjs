@@ -147,6 +147,7 @@ export class AdminService {
       if (reported) {
         // Since songPost model doesn't have isReported field, return empty array for now
         filteredPosts = [];
+
       }
       
       // Apply pagination
@@ -257,6 +258,7 @@ export class AdminService {
       console.error(`❌ Error in AdminService.getPostById:`, error.message);
       throw error;
     }
+
   }
 
   async deletePost(postId: string, reason: string, deletedBy: string) {
