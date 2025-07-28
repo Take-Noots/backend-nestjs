@@ -1,10 +1,10 @@
-
 import { Controller, Get, Post, Body, HttpException, HttpStatus, Query, Req, Res, UseGuards, Put } from '@nestjs/common';
 import { Response, Request } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/role.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
+import { JwtRefreshUserPipe } from '../../common/pipes/jwt-refresh-user.pipe';
 import { JwtUser, JwtUserData } from '../../common/decorators/jwt-user.decorator';
 import { SkipSpotifyAuth } from './decorators/spotify-skip-auth.decorator';
 import { SpotifyToken } from './decorators/spotify-token.decorator';
@@ -51,7 +51,7 @@ export class SpotifyController {
         }
     }
     
-    @Post('login')
+    @Get('login')
     @UseGuards(JwtAuthGuard)
     login(@JwtUser() user: JwtUserData, @Res() res: Response): void{
         
@@ -61,6 +61,20 @@ export class SpotifyController {
         res.redirect(`https://accounts.spotify.com/authorize?${loginParams}`);
     }
 
+    @Get('login/alt')
+    loginAlt(@Req() req: Request, @Res() res: Response): void {
+        // Extract refresh_token from cookies
+        const userId = new JwtRefreshUserPipe().transform(req, { type: 'custom' });
+        if (!userId) {
+            throw new HttpException('No user found', HttpStatus.UNAUTHORIZED);
+        }
+
+        // You may want to associate the refresh token with a user in your DB here
+        // For now, just use the refresh token as the state (or generate a state if needed)
+        const state = this.sessionService.createStateToken(userId);
+        const loginParams = this.authService.login(state);
+        res.redirect(`https://accounts.spotify.com/authorize?${loginParams}`);
+    }
 
     @Get('callback')
     async callback(
