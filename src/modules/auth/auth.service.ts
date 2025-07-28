@@ -1,4 +1,3 @@
-
 // NEW AUTH SERVICE CODE
 
 import { Injectable } from '@nestjs/common';
@@ -9,6 +8,7 @@ import { UserType } from '@interfaces/user.interface';
 import * as bcrypt from 'bcrypt';
 import 'dotenv/config';
 import * as jwt from 'jsonwebtoken';
+import { SpotifySessionService } from '@modules/spotify/services/spotify.session-service';
 
 const myAccessSecret = process.env.ACCESS_TOKEN_SECRET as string;
 const myRefreshSecret = process.env.REFRESH_TOKEN_SECRET as string;
@@ -17,7 +17,7 @@ const myRefreshTokenDuration = process.env.REFRESH_TOKEN_DURATION ? parseInt(pro
 
 @Injectable()
 export class AuthService {
-    constructor(private userService: UserService) {}
+    constructor(private userService: UserService, private spotifySessionService: SpotifySessionService) {}
 
     async register(newUser: RegisterUserDTO): Promise<void> {
         // Check if user already exists
@@ -38,7 +38,7 @@ export class AuthService {
         await this.userService.create(user);
     }
 
-    async login(user: LoginUserDTO): Promise<[UserType, string, string]> {
+    async login(user: LoginUserDTO): Promise<[UserType, string, string, boolean]> {
         const foundUser = await this.userService.findByEmail(user.email);
         if (!foundUser) {
             throw new Error('Invalid credentials - User not found');
@@ -68,6 +68,9 @@ export class AuthService {
                 throw new Error('Invalid credentials - Password mismatch (bcrypt)');
             }
         }
+
+        // Check if Spotify is linked
+        const isSpotifyLinked = await this.spotifySessionService.isSpotifyLinked(foundUser._id.toString());
 
         const current_time = Math.floor(Date.now() / 1000);
         const access_expiration_time = current_time + myAccessTokenDuration; 
@@ -119,15 +122,15 @@ export class AuthService {
             console.error('❌ Token verification test failed:', verifyError.message);
         }
 
-        return [ foundUser, accessToken, refreshToken ];
+        return [ foundUser, accessToken, refreshToken, isSpotifyLinked ];
     }
 
     // Token refresh functionality (from main branch)
-    async refresh(refreshToken: string): Promise<[string, string, string, string]> {
-        return new Promise((resolve, reject) => {
+    async refresh(refreshToken: string): Promise<[string, string, string, string, boolean]> {
+        return new Promise(async (resolve, reject) => {
             try {
                 // Verify the refresh token
-                jwt.verify(refreshToken, myRefreshSecret, (err: Error | null, payload: any) => {
+                jwt.verify(refreshToken, myRefreshSecret, async (err: Error | null, payload: any) => {
                     if (err) {
                         return reject(new Error('Invalid refresh token'));
                     }
@@ -135,6 +138,8 @@ export class AuthService {
                     // Extract user ID and role from payload
                     const userId = payload.sub;
                     const role = payload.role;
+                    // Check if Spotify is linked
+                    const isSpotifyLinked = await this.spotifySessionService.isSpotifyLinked(userId);
                     
                     // NOTE: For improved security, we should verify if the user exists in database:
                     // const user = await this.userService.findById(userId);
@@ -164,7 +169,7 @@ export class AuthService {
                     const newAccessToken = jwt.sign(accessClaims, myAccessSecret, { algorithm: 'HS256' });
                     const newRefreshToken = jwt.sign(refreshClaims, myRefreshSecret, { algorithm: 'HS256' });
 
-                    resolve([newAccessToken, newRefreshToken, userId, role]);
+                    resolve([newAccessToken, newRefreshToken, userId, role, isSpotifyLinked]);
                 });
             } catch (error) {
                 reject(error);

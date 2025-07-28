@@ -168,6 +168,12 @@ export class SpotifySessionService {
     return !!session;
   }
 
+  // Check if a Spotify session exists for a user
+  async isSpotifyLinked(userId: string): Promise<boolean> {
+    const session = await this.sessionModel.findOne({ user_id: userId }).exec();
+    return !!session;
+  }
+
   // Delete a user's session
   async deleteSession(userId: string): Promise<boolean> {
     const result = await this.sessionModel.deleteOne({ user_id: userId }).exec();

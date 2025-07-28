@@ -24,7 +24,7 @@ export class AuthController{
     async login(@Body() user: LoginUserDTO, @Res() res: Response) {
         try {
             const result = await this.authService.login(user);
-            const [validatedUser, accessToken, refreshToken] = result as [UserType, string, string];
+            const [validatedUser, accessToken, refreshToken, isSpotifyLinked] = result as [UserType, string, string, boolean];
 
             res.cookie('refresh_token', refreshToken, { httpOnly: true });
             // res.setHeader('Authorization', `Bearer ${accessToken}`);
@@ -36,6 +36,7 @@ export class AuthController{
                     name: validatedUser.username,
                     email: validatedUser.email,
                     role: validatedUser.role,
+                    isSpotifyLinked: isSpotifyLinked,
                 },
             });
         } catch (error) {
@@ -54,7 +55,7 @@ export class AuthController{
             }
             
             // Call service to validate and generate new tokens
-            const [accessToken, newRefreshToken, userId, role] = await this.authService.refresh(refreshToken);
+            const [accessToken, newRefreshToken, userId, role, isSpotifyLinked] = await this.authService.refresh(refreshToken);
             
             // Set new refresh token in cookie
             res.cookie('refresh_token', newRefreshToken, { httpOnly: true });
@@ -65,7 +66,8 @@ export class AuthController{
                 accessToken: accessToken,
                 user: {
                     id: userId,
-                    role: role
+                    role: role,
+                    isSpotifyLinked: isSpotifyLinked,
                 }
             });
             
