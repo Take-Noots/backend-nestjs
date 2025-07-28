@@ -3,12 +3,13 @@ import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { UserModule } from '@modules/user/user.module';
-import { SpotifySessionService } from '@modules/spotify/services/spotify.session-service';
+import { SpotifyModule } from '@modules/spotify/spotify.module';
 
 @Module({
-  imports: [UserModule],
+  imports: [UserModule, SpotifyModule], 
   controllers: [AuthController],
-  providers: [AuthService, SpotifySessionService],
-  exports: [AuthService, SpotifySessionService], // Export SpotifySessionService
+  providers: [AuthService],
+  exports: [AuthService],
 })
+
 export class AuthModule {}
