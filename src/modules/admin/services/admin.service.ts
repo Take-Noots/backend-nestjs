@@ -367,12 +367,12 @@ export class AdminService {
         id: fanbase._id,
         name: fanbase.fanbaseName,
         description: fanbase.topic,
-        createdBy: fanbase.createdUserId,
+        createdBy: fanbase.createdBy?._id || 'Unknown', // Use createdBy._id instead of createdUserId
         membersCount: fanbase.numberOfLikes,
         postsCount: fanbase.numberOfPosts,
         numberOfLikes: fanbase.numberOfLikes,
         numberOfPosts: fanbase.numberOfPosts,
-        numberOfComments: fanbase.numberOfComments,
+        numberOfShares: fanbase.numberOfShares, // Use numberOfShares instead of numberOfComments
         isActive: true,
         createdAt: fanbase.createdAt
       })),
