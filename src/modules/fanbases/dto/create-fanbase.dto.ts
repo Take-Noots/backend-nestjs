@@ -2,6 +2,5 @@
 export class CreateFanbaseDTO {
   fanbaseName: string;
   topic: string;
-  createdUserId: string; // Match database field name
   fanbasePhotoUrl?: string;
 }
