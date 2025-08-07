@@ -8,6 +8,7 @@ import { DesSongPostModule } from './modules/desSongPost/desSongPost.module';
 import { SongPostModule } from './modules/songPost/songPost.module';
 import { SearchModule } from './modules/search/search.module';
 import { ProfileModule } from './modules/profile/profile.module';
+import { RecentlyLikedUserModule } from './modules/interaction/interaction.module';
 
 // Imports before Merge COnflict
 import { AdminModule } from './modules/admin/admin.module';
@@ -37,7 +38,8 @@ const dbUrl: string = process.env.DB_CONN_STRING as string;
     ReportModule,
     AdminModule,
     RequestModule,
-    ChatModule
+    ChatModule,
+    RecentlyLikedUserModule
   ]
 })
 export class AppModule {}
