@@ -519,8 +519,12 @@ export class AdminDashboardController {
   @UseGuards(AdminGuard)
   async createFanbase(@Body() fanbaseData: any) {
     try {
-      // Use FanbaseService directly to create fanbase
-      return await this.fanbaseService.create(fanbaseData);
+      // Admin creates fanbase - use a default admin user ID or extract from request
+      // You'll need to modify this based on how you want to handle admin-created fanbases
+      const adminUserId = fanbaseData.createdUserId || 'admin-user-id'; // Replace with actual admin user ID
+      
+      // Use FanbaseService with required userId parameter
+      return await this.fanbaseService.create(fanbaseData, adminUserId);
     } catch (error) {
       throw new HttpException(
         `Failed to create fanbase: ${error.message}`,

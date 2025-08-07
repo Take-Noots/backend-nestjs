@@ -1,7 +1,6 @@
 // src/modules/fanbases/fanbase.model.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument } from 'mongoose';
-import { Types } from 'mongoose';
 
 export type FanbaseDocument = HydratedDocument<Fanbase>;
 
@@ -15,36 +14,38 @@ export class Fanbase {
   @Prop({ required: true })
   topic: string;
 
-  @Prop({ required: true })
-  createdUserId: string; // Match database field name
+  @Prop({
+    type: {
+      _id: { type: String, required: true },
+      username: { type: String, required: true }
+    },
+    required: false
+  })
+  createdBy: {
+    _id: string;
+    username: string;
+  };
 
   @Prop({ required: false })
   fanbasePhotoUrl: string;
 
-  // Likes tracking
   @Prop({ default: 0 })
   numberOfLikes: number;
 
-  @Prop([{ type: String }]) // Array of user IDs who liked
+  @Prop([{ type: String }])
   likedUserIds: string[];
 
-  // Posts tracking  
   @Prop({ default: 0 })
-  numberOfPosts: number; // Number of posts in this fanbase
+  numberOfPosts: number;
 
-  @Prop([{ type: String }]) // Array of post IDs
+  @Prop([{ type: String }])
   postIds: string[];
 
-  // Comments tracking
   @Prop({ default: 0 })
-  numberOfComments: number; // Total comments across all posts in this fanbase
+  numberOfShares: number; 
 
   @Prop({ default: Date.now })
   createdAt: Date;
-
-  // Mongoose version field
-  @Prop({ default: 0 })
-  __v: number;
 }
 
 export const FanbaseSchema = SchemaFactory.createForClass(Fanbase);

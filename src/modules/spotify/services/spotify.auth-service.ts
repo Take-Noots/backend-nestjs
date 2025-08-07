@@ -137,7 +137,7 @@ export class SpotifyAuthService {
             return { access_token, new_refresh_token };
             
         } catch (error: any) {
-            throw new Error(`Failed to refresh token [at.spotify.auth.service]: ${error.message}`);
+            throw new Error(`[At.spotify.auth.service] Failed to refresh token: ${error.message}`);
         }
     }
 

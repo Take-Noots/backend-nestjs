@@ -3,7 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { SpotifyController } from "./spotify.controller";
 import { SpotifyAuthService } from "./services/spotify.auth-service";
 import { SpotifySearchService } from "./services/spotify.search-service";
-import { SpotifySessionService } from './services/spotify.session-service';
+import { SpotifySessionService } from '@modules/spotify/services/spotify.session-service';
 import { SpotifyPlayerService } from './services/spotify.player-service';
 import { SpotifySession, SpotifySessionSchema } from './spotify.model';
 
@@ -15,6 +15,7 @@ import { SpotifySession, SpotifySessionSchema } from './spotify.model';
     ],
     controllers: [SpotifyController],
     providers: [SpotifyAuthService, SpotifySearchService, SpotifySessionService, SpotifyPlayerService],
+    exports: [SpotifySessionService],
 })
 
 export class SpotifyModule {}
