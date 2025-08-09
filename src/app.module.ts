@@ -3,6 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { SpotifyModule } from './modules/spotify/spotify.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { DesSongPostModule } from './modules/desSongPost/desSongPost.module';
+import { ThoughtsModule } from './modules/thoughts/thoughts.module';
 
 // New from Merge Conflict
 import { SongPostModule } from './modules/songPost/songPost.module';
@@ -30,6 +31,7 @@ const dbUrl: string = process.env.DB_CONN_STRING as string;
     AuthModule,
     SongPostModule,
     DesSongPostModule,
+    ThoughtsModule,
     SearchModule,
     ProfileModule,
     UserModule,
