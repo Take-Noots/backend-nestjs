@@ -25,10 +25,7 @@ export class ThoughtsService {
     return savedPost;
   }
 
-  // Get all thoughts posts
-  async findAll(): Promise<ThoughtsPostDocument[]> {
-    return this.thoughtsModel.find().sort({ createdAt: -1 }).exec();
-  }
+
 
   // Get thoughts post by ID
   async findById(id: string): Promise<ThoughtsPostDocument | null> {

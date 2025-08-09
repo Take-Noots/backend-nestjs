@@ -14,11 +14,7 @@ export class ThoughtsController {
     return this.thoughtsService.createThoughts(dto);
   }
 
-  // Get all thoughts posts
-  @Get()
-  getAllThoughts() {
-    return this.thoughtsService.findAll();
-  }
+  
 
   // Get thoughts post by ID
   @Get(':id')
