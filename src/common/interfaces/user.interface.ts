@@ -5,6 +5,7 @@ export interface UserType {
   username: string;
   password: string;
   role: string;
+  userType?: string; // Added userType field
   profileImage?: string;
   posts?: number;
   followers?: number;
@@ -17,7 +18,7 @@ export interface UserType {
   bannedAt?: Date;
   banUntil?: Date;
   lastActive?: Date;
-  isOnline?: boolean; 
+  isOnline?: boolean;
   lastSeen?: Date;
   createdAt?: Date;
   updatedAt?: Date;
