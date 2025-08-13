@@ -150,6 +150,26 @@ export class FanbaseController {
     }
   }
 
+  @Post(':id/like')
+  @UseGuards(JwtAuthGuard)
+  async likeFanbase(
+    @Param('id') fanbaseId: string,
+    @JwtUser() user: JwtUserData
+  ) {
+    try {
+      const userId = user.userId;
+      return await this.fanbaseService.likeFanbase(fanbaseId, userId);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        `Failed to like fanbase: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   @Get(':id/isOwner')
   @UseGuards(JwtAuthGuard)
   async isOwner(@Param('id') fanbaseId: string, @JwtUser() user: JwtUserData) {

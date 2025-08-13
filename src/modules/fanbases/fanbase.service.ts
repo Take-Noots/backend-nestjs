@@ -123,6 +123,31 @@ export class FanbaseService {
     }
   }
 
+  async likeFanbase(fanbaseId: string, userId: string): Promise<FanbaseType> {
+    try {
+      const fanbase = await this.fanbaseModel.findById(fanbaseId).exec();
+      if (!fanbase) {
+        throw new NotFoundException('Fanbase not found');
+      }
+
+      const userHasLiked = fanbase.likedUserIds.includes(userId);
+      if (userHasLiked) {
+        // If user has already liked, remove them from likedUserIds
+        fanbase.likedUserIds = fanbase.likedUserIds.filter(id => id !== userId);
+        fanbase.numberOfLikes -= 1;
+      } else {
+        // If user has not liked, add them to likedUserIds
+        fanbase.likedUserIds.push(userId);
+        fanbase.numberOfLikes += 1;
+      }
+
+      const updatedFanbase = await fanbase.save();
+      return this.toFanbaseType(updatedFanbase, userId);
+    } catch (error) {
+      throw new Error(`Failed to like fanbase: ${error.message}`);
+    }
+  }
+
   async findAllWithPagination(filter: any = {}, skip: number = 0, limit: number = 10, userId?: string): Promise<FanbaseType[]> {
     try {
       const fanbases = await this.fanbaseModel.find(filter)
@@ -161,6 +186,7 @@ export class FanbaseService {
       fanbasePhotoUrl: fanbase.fanbasePhotoUrl,
       numberOfLikes: fanbase.numberOfLikes || 0,
       likedUserIds: fanbase.likedUserIds || [],
+      isLiked: userId ? fanbase.likedUserIds.includes(userId) : false,
       numberOfPosts: fanbase.numberOfPosts || 0,
       postIds: fanbase.postIds || [],
       joinedUserIds: fanbase.joinedUserIds || [],

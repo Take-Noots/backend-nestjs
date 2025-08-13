@@ -6,10 +6,11 @@ export interface FanbaseType {
   fanbasePhotoUrl?: string;
   numberOfLikes: number;
   likedUserIds: string[];
+  isLiked?: boolean; 
   numberOfPosts: number;
   postIds: string[];
   joinedUserIds: string[];
-  isJoined?: boolean; // Optional property to indicate if the user has joined the fanbase
+  isJoined?: boolean;
   numberOfShares: number;
   createdAt: Date;
   // Creator details with ID
