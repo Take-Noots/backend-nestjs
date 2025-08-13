@@ -8,6 +8,8 @@ export interface FanbaseType {
   likedUserIds: string[];
   numberOfPosts: number;
   postIds: string[];
+  joinedUserIds: string[];
+  isJoined?: boolean; // Optional property to indicate if the user has joined the fanbase
   numberOfShares: number;
   createdAt: Date;
   // Creator details with ID
