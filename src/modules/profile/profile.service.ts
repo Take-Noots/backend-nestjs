@@ -31,6 +31,7 @@ export class ProfileService {
       _id: profile._id,
       userId: profile.userId,
       username: user.username,
+      userType: profile.userType ?? 'artist',
       email: user.email ?? '',
       fullName: profile.fullName ?? '',
       profileImage: profile.profileImage ?? '',
@@ -43,7 +44,7 @@ export class ProfileService {
   }
 
   async getPostsByUserId(userId: string) {
-    return this.songPostModel.find({ userId }).lean();
+    return this.songPostModel.find({ userId }).sort({ createdAt: -1 }).lean();
   }
 
   async updateProfileByUserId(userId: string, updateData: any) {
@@ -154,7 +155,10 @@ export class ProfileService {
    */
   async getPostStatsByUserId(userId: string) {
     // SongPost posts
-    const songPosts = await this.songPostModel.find({ userId }).lean();
+    const songPosts = await this.songPostModel
+      .find({ userId })
+      .sort({ createdAt: -1 })
+      .lean();
     const songPostStats = songPosts.map((post) => ({
       postId: post._id?.toString(),
       type: 'SongPost',
@@ -164,7 +168,10 @@ export class ProfileService {
     }));
 
     // Post posts
-    const posts = await this.postModel.find({ userId }).lean();
+    const posts = await this.postModel
+      .find({ userId })
+      .sort({ createdAt: -1 })
+      .lean();
     // Note: Post model only has likesCount/commentsCount, not actual comments array
     const postStats = posts.map((post) => ({
       postId: post._id?.toString(),
