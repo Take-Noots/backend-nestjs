@@ -1,6 +1,7 @@
 export class ProfileDto {
   _id: string;
   userId: string;
+  userType: string;
   profileImage: string;
   username: string;
   fullName: string;

@@ -31,6 +31,7 @@ export class ProfileService {
       _id: profile._id,
       userId: profile.userId,
       username: user.username,
+      userType: profile.userType ?? 'public',
       email: user.email ?? '',
       fullName: profile.fullName ?? '',
       profileImage: profile.profileImage ?? '',
@@ -43,11 +44,16 @@ export class ProfileService {
   }
 
   async getPostsByUserId(userId: string) {
-    return this.songPostModel.find({ userId }).lean();
+    return this.songPostModel.find({ userId }).sort({ createdAt: -1 }).lean();
   }
 
   async updateProfileByUserId(userId: string, updateData: any) {
-    const allowedProfileFields = ['bio', 'profileImage', 'fullName'];
+    const allowedProfileFields = [
+      'bio',
+      'profileImage',
+      'fullName',
+      'userType',
+    ]; // Added userType to allowed fields
     const profileUpdate: any = {};
 
     for (const field of allowedProfileFields) {
@@ -62,6 +68,9 @@ export class ProfileService {
     if (updateData.username !== undefined)
       userUpdate.username = updateData.username;
     if (updateData.email !== undefined) userUpdate.email = updateData.email;
+    if (updateData.userType !== undefined)
+      // Added userType update to User model
+      userUpdate.userType = updateData.userType;
 
     if (Object.keys(userUpdate).length > 0) {
       await this.userModel.updateOne({ _id: userId }, { $set: userUpdate });
@@ -94,8 +103,9 @@ export class ProfileService {
     bio?: string;
     profileImage?: string;
     fullName?: string;
+    userType?: string; // Add userType parameter
   }) {
-    const { userId, bio, profileImage, fullName } = createProfileDto;
+    const { userId, bio, profileImage, fullName, userType } = createProfileDto;
 
     // Check if profile already exists
     const existingProfile = await this.profileModel.findOne({ userId }).lean();
@@ -117,6 +127,7 @@ export class ProfileService {
       fullName: fullName ?? '',
       bio: bio ?? '',
       profileImage: profileImage ?? '',
+      userType: userType ?? 'public', // Added userType with default 'public'
       posts: 0,
       followers: [],
       following: [],
@@ -154,7 +165,10 @@ export class ProfileService {
    */
   async getPostStatsByUserId(userId: string) {
     // SongPost posts
-    const songPosts = await this.songPostModel.find({ userId }).lean();
+    const songPosts = await this.songPostModel
+      .find({ userId })
+      .sort({ createdAt: -1 })
+      .lean();
     const songPostStats = songPosts.map((post) => ({
       postId: post._id?.toString(),
       type: 'SongPost',
@@ -164,7 +178,10 @@ export class ProfileService {
     }));
 
     // Post posts
-    const posts = await this.postModel.find({ userId }).lean();
+    const posts = await this.postModel
+      .find({ userId })
+      .sort({ createdAt: -1 })
+      .lean();
     // Note: Post model only has likesCount/commentsCount, not actual comments array
     const postStats = posts.map((post) => ({
       postId: post._id?.toString(),
