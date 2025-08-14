@@ -329,6 +329,16 @@ export class UserService {
     });
     return usernameMap;
   }
+
+  async isEmailRegistered(email: string): Promise<boolean> {
+    const user = await this.userModel.findOne({ email }).lean();
+    return !!user;
+  }
+
+  async isUsernameRegistered(username: string): Promise<boolean> {
+    const user = await this.userModel.findOne({ username }).lean();
+    return !!user;
+  }
 }
 
 // OLD USER SERVICE 
