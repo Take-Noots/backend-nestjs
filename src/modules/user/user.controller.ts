@@ -254,4 +254,36 @@ export class UserController {
       );
     }
   }
+
+  @Get('isEmailRegistered/:email')
+  async isEmailRegistered(@Param('email') email: string) {
+    try {
+      const isRegistered = await this.userService.isEmailRegistered(email);
+      return {
+        email: email,
+        isRegistered: isRegistered
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Error checking email registration: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Get('isUsernameRegistered/:username')
+  async isUsernameRegistered(@Param('username') username: string) {
+    try {
+      const isRegistered = await this.userService.isUsernameRegistered(username);
+      return {
+        username: username,
+        isRegistered: isRegistered
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Error checking username registration: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
 }
