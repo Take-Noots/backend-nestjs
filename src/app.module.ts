@@ -19,6 +19,7 @@ import { FanbaseModule } from './modules/fanbases/fanbase.module';
 import { ReportModule } from './modules/reports/reports.module';
 import { RequestModule } from './modules/request/request.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { FanbasePostModule } from './modules/fanbasePost/fanbasePost.module';
 
 import 'dotenv/config';
 
@@ -41,7 +42,8 @@ const dbUrl: string = process.env.DB_CONN_STRING as string;
     AdminModule,
     RequestModule,
     ChatModule,
-    RecentlyLikedUserModule
+    RecentlyLikedUserModule,
+    FanbasePostModule
   ]
 })
 export class AppModule {}
