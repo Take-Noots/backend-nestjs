@@ -26,9 +26,7 @@ export const MessageSchema = SchemaFactory.createForClass(Message);
 
 @Schema({ timestamps: true })
 export class Chat {
-  @Prop({ type: Types.ObjectId, auto: true })
-  _id: Types.ObjectId;
-
+  // Remove the manual _id declaration - let Mongoose handle it automatically
   @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }], required: true })
   participants: Types.ObjectId[];
 

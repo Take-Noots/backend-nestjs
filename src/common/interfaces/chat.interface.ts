@@ -1,6 +1,5 @@
 // src/common/interfaces/chat.interface.ts
-import { Types } from 'mongoose';
-
+// src/common/interfaces/chat.interface.ts
 export interface MessageType {
   _id: string;
   senderId: string;
@@ -11,16 +10,17 @@ export interface MessageType {
 
 export interface ChatType {
   _id: string;
-  participants: string[];
+  participants: any[];
   messages: MessageType[];
   lastMessage?: MessageType;
   createdAt: Date;
   updatedAt: Date;
 }
 
-export interface ChatParticipant {
+export interface UserType {
   _id: string;
   username: string;
+  email: string;
   profileImage?: string;
   isOnline: boolean;
   lastSeen: Date;

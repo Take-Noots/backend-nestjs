@@ -1048,18 +1048,12 @@
                             <span class="text-gray-600">Post ID:</span>
                             <span class="font-mono text-gray-900">${post.id}</span>
                         </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Track ID:</span>
-                            <span class="font-mono text-gray-900">${post.trackId || 'N/A'}</span>
-                        </div>
+                        
                         <div class="flex justify-between">
                             <span class="text-gray-600">User:</span>
                             <span class="text-gray-900">${post.username || 'Unknown'}</span>
                         </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">User ID:</span>
-                            <span class="font-mono text-gray-900">${post.userId || 'Unknown'}</span>
-                        </div>
+                        
                         <div class="flex justify-between">
                             <span class="text-gray-600">Created:</span>
                             <span class="text-gray-900">${new Date(post.createdAt).toLocaleString()}</span>
@@ -1259,6 +1253,8 @@
                 }, 100);
             }
         });
+
+        
     </script>
 </body>
 
