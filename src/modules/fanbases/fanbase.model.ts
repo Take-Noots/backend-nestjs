@@ -41,6 +41,9 @@ export class Fanbase {
   @Prop([{ type: String }])
   postIds: string[];
 
+  @Prop([{ type: String }])
+  joinedUserIds: string[];
+
   @Prop({ default: 0 })
   numberOfShares: number; 
 

@@ -17,6 +17,9 @@ export class Profile {
   fullName?: string;
 
   @Prop()
+  userType?: string;
+
+  @Prop()
   profileImage?: string;
 
   @Prop()
