@@ -14,19 +14,23 @@ export class ThoughtsController {
     return this.thoughtsService.createThoughts(dto);
   }
 
-  
-
-  // Get thoughts post by ID
+  // Get thoughts post by ID (for individual post viewing)
   @Get(':id')
   getThoughtsById(@Param('id') id: string) {
     return this.thoughtsService.findById(id);
   }
 
-  // Get thoughts posts by user ID
+  // Get thoughts posts by user ID (for user profile)
   @Get('user/:userId')
   getThoughtsByUser(@Param('userId') userId: string) {
     return this.thoughtsService.findByUserId(userId);
   }
+
+  @Get('followers/:userId')
+  getFollowerPosts(@Param('userId') userId: string) {
+    return this.thoughtsService.getFollowerPosts(userId);
+  }
+
 
   // Like/unlike a thoughts post
   @Post(':id/like')
@@ -42,6 +46,7 @@ export class ThoughtsController {
     return this.thoughtsService.addComment(id, dto);
   }
 
+  
   // Delete thoughts post
   @Delete(':id')
   deleteThoughts(@Param('id') id: string, @Body() body: { userId: string }) {

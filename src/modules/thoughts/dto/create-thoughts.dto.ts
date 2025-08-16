@@ -1,6 +1,7 @@
 import { IsString, IsOptional, IsNotEmpty, IsBoolean } from 'class-validator';
 
 export class CreateThoughtsDto {
+
   @IsString()
   @IsNotEmpty()
   userId: string;
@@ -20,6 +21,18 @@ export class CreateThoughtsDto {
   @IsString()
   @IsOptional()
   FanbaseID?: string;
+
+  @IsString()
+  @IsOptional()
+  songName?: string;
+
+  @IsString()
+  @IsOptional()
+  artistName?: string;
+
+  @IsString()
+  @IsOptional()
+  trackId?: string;
 }
 
 export class AddThoughtsCommentDto {
