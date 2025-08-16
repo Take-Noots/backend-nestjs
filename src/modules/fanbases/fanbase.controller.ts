@@ -31,10 +31,10 @@ export class FanbaseController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.User, Role.Admin)
-  @UseInterceptors(FileInterceptor('image')) // Handle file uploads
+  @UseInterceptors(FileInterceptor('image')) 
   async createFanbase(
     @Body() createFanbaseDto: CreateFanbaseDTO,
-    @UploadedFile() file: any, // Use 'any' type or install @types/multer
+    @UploadedFile() file: any, 
     @JwtUser() user: JwtUserData
   ) {
     try {
@@ -63,54 +63,47 @@ export class FanbaseController {
   }
 
   @Get(':id')
-  async getFanbaseById(@Param('id') id: string) {
+  @UseGuards(JwtAuthGuard)
+  async getFanbaseById(@Param('id') id: string, @JwtUser() user: JwtUserData) {
     try {
-      console.log("CALLING GET FANBASE BY ID", id);
-      const fanbase = await this.fanbaseService.findById(id);
-      console.log("FANBASE FOUND", fanbase);
+      const fanbase = await this.fanbaseService.findById(id, user?.userId);
       if (!fanbase) {
         throw new HttpException('Fanbase not found', HttpStatus.NOT_FOUND);
       }
       return fanbase;
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new HttpException(
-        `Failed to fetch fanbase: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(`Failed to fetch fanbase: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   @Get('name/:name')
-  async getFanbaseByName(@Param('name') name: string) {
+  @UseGuards(JwtAuthGuard)
+  async getFanbaseByName(@Param('name') name: string, @JwtUser() user?: JwtUserData) {
     try {
-      const fanbase = await this.fanbaseService.findByName(name);
+      const fanbase = await this.fanbaseService.findByName(name, user?.userId);
       if (!fanbase) {
         throw new HttpException('Fanbase not found', HttpStatus.NOT_FOUND);
       }
       return fanbase;
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new HttpException(
-        `Failed to fetch fanbase: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      if (error instanceof HttpException) throw error;
+      throw new HttpException(`Failed to fetch fanbase: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
+
   // Main route that frontend calls - GET /fanbase
   @Get()
+  @UseGuards(JwtAuthGuard)
   async getAllFanbases(
     @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10
+    @Query('limit') limit: number = 10,
+    @JwtUser() user?: JwtUserData
   ) {
     try {
       const skip = (page - 1) * limit;
-      return await this.fanbaseService.findAllWithPagination({}, skip, limit);
+      return await this.fanbaseService.findAllWithPagination({}, skip, limit, user?.userId);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -132,6 +125,63 @@ export class FanbaseController {
       }
       throw new HttpException(
         `Failed to fetch top fanbases: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post(':id/join')
+  @UseGuards(JwtAuthGuard)
+  async joinFanbase(
+    @Param('id') fanbaseId: string,
+    @JwtUser() user: JwtUserData
+  ) {
+    try {
+      const userId = user.userId;
+      return await this.fanbaseService.joinFanbase(fanbaseId, userId);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        `Failed to join fanbase: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post(':id/like')
+  @UseGuards(JwtAuthGuard)
+  async likeFanbase(
+    @Param('id') fanbaseId: string,
+    @JwtUser() user: JwtUserData
+  ) {
+    try {
+      const userId = user.userId;
+      return await this.fanbaseService.likeFanbase(fanbaseId, userId);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        `Failed to like fanbase: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Get(':id/isOwner')
+  @UseGuards(JwtAuthGuard)
+  async isOwner(@Param('id') fanbaseId: string, @JwtUser() user: JwtUserData) {
+    try {
+      const userId = user.userId;
+      return await this.fanbaseService.isOwner(fanbaseId, userId);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        `Failed to check ownership: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }

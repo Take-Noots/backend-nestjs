@@ -39,7 +39,6 @@ export class ProfileController {
     return profile;
   }
 
-
   @Post()
   async createProfile(
     @Body()
@@ -48,6 +47,7 @@ export class ProfileController {
       bio?: string;
       profileImage?: string;
       fullName?: string;
+      userType?: string;
     },
   ) {
     return this.profileService.createProfile(createProfileDto);
