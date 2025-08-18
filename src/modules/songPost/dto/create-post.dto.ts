@@ -4,6 +4,9 @@ export class CreatePostDto {
   @IsOptional()
   isHidden?: number;
   
+  @IsOptional()
+  isDeleted?: number;
+  
   @IsString()
   @IsNotEmpty()
   trackId: string;

@@ -44,7 +44,7 @@ export class ProfileService {
   }
 
   async getPostsByUserId(userId: string) {
-    return this.songPostModel.find({ userId, isHidden: { $ne: 1 } }).sort({ createdAt: -1 }).lean();
+    return this.songPostModel.find({ userId, isHidden: { $ne: 1 }, isDeleted: { $ne: 1 } }).sort({ createdAt: -1 }).lean();
   }
 
   async updateProfileByUserId(userId: string, updateData: any) {
@@ -166,7 +166,7 @@ export class ProfileService {
   async getPostStatsByUserId(userId: string) {
     // SongPost posts
     const songPosts = await this.songPostModel
-      .find({ userId, isHidden: { $ne: 1 } })
+      .find({ userId, isHidden: { $ne: 1 }, isDeleted: { $ne: 1 } })
       .sort({ createdAt: -1 })
       .lean();
     const songPostStats = songPosts.map((post) => ({
@@ -196,7 +196,7 @@ export class ProfileService {
   }
 
   async countPostsByUser(userId: string): Promise<number> {
-    return this.songPostModel.countDocuments({ userId, isHidden: { $ne: 1 } }).exec();
+    return this.songPostModel.countDocuments({ userId, isHidden: { $ne: 1 }, isDeleted: { $ne: 1 } }).exec();
   }
 
   async getFollowersListWithDetails(userId: string) {
