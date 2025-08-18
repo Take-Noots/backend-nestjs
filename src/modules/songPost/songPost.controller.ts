@@ -6,11 +6,14 @@ import {
   Param,
   UsePipes,
   ValidationPipe,
+  Patch, //for hidden post
 } from '@nestjs/common';
 import { SongPostService } from './songPost.service';
 import { CreatePostDto, AddCommentDto } from './dto/create-post.dto';
 import { SongPost, SongPostDocument } from './songPost.model';
 import { ProfileService } from '../profile/profile.service';
+
+import { Delete } from '@nestjs/common';
 
 @Controller('song-posts')
 export class SongPostController {
@@ -18,6 +21,13 @@ export class SongPostController {
     private readonly songPostService: SongPostService,
     private readonly profileService: ProfileService,
   ) {}
+
+  @Patch(':id/hide')
+  async hidePost(@Param('id') id: string) {
+    const post = await this.songPostService.hidePost(id);
+    if (!post) return { success: false, message: 'Post not found' };
+    return { success: true, data: post };
+  }
 
   @Post()
   @UsePipes(new ValidationPipe())
@@ -111,6 +121,15 @@ export class SongPostController {
     const notifications =
       await this.songPostService.getNotificationsForUser(userId);
     return { success: true, data: notifications };
+  }
+
+  @Delete(':id')
+  async delete(@Param('id') id: string) {
+    const deleted = await this.songPostService.deleteSongPost(id);
+    if (!deleted) {
+      return { success: false, message: 'Post not found' };
+    }
+    return { success: true, message: 'Post deleted successfully' };
   }
 
   /*

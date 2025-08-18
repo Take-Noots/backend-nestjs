@@ -59,6 +59,9 @@ export class SongPost {
 
   @Prop({ type: [String], default: [] })
   likedBy: string[];
+
+  @Prop({ default: 0 })
+  isHidden: number;
 }
 
 export const SongPostSchema = SchemaFactory.createForClass(SongPost);

@@ -1,6 +1,9 @@
 import { IsString, IsOptional, IsNotEmpty } from 'class-validator';
 
 export class CreatePostDto {
+  @IsOptional()
+  isHidden?: number;
+  
   @IsString()
   @IsNotEmpty()
   trackId: string;
