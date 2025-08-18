@@ -41,6 +41,14 @@ export class ThoughtsPost {
 
   @Prop({ default: null })
   FanbaseID: string;
+  @Prop({ required: false })
+  songName?: string;
+
+  @Prop({ required: false })
+  artistName?: string;
+
+  @Prop({ required: false })
+  trackId?: string;
 }
 
 export const ThoughtsPostSchema = SchemaFactory.createForClass(ThoughtsPost);

@@ -1,6 +1,9 @@
 import { IsString, IsOptional, IsNotEmpty } from 'class-validator';
 
 export class CreatePostDto {
+  @IsOptional()
+  isHidden?: number;
+  
   @IsString()
   @IsNotEmpty()
   trackId: string;
@@ -24,6 +27,12 @@ export class CreatePostDto {
   @IsString()
   @IsNotEmpty()
   userId: string;
+}
+
+export class UpdatePostDto {
+  @IsString()
+  @IsOptional()
+  caption?: string;
 }
 
 export class AddCommentDto {
