@@ -385,25 +385,39 @@ export class AdminDashboardController {
 
   // User Detail Page
   @Get('users/:id')
-  @UseGuards(AdminGuard)
-  @Render('admin/user-detail')
-  async userDetailPage(@Req() req: Request, @Param('id') userId: string) {
-    try {
-      const user = await this.adminService.getUserById(userId);
-      return {
-        title: 'User Details',
-        user: req['user'],
-        targetUser: user
-      };
-    } catch (error) {
-      return {
-        title: 'User Details',
-        user: req['user'],
-        error: 'User not found',
-        targetUser: null
-      };
+@UseGuards(AdminGuard)
+async userDetailPage(@Req() req: Request, @Res() res: Response, @Param('id') userId: string) {
+  try {
+    const user = await this.adminService.getUserById(userId);
+    
+    // Check if this is an AJAX request
+    if (req.xhr || req.headers['accept']?.includes('application/json')) {
+      // Return JSON for AJAX requests
+      return res.json(user);
     }
+    
+    // Otherwise render the page (if you have a detail page)
+    return res.render('admin/user-detail', {
+      title: 'User Details',
+      user: req['user'],
+      targetUser: user
+    });
+  } catch (error) {
+    if (req.xhr || req.headers['accept']?.includes('application/json')) {
+      return res.status(404).json({ 
+        error: 'User not found',
+        message: error.message 
+      });
+    }
+    
+    return res.render('admin/user-detail', {
+      title: 'User Details',
+      user: req['user'],
+      error: 'User not found',
+      targetUser: null
+    });
   }
+}
 
   // ==================== API ROUTES FOR ADMIN OPERATIONS ====================
   
