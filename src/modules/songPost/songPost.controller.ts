@@ -7,9 +7,10 @@ import {
   UsePipes,
   ValidationPipe,
   Patch, //for hidden post
+  Put,
 } from '@nestjs/common';
 import { SongPostService } from './songPost.service';
-import { CreatePostDto, AddCommentDto } from './dto/create-post.dto';
+import { CreatePostDto, UpdatePostDto, AddCommentDto } from './dto/create-post.dto';
 import { SongPost, SongPostDocument } from './songPost.model';
 import { ProfileService } from '../profile/profile.service';
 
@@ -121,6 +122,17 @@ export class SongPostController {
     const notifications =
       await this.songPostService.getNotificationsForUser(userId);
     return { success: true, data: notifications };
+  }
+
+  @Put(':id')
+  @UsePipes(new ValidationPipe())
+  async update(@Param('id') id: string, @Body() updatePostDto: UpdatePostDto) {
+    console.log('Received update post request:', updatePostDto);
+    const updatedPost = await this.songPostService.updateSongPost(id, updatePostDto);
+    if (!updatedPost) {
+      return { success: false, message: 'Post not found' };
+    }
+    return { success: true, data: updatedPost, message: 'Post updated successfully' };
   }
 
   @Delete(':id')

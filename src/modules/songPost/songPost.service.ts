@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { SongPost, SongPostDocument } from './songPost.model';
-import { CreatePostDto, AddCommentDto } from './dto/create-post.dto';
+import { CreatePostDto, UpdatePostDto, AddCommentDto } from './dto/create-post.dto';
 import { UserService } from '../user/user.service';
 
 @Injectable()
@@ -271,8 +271,23 @@ export class SongPostService {
     return allNotifications;
   }
 
-  async updateSongPost(postId: string, updateData: Partial<SongPost>): Promise<SongPostDocument | null> {
-    return this.songPostModel.findByIdAndUpdate(postId, updateData, { new: true }).exec();
+  async updateSongPost(postId: string, updateData: UpdatePostDto): Promise<SongPostDocument | null> {
+    console.log(`[DEBUG] Updating post with ID: ${postId}`);
+    console.log(`[DEBUG] Update data:`, updateData);
+    
+    const post = await this.songPostModel.findByIdAndUpdate(
+      postId, 
+      updateData, 
+      { new: true }
+    ).exec();
+    
+    if (post) {
+      console.log(`[DEBUG] Post updated successfully:`, post);
+    } else {
+      console.log(`[DEBUG] Post not found with ID: ${postId}`);
+    }
+    
+    return post;
   }
 
   async hidePost(postId: string): Promise<SongPostDocument | null> {

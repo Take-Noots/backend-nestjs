@@ -29,6 +29,12 @@ export class CreatePostDto {
   userId: string;
 }
 
+export class UpdatePostDto {
+  @IsString()
+  @IsOptional()
+  caption?: string;
+}
+
 export class AddCommentDto {
   userId: string;
   text: string;
