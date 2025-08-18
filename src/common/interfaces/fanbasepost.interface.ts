@@ -13,6 +13,7 @@ export interface PostType {
   albumArt?: string;
   likesCount: number;
   likeUserIds: string[];
+  isLiked?: boolean;
   commentsCount: number;
   comments: {
     userId: string;
@@ -25,5 +26,4 @@ export interface PostType {
   fanbaseId: string;
   createdAt: Date;
   updatedAt: Date;
-  isLiked?: boolean; // For frontend usage
 }

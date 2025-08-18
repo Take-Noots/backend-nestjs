@@ -160,12 +160,12 @@ export class FanbasePostService {
       albumArt: post.albumArt,
       likesCount: post.likesCount || 0,
       likeUserIds: post.likeUserIds || [],
+      isLiked: userId ? post.likeUserIds.includes(userId) : false,
       commentsCount: post.commentsCount || 0,
       comments: post.comments || [],
       fanbaseId: post.fanbaseId,
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
-      isLiked: userId ? post.likeUserIds.includes(userId) : false,
     };
   }
 }
