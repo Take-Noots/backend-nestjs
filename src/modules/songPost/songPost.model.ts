@@ -62,6 +62,9 @@ export class SongPost {
 
   @Prop({ default: 0 })
   isHidden: number;
+
+  @Prop()
+  isDeleted: number;
 }
 
 export const SongPostSchema = SchemaFactory.createForClass(SongPost);
