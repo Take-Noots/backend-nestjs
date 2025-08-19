@@ -268,4 +268,57 @@ export class ProfileService {
       fullName: profileMap.get(String(u._id))?.fullName ?? '',
     }));
   }
+
+  // Save a post for a user
+  async savePost(userId: string, postId: string): Promise<boolean> {
+    try {
+      const result = await this.profileModel.updateOne(
+        { userId },
+        { $addToSet: { savedPosts: postId } }
+      );
+      return result.modifiedCount > 0 || result.matchedCount > 0;
+    } catch (error) {
+      console.error('Error saving post:', error);
+      return false;
+    }
+  }
+
+  // Unsave a post for a user
+  async unsavePost(userId: string, postId: string): Promise<boolean> {
+    try {
+      const result = await this.profileModel.updateOne(
+        { userId },
+        { $pull: { savedPosts: postId } }
+      );
+      return result.modifiedCount > 0 || result.matchedCount > 0;
+    } catch (error) {
+      console.error('Error unsaving post:', error);
+      return false;
+    }
+  }
+
+  // Check if a post is saved by a user
+  async isPostSaved(userId: string, postId: string): Promise<boolean> {
+    try {
+      const profile = await this.profileModel.findOne({
+        userId,
+        savedPosts: postId
+      }).lean();
+      return profile !== null;
+    } catch (error) {
+      console.error('Error checking if post is saved:', error);
+      return false;
+    }
+  }
+
+  // Get all saved post IDs for a user
+  async getSavedPosts(userId: string): Promise<string[]> {
+    try {
+      const profile = await this.profileModel.findOne({ userId }).lean();
+      return profile?.savedPosts || [];
+    } catch (error) {
+      console.error('Error getting saved posts:', error);
+      return [];
+    }
+  }
 }

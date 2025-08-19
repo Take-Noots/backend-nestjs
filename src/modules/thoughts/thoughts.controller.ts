@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UsePipes, ValidationPipe, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UsePipes, ValidationPipe, Delete, Patch } from '@nestjs/common';
 import { ThoughtsService } from './thoughts.service';
 import { CreateThoughtsDto, AddThoughtsCommentDto, LikeThoughtsDto } from './dto/create-thoughts.dto';
 
@@ -46,6 +46,11 @@ export class ThoughtsController {
     return this.thoughtsService.addComment(id, dto);
   }
 
+  // Hide thoughts post
+  @Patch(':id/hide')
+  hideThoughts(@Param('id') id: string) {
+    return this.thoughtsService.hidePost(id);
+  }
   
   // Delete thoughts post
   @Delete(':id')

@@ -56,9 +56,13 @@ export class ThoughtsService {
 
   // Get thoughts posts by multiple user IDs (for followers) - MAIN METHOD
   async getPostsByUserIds(userIds: string[]): Promise<any[]> {
-    // Find posts where userId is in the userIds array
+    // Find posts where userId is in the userIds array and not hidden and not deleted
     const posts = await this.thoughtsModel
-      .find({ userId: { $in: userIds } })
+      .find({ 
+        userId: { $in: userIds }, 
+        isHidden: { $ne: 1 }, 
+        isDeleted: { $ne: 1 } 
+      })
       .sort({ createdAt: -1 })
       .lean();
     
@@ -79,7 +83,11 @@ export class ThoughtsService {
 
   // Get thoughts post by ID (for individual post viewing)
   async findById(id: string): Promise<any> {
-    const post = await this.thoughtsModel.findById(id).lean();
+    const post = await this.thoughtsModel.findOne({ 
+      _id: id, 
+      isHidden: { $ne: 1 }, 
+      isDeleted: { $ne: 1 } 
+    }).lean();
     if (!post) return null;
     
     const username = await this.userService.getUsernameById(post.userId);
@@ -92,7 +100,11 @@ export class ThoughtsService {
 
   // Get thoughts posts by user ID (for user profile)
   async findByUserId(userId: string): Promise<any[]> {
-    const posts = await this.thoughtsModel.find({ userId }).sort({ createdAt: -1 }).lean();
+    const posts = await this.thoughtsModel.find({ 
+      userId, 
+      isHidden: { $ne: 1 }, 
+      isDeleted: { $ne: 1 } 
+    }).sort({ createdAt: -1 }).lean();
     
     // Attach username for each post
     const postsWithUsernames = await Promise.all(
@@ -111,7 +123,11 @@ export class ThoughtsService {
 
   // Like a thoughts post
   async likePost(postId: string, dto: LikeThoughtsDto): Promise<any> {
-    const post = await this.thoughtsModel.findById(postId);
+    const post = await this.thoughtsModel.findOne({ 
+      _id: postId, 
+      isHidden: { $ne: 1 }, 
+      isDeleted: { $ne: 1 } 
+    });
     if (!post) return null;
 
     const index = post.likedBy.indexOf(dto.userId);
@@ -134,7 +150,11 @@ export class ThoughtsService {
 
   // Add comment to thoughts post
   async addComment(postId: string, dto: AddThoughtsCommentDto): Promise<any> {
-    const post = await this.thoughtsModel.findById(postId);
+    const post = await this.thoughtsModel.findOne({ 
+      _id: postId, 
+      isHidden: { $ne: 1 }, 
+      isDeleted: { $ne: 1 } 
+    });
     if (!post) throw new NotFoundException('Thoughts post not found');
 
     // Get username for the comment
@@ -157,13 +177,36 @@ export class ThoughtsService {
     return comment;
   }
 
-  // Delete thoughts post
+  // Delete thoughts post (soft delete)
   async deletePost(postId: string, userId: string): Promise<boolean> {
-    const post = await this.thoughtsModel.findById(postId);
+    const post = await this.thoughtsModel.findOne({ 
+      _id: postId, 
+      isDeleted: { $ne: 1 } 
+    });
     if (!post || post.userId !== userId) return false;
 
-    await this.thoughtsModel.findByIdAndDelete(postId);
+    // Soft delete by setting isDeleted to 1
+    await this.thoughtsModel.findByIdAndUpdate(postId, { isDeleted: 1 });
     return true;
+  }
+
+  // Hide thoughts post
+  async hidePost(postId: string): Promise<any> {
+    console.log(`[DEBUG] Hiding thoughts post with ID: ${postId}`);
+    
+    const post = await this.thoughtsModel.findOneAndUpdate(
+      { _id: postId, isDeleted: { $ne: 1 } },
+      { isHidden: 1 }, 
+      { new: true }
+    ).exec();
+    
+    if (post) {
+      console.log(`[DEBUG] Thoughts post hidden successfully. isHidden: ${post.isHidden}`);
+    } else {
+      console.log(`[DEBUG] Thoughts post not found with ID: ${postId}`);
+    }
+    
+    return post;
   }
 
   // Get thoughts posts from followers
