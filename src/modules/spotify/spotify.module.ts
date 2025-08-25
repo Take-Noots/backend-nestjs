@@ -15,7 +15,7 @@ import { SpotifySession, SpotifySessionSchema } from './spotify.model';
     ],
     controllers: [SpotifyController],
     providers: [SpotifyAuthService, SpotifySearchService, SpotifySessionService, SpotifyPlayerService],
-    exports: [SpotifySessionService],
+    exports: [SpotifySessionService, SpotifyPlayerService],
 })
 
 export class SpotifyModule {}
