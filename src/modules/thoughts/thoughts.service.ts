@@ -66,19 +66,22 @@ export class ThoughtsService {
       .sort({ createdAt: -1 })
       .lean();
     
-    // Attach username for each post
-    const postsWithUsernames = await Promise.all(
+    // Attach username and profile image for each post
+    const postsWithUserData = await Promise.all(
       posts.map(async (post) => {
         const username = await this.userService.getUsernameById(post.userId);
+        const profile = await this.profileService.getProfileByUserId(post.userId);
+        const profileImage = profile?.profileImage || '';
         return {
           ...post,
           username: username || '',
+          userImage: profileImage,
           postType: 'thoughts',
         };
       }),
     );
     
-    return postsWithUsernames;
+    return postsWithUserData;
   }
 
   // Get thoughts post by ID (for individual post viewing)
@@ -91,9 +94,12 @@ export class ThoughtsService {
     if (!post) return null;
     
     const username = await this.userService.getUsernameById(post.userId);
+    const profile = await this.profileService.getProfileByUserId(post.userId);
+    const profileImage = profile?.profileImage || '';
     return {
       ...post,
       username: username || '',
+      userImage: profileImage,
       postType: 'thoughts',
     };
   }
@@ -106,19 +112,22 @@ export class ThoughtsService {
       isDeleted: { $ne: 1 } 
     }).sort({ createdAt: -1 }).lean();
     
-    // Attach username for each post
-    const postsWithUsernames = await Promise.all(
+    // Attach username and profile image for each post
+    const postsWithUserData = await Promise.all(
       posts.map(async (post) => {
         const username = await this.userService.getUsernameById(post.userId);
+        const profile = await this.profileService.getProfileByUserId(post.userId);
+        const profileImage = profile?.profileImage || '';
         return {
           ...post,
           username: username || '',
+          userImage: profileImage,
           postType: 'thoughts',
         };
       }),
     );
     
-    return postsWithUsernames;
+    return postsWithUserData;
   }
 
   // Like a thoughts post

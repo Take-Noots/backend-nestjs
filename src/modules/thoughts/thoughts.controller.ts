@@ -1,6 +1,8 @@
-import { Controller, Get, Post, Body, Param, UsePipes, ValidationPipe, Delete, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UsePipes, ValidationPipe, Delete, Patch, UseGuards, Request } from '@nestjs/common';
 import { ThoughtsService } from './thoughts.service';
 import { CreateThoughtsDto, AddThoughtsCommentDto, LikeThoughtsDto } from './dto/create-thoughts.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { JwtUser, JwtUserData } from '../../common/decorators/jwt-user.decorator';
 
 @Controller('thoughts')
 export class ThoughtsController {
@@ -8,9 +10,15 @@ export class ThoughtsController {
 
   // Create a new thoughts post
   @Post()
-  @UsePipes(new ValidationPipe())
-  createThoughts(@Body() dto: CreateThoughtsDto) {
+  @UseGuards(JwtAuthGuard)
+  @UsePipes(new ValidationPipe({ transform: true }))
+  async createThoughts(@Body() dto: CreateThoughtsDto, @JwtUser() user: JwtUserData) {
     console.log('Received create thoughts request:', dto);
+    console.log('User from JWT:', user);
+    
+    // Add the userId from JWT token to the DTO
+    dto.userId = user.userId;
+    
     return this.thoughtsService.createThoughts(dto);
   }
 
@@ -34,15 +42,20 @@ export class ThoughtsController {
 
   // Like/unlike a thoughts post
   @Post(':id/like')
+  @UseGuards(JwtAuthGuard)
   @UsePipes(new ValidationPipe())
-  likeThoughts(@Param('id') id: string, @Body() dto: LikeThoughtsDto) {
+  likeThoughts(@Param('id') id: string, @Body() dto: LikeThoughtsDto, @JwtUser() user: JwtUserData) {
+    dto.userId = user.userId;
+    
     return this.thoughtsService.likePost(id, dto);
   }
 
   // Add comment to thoughts post
   @Post(':id/comments')
+  @UseGuards(JwtAuthGuard)
   @UsePipes(new ValidationPipe())
-  addComment(@Param('id') id: string, @Body() dto: AddThoughtsCommentDto) {
+  addComment(@Param('id') id: string, @Body() dto: AddThoughtsCommentDto, @JwtUser() user: JwtUserData) {
+    dto.userId = user.userId;
     return this.thoughtsService.addComment(id, dto);
   }
 

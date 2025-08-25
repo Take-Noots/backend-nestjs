@@ -4,12 +4,14 @@ import { Model } from 'mongoose';
 import { SongPost, SongPostDocument } from './songPost.model';
 import { CreatePostDto, UpdatePostDto, AddCommentDto } from './dto/create-post.dto';
 import { UserService } from '../user/user.service';
+import { ProfileService } from '../profile/profile.service';
 
 @Injectable()
 export class SongPostService {
   constructor(
     @InjectModel(SongPost.name) private songPostModel: Model<SongPostDocument>,
     private readonly userService: UserService,
+    private readonly profileService: ProfileService,
   ) {}
 
   async create(createPostDto: CreatePostDto): Promise<SongPostDocument> {
@@ -44,9 +46,12 @@ export class SongPostService {
     return Promise.all(
       posts.map(async (post) => {
         const username = await this.userService.getUsernameById(post.userId);
+        const profile = await this.profileService.getProfileByUserId(post.userId);
+        const profileImage = profile?.profileImage || '';
         return {
           ...post,
-          username: username || '', // fallback if not found
+          username: username || '', 
+          userImage: profileImage,
           comments: await Promise.all(
             (post.comments || []).map(async (comment) => ({
               ...comment,
@@ -71,27 +76,42 @@ export class SongPostService {
     postId: string,
     userId: string,
   ): Promise<SongPostDocument | null> {
+    // Use atomic operations to avoid version conflicts
     const post = await this.songPostModel.findOne({ _id: postId, isDeleted: { $ne: 1 } });
     if (!post) return null;
 
-    // Toggle like
-    const index = post.likedBy.indexOf(userId);
-    if (index === -1) {
-      post.likedBy.push(userId);
+    // Check if user already liked the post
+    const isLiked = post.likedBy.includes(userId);
+    
+    let updateOperation;
+    if (isLiked) {
+      // Remove like
+      updateOperation = {
+        $pull: { likedBy: userId },
+        $inc: { likes: -1 }
+      };
     } else {
-      post.likedBy.splice(index, 1);
+      // Add like
+      updateOperation = {
+        $addToSet: { likedBy: userId },
+        $inc: { likes: 1 }
+      };
     }
-    post.likes = post.likedBy.length;
-    await post.save();
-    return post;
+
+    // Use findOneAndUpdate for atomic operation
+    const updatedPost = await this.songPostModel.findOneAndUpdate(
+      { _id: postId, isDeleted: { $ne: 1 } },
+      updateOperation,
+      { new: true, runValidators: true }
+    );
+
+    return updatedPost;
   }
 
   async addComment(
     postId: string,
     addCommentDto: AddCommentDto,
   ): Promise<SongPostDocument | null> {
-    const post = await this.songPostModel.findOne({ _id: postId, isDeleted: { $ne: 1 } });
-    if (!post) return null;
     // Fetch username from UserService (for future use, but not stored in comment)
     const username = await this.userService.getUsernameById(
       addCommentDto.userId,
@@ -100,15 +120,24 @@ export class SongPostService {
       throw new Error('User not found for given userId');
     }
 
-    post.comments.push({
-      ...addCommentDto,
-      username,
-      createdAt: new Date(),
-      likes: 0,
-      likedBy: [],
-    });
-    await post.save();
-    return post;
+    // Use atomic operation to add comment
+    const updatedPost = await this.songPostModel.findOneAndUpdate(
+      { _id: postId, isDeleted: { $ne: 1 } },
+      {
+        $push: {
+          comments: {
+            ...addCommentDto,
+            username,
+            createdAt: new Date(),
+            likes: 0,
+            likedBy: [],
+          }
+        }
+      },
+      { new: true, runValidators: true }
+    );
+
+    return updatedPost;
   }
 
   async likeComment(
@@ -116,22 +145,56 @@ export class SongPostService {
     commentId: string,
     userId: string,
   ): Promise<SongPostDocument | null> {
+    console.log(`[DEBUG] Backend likeComment: postId=${postId}, commentId=${commentId}, userId=${userId}`);
+    
+    // Use atomic operations to avoid version conflicts
     const post = await this.songPostModel.findOne({ _id: postId, isDeleted: { $ne: 1 } });
-    if (!post) return null;
+    if (!post) {
+      console.log('[DEBUG] Backend likeComment: Post not found');
+      return null;
+    }
+    
+    console.log(`[DEBUG] Backend likeComment: Found post with ${post.comments.length} comments`);
+    console.log(`[DEBUG] Backend likeComment: Comment IDs: ${post.comments.map((c: any) => c._id?.toString()).join(', ')}`);
+    
     const comment = post.comments.find(
       (c: any) => c._id?.toString() === commentId,
     );
-    if (!comment) return null;
-
-    const index = comment.likedBy.indexOf(userId);
-    if (index === -1) {
-      comment.likedBy.push(userId);
-    } else {
-      comment.likedBy.splice(index, 1);
+    if (!comment) {
+      console.log(`[DEBUG] Backend likeComment: Comment not found with ID ${commentId}`);
+      return null;
     }
-    comment.likes = comment.likedBy.length;
-    await post.save();
-    return post;
+
+    // Check if user already liked the comment
+    const isLiked = comment.likedBy.includes(userId);
+    
+    let updateOperation;
+    if (isLiked) {
+      // Remove like from comment
+      updateOperation = {
+        $pull: { 'comments.$[comment].likedBy': userId },
+        $inc: { 'comments.$[comment].likes': -1 }
+      };
+    } else {
+      // Add like to comment
+      updateOperation = {
+        $addToSet: { 'comments.$[comment].likedBy': userId },
+        $inc: { 'comments.$[comment].likes': 1 }
+      };
+    }
+
+    // Use findOneAndUpdate for atomic operation
+    const updatedPost = await this.songPostModel.findOneAndUpdate(
+      { _id: postId, isDeleted: { $ne: 1 } },
+      updateOperation,
+      { 
+        new: true, 
+        runValidators: true,
+        arrayFilters: [{ 'comment._id': { $eq: commentId } }]
+      }
+    );
+
+    return updatedPost;
   }
 
   async getPostsByUserIds(userIds: string[]): Promise<any[]> {
@@ -140,18 +203,21 @@ export class SongPostService {
       .find({ userId: { $in: userIds }, isHidden: { $ne: 1 }, isDeleted: { $ne: 1 } })
       .sort({ createdAt: -1 })
       .lean();
-    // Attach username for each post
-    const postsWithUsernames = await Promise.all(
+    // Attach username and profile image for each post
+    const postsWithUserData = await Promise.all(
       posts.map(async (post) => {
         const username = await this.userService.getUsernameById(post.userId);
+        const profile = await this.profileService.getProfileByUserId(post.userId);
+        const profileImage = profile?.profileImage || '';
         return {
           ...post,
           username: username || '',
+          userImage: profileImage,
         };
       }),
     );
-    //console.log('Follower posts with usernames:', postsWithUsernames);
-    return postsWithUsernames;
+    //console.log('Follower posts with usernames and profile images:', postsWithUserData);
+    return postsWithUserData;
   }
 
   async countPostsByUser(userId: string): Promise<number> {
@@ -166,6 +232,8 @@ export class SongPostService {
 
     const userIds = [post.userId, ...post.likedBy];
     const usernameMap = await this.userService.getUsernamesByIds(userIds);
+    const profile = await this.profileService.getProfileByUserId(post.userId);
+    const profileImage = profile?.profileImage || '';
 
     const likedByUsernames = post.likedBy
       .map((userId) => usernameMap.get(userId))
@@ -174,6 +242,7 @@ export class SongPostService {
     return {
       ...post,
       username: usernameMap.get(post.userId) || '',
+      userImage: profileImage,
       likedBy: likedByUsernames,
       albumImage: post.albumImage,
     };
