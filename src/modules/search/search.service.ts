@@ -20,8 +20,10 @@ export class SearchService {
     let profiles: any[] = [];
     
     if (!query) {
-      // Return all song posts sorted by date ascending, excluding deleted posts
-      songPosts = await this.songPostModel.find({ isDeleted: { $ne: 1 } }).sort({ createdAt: 1 }).exec();
+      // Use ExploreAlgorithm to get ranked posts for explore feed
+      const exploreResult = await this.ExploreAlgorithm();
+      // Return the explore result directly since it's already processed with user info
+      return exploreResult;
     } else {
       // Enhanced search for profiles - only return profiles where search term matches start of first or last name
       profiles = await this.searchProfilesByName(query);
@@ -193,13 +195,13 @@ async ExploreAlgorithm() {
   });
   console.log(`📋 Total ranked posts returned: ${rankedPosts.length}`);
 
-  return {
-    users: [],
-    fanbases: [],
-    posts: [],
-    profiles: [],
-    songPosts: rankedPosts,
-  };
+    return {
+      users: [],
+      fanbases: [],
+      posts: [],
+      profiles: [],
+      songPosts: rankedPosts,
+    };
 }
 
   private async searchProfilesByName(query: string): Promise<any[]> {
