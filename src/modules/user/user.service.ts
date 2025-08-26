@@ -10,6 +10,40 @@ import * as bcrypt from 'bcrypt';
 export class UserService {
   constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
+  // ===== NEW SEARCH METHOD =====
+  async searchUsers(query: string): Promise<any[]> {
+    const searchRegex = new RegExp(query, 'i'); // Case-insensitive search
+    
+    const users = await this.userModel
+      .find({
+        $or: [
+          { username: { $regex: searchRegex } },
+          { email: { $regex: searchRegex } }
+        ],
+        isBlocked: { $ne: true } // Exclude blocked users
+      })
+      .select('_id username email lastActive createdAt')
+      .limit(20) // Limit results to prevent performance issues
+      .exec();
+
+    return users.map(user => ({
+      _id: user._id,
+      username: user.username,
+      email: user.email,
+      profileImage: null, // You can add this field to your model if needed
+      isOnline: this.isUserOnline(user.lastActive), // Check if user was active recently
+      lastSeen: user.lastActive || user.createdAt
+    }));
+  }
+
+  // Helper method to determine if user is online (active within last 5 minutes)
+  private isUserOnline(lastActive: Date): boolean {
+    if (!lastActive) return false;
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    return lastActive > fiveMinutesAgo;
+  }
+
+  // ===== EXISTING METHODS (UNCHANGED) =====
   async create(createUserDto: CreateUserDTO): Promise<UserType> {
     const createdUser = new this.userModel(createUserDto);
     const savedUser = await createdUser.save();
@@ -20,10 +54,10 @@ export class UserService {
     console.log(`🔍 Searching for user with email: ${email}`);
     try {
       const user = await this.userModel.findOne({ email }).exec();
-      console.log(`📝 Database query result:`, user ? 'User found' : 'User not found');
+      console.log(`🔍 Database query result:`, user ? 'User found' : 'User not found');
       if (user) {
         console.log(`👤 Found user: ${user.username}, Role: ${user.role}`);
-        console.log(`🔐 Password hash: ${user.password.substring(0, 20)}...`);
+        console.log(`🔑 Password hash: ${user.password.substring(0, 20)}...`);
         console.log(`🆔 User ID: ${user._id} (type: ${typeof user._id})`);
         console.log(`🆔 User ID as string: ${user._id.toString()}`);
       }
@@ -50,7 +84,7 @@ export class UserService {
 
       // Try to find by the ID as-is first
       let user = await this.userModel.findById(id).exec();
-      console.log('📝 Direct findById result:', user ? 'Found' : 'Not found');
+      console.log('🔍 Direct findById result:', user ? 'Found' : 'Not found');
       
       if (!user) {
         // If not found, try creating a new ObjectId and searching
@@ -58,7 +92,7 @@ export class UserService {
           const objectId = new Types.ObjectId(id);
           console.log('🔍 Trying with new ObjectId:', objectId.toString());
           user = await this.userModel.findById(objectId).exec();
-          console.log('📝 ObjectId findById result:', user ? 'Found' : 'Not found');
+          console.log('🔍 ObjectId findById result:', user ? 'Found' : 'Not found');
         } catch (objError) {
           console.log('❌ ObjectId creation failed:', objError.message);
         }
@@ -73,7 +107,7 @@ export class UserService {
             { _id: new Types.ObjectId(id) }
           ]
         }).exec();
-        console.log('📝 String comparison result:', user ? 'Found' : 'Not found');
+        console.log('🔍 String comparison result:', user ? 'Found' : 'Not found');
       }
       
       if (user) {
@@ -125,8 +159,8 @@ export class UserService {
 
   async comparePassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
     try {
-      console.log(`🔐 Comparing password for hashed: ${hashedPassword.substring(0, 20)}...`);
-      console.log(`🔐 Plain password: ${plainPassword}`);
+      console.log(`🔍 Comparing password for hashed: ${hashedPassword.substring(0, 20)}...`);
+      console.log(`🔍 Plain password: ${plainPassword}`);
       
       // Check if the stored password is actually hashed
       if (!hashedPassword.startsWith('$2b$')) {
@@ -135,7 +169,7 @@ export class UserService {
       }
       
       const result = await bcrypt.compare(plainPassword, hashedPassword);
-      console.log(`🔐 Password comparison result: ${result}`);
+      console.log(`🔍 Password comparison result: ${result}`);
       return result;
     } catch (error) {
       console.error('❌ Password comparison error:', error);
@@ -282,7 +316,7 @@ export class UserService {
       }).exec();
 
       console.log(`✅ Password updated for ${email}`);
-      console.log(`🔐 New hash: ${hashedPassword.substring(0, 20)}...`);
+      console.log(`🔑 New hash: ${hashedPassword.substring(0, 20)}...`);
 
       return {
         success: true,
@@ -315,7 +349,6 @@ export class UserService {
     };
   }
 
-
   async getUsernameById(userId: string): Promise<string | null> {
     const user = await this.userModel.findById(userId).select('username').lean();
     return user ? user.username : null;
@@ -328,6 +361,17 @@ export class UserService {
       usernameMap.set(user._id.toString(), user.username);
     });
     return usernameMap;
+  }
+
+
+  async isEmailRegistered(email: string): Promise<boolean> {
+    const user = await this.userModel.findOne({ email }).lean();
+    return !!user;
+  }
+
+  async isUsernameRegistered(username: string): Promise<boolean> {
+    const user = await this.userModel.findOne({ username }).lean();
+    return !!user;
   }
 }
 
@@ -372,3 +416,4 @@ export class UserService {
 //     };
 //   }
 // }
+

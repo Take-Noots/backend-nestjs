@@ -44,7 +44,7 @@ export class ProfileService {
   }
 
   async getPostsByUserId(userId: string) {
-    return this.songPostModel.find({ userId }).sort({ createdAt: -1 }).lean();
+    return this.songPostModel.find({ userId, isHidden: { $ne: 1 }, isDeleted: { $ne: 1 } }).sort({ createdAt: -1 }).lean();
   }
 
   async updateProfileByUserId(userId: string, updateData: any) {
@@ -166,7 +166,7 @@ export class ProfileService {
   async getPostStatsByUserId(userId: string) {
     // SongPost posts
     const songPosts = await this.songPostModel
-      .find({ userId })
+      .find({ userId, isHidden: { $ne: 1 }, isDeleted: { $ne: 1 } })
       .sort({ createdAt: -1 })
       .lean();
     const songPostStats = songPosts.map((post) => ({
@@ -196,7 +196,7 @@ export class ProfileService {
   }
 
   async countPostsByUser(userId: string): Promise<number> {
-    return this.songPostModel.countDocuments({ userId }).exec();
+    return this.songPostModel.countDocuments({ userId, isHidden: { $ne: 1 }, isDeleted: { $ne: 1 } }).exec();
   }
 
   async getFollowersListWithDetails(userId: string) {
@@ -267,5 +267,58 @@ export class ProfileService {
       profileImage: profileMap.get(String(u._id))?.profileImage ?? '',
       fullName: profileMap.get(String(u._id))?.fullName ?? '',
     }));
+  }
+
+  // Save a post for a user
+  async savePost(userId: string, postId: string): Promise<boolean> {
+    try {
+      const result = await this.profileModel.updateOne(
+        { userId },
+        { $addToSet: { savedPosts: postId } }
+      );
+      return result.modifiedCount > 0 || result.matchedCount > 0;
+    } catch (error) {
+      console.error('Error saving post:', error);
+      return false;
+    }
+  }
+
+  // Unsave a post for a user
+  async unsavePost(userId: string, postId: string): Promise<boolean> {
+    try {
+      const result = await this.profileModel.updateOne(
+        { userId },
+        { $pull: { savedPosts: postId } }
+      );
+      return result.modifiedCount > 0 || result.matchedCount > 0;
+    } catch (error) {
+      console.error('Error unsaving post:', error);
+      return false;
+    }
+  }
+
+  // Check if a post is saved by a user
+  async isPostSaved(userId: string, postId: string): Promise<boolean> {
+    try {
+      const profile = await this.profileModel.findOne({
+        userId,
+        savedPosts: postId
+      }).lean();
+      return profile !== null;
+    } catch (error) {
+      console.error('Error checking if post is saved:', error);
+      return false;
+    }
+  }
+
+  // Get all saved post IDs for a user
+  async getSavedPosts(userId: string): Promise<string[]> {
+    try {
+      const profile = await this.profileModel.findOne({ userId }).lean();
+      return profile?.savedPosts || [];
+    } catch (error) {
+      console.error('Error getting saved posts:', error);
+      return [];
+    }
   }
 }

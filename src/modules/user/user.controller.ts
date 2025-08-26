@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, HttpException, HttpStatus, Query } from '@nestjs/common';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/role.guard';
@@ -27,6 +27,29 @@ export class UserController {
     return { 
       message: 'I bow at your feet, Your Grace! The kingdom of API endpoints awaits your command!' 
     };
+  }
+
+  // ===== NEW SEARCH ENDPOINT =====
+  @Get('search')
+  async searchUsers(@Query('q') query: string) {
+    try {
+      if (!query || query.trim().length < 2) {
+        throw new HttpException(
+          'Search query must be at least 2 characters long',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      return await this.userService.searchUsers(query.trim());
+    } catch (error) {
+      if (error.status === HttpStatus.BAD_REQUEST) {
+        throw error;
+      }
+      throw new HttpException(
+        `Failed to search users: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   // ===== DEBUG ENDPOINTS =====
@@ -250,6 +273,38 @@ export class UserController {
     } catch (error) {
       throw new HttpException(
         `Failed to compare passwords: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Get('isEmailRegistered/:email')
+  async isEmailRegistered(@Param('email') email: string) {
+    try {
+      const isRegistered = await this.userService.isEmailRegistered(email);
+      return {
+        email: email,
+        isRegistered: isRegistered
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Error checking email registration: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Get('isUsernameRegistered/:username')
+  async isUsernameRegistered(@Param('username') username: string) {
+    try {
+      const isRegistered = await this.userService.isUsernameRegistered(username);
+      return {
+        username: username,
+        isRegistered: isRegistered
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Error checking username registration: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }

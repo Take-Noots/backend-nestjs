@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Put, Body, Post } from '@nestjs/common';
+import { Controller, Get, Param, Put, Body, Post, Delete } from '@nestjs/common';
 import { ProfileService } from './profile.service';
 import { ProfileDto } from './dto/profile.dto';
 
@@ -69,5 +69,48 @@ export class ProfileController {
   @Get(':userId/following')
   async getFollowingListWithDetails(@Param('userId') userId: string) {
     return this.profileService.getFollowingListWithDetails(userId);
+  }
+
+  // Save a post
+  @Post(':userId/save/:postId')
+  async savePost(
+    @Param('userId') userId: string,
+    @Param('postId') postId: string,
+  ) {
+    const success = await this.profileService.savePost(userId, postId);
+    return {
+      success,
+      message: success ? 'Post saved successfully' : 'Failed to save post',
+    };
+  }
+
+  // Unsave a post
+  @Delete(':userId/save/:postId')
+  async unsavePost(
+    @Param('userId') userId: string,
+    @Param('postId') postId: string,
+  ) {
+    const success = await this.profileService.unsavePost(userId, postId);
+    return {
+      success,
+      message: success ? 'Post unsaved successfully' : 'Failed to unsave post',
+    };
+  }
+
+  // Check if a post is saved
+  @Get(':userId/saved/:postId')
+  async isPostSaved(
+    @Param('userId') userId: string,
+    @Param('postId') postId: string,
+  ) {
+    const isSaved = await this.profileService.isPostSaved(userId, postId);
+    return { isSaved };
+  }
+
+  // Get all saved posts for a user
+  @Get(':userId/saved-posts')
+  async getSavedPosts(@Param('userId') userId: string) {
+    const savedPosts = await this.profileService.getSavedPosts(userId);
+    return { savedPosts };
   }
 }

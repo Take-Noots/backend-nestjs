@@ -18,8 +18,8 @@ export class SearchService {
     let users: any[] = [];
     let songPosts: any[] = [];
     if (!query) {
-      // Return all song posts sorted by date ascending
-      songPosts = await this.songPostModel.find({}).sort({ createdAt: 1 }).exec();
+      // Return all song posts sorted by date ascending, excluding deleted posts
+      songPosts = await this.songPostModel.find({ isDeleted: { $ne: 1 } }).sort({ createdAt: 1 }).exec();
     } else {
       users = await this.userService.findAllWithPagination({ username: { $regex: query, $options: 'i' } });
       songPosts = await this.songPostModel.find({
@@ -28,6 +28,7 @@ export class SearchService {
           { artists: { $regex: query, $options: 'i' } },
           { caption: { $regex: query, $options: 'i' } },
         ],
+        isDeleted: { $ne: 1 },
       }).exec();
     }
 
