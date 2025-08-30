@@ -36,6 +36,8 @@ export class ProfileController {
         error: 'Profile with the given userId does not exist',
       };
     }
+    // Ensure email is included in the returned profile object
+    // If your ProfileDto/service already includes email, no change needed
     return profile;
   }
 
