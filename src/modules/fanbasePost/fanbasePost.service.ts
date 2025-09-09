@@ -22,7 +22,7 @@ export class FanbasePostService {
       if (!user) {
         throw new NotFoundException('User not found');
       }
-
+      
       // Verify fanbase exists
       const fanbase = await this.fanbaseModel.findById(createPostDto.fanbaseId).exec();
       if (!fanbase) {
@@ -46,6 +46,11 @@ export class FanbasePostService {
 
       const createdPost = new this.fanbasePostModel(postData);
       const savedPost = await createdPost.save();
+
+      //update postIds in fanbase
+      fanbase.postIds.push((savedPost._id as Types.ObjectId).toString());
+      fanbase.numberOfPosts = fanbase.postIds.length;
+      await fanbase.save();
 
       return this.toPostType(savedPost, userId);
     } catch (error) {
