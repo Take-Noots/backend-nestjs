@@ -20,6 +20,9 @@ import { ReportModule } from './modules/reports/reports.module';
 import { RequestModule } from './modules/request/request.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { FanbasePostModule } from './modules/fanbasePost/fanbasePost.module';
+import { PostReportModule } from './modules/post_report/post_report.module';
+import { AdvertisementModule } from './modules/advertisement/advertisement.module';
+
 
 import 'dotenv/config';
 
@@ -43,7 +46,9 @@ const dbUrl: string = process.env.DB_CONN_STRING as string;
     RequestModule,
     ChatModule,
     RecentlyLikedUserModule,
-    FanbasePostModule
+    FanbasePostModule,
+    PostReportModule,
+    AdvertisementModule
   ]
 })
 export class AppModule {}
