@@ -177,10 +177,11 @@ export class SpotifyController {
         try {
             // Get Spotify access token using the user ID (refresh wenawa)
             const spotifyToken = await this.sessionService.getAccessToken(user.userId);
-            if (!spotifyToken) {
+            if (!spotifyToken) {   
                 throw new HttpException('No Spotify token found for this user', HttpStatus.UNAUTHORIZED);
             }
             return await this.searchService.searchTracks(spotifyToken, track_name);
+          
         } catch (error) {
             if (error instanceof HttpException) {
                 throw error;

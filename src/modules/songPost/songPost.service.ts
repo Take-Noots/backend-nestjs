@@ -15,21 +15,16 @@ export class SongPostService {
   ) {}
 
   async create(createPostDto: CreatePostDto): Promise<SongPostDocument> {
-    console.log('Creating new song post:', createPostDto);
+    //console.log(createPostDto);
 
-    // Fetch username from UserService (for future use, but not stored in SongPost)
-    // const username = await this.userService.getUsernameById(createPostDto.userId);
-    // if (!username) {
-    //   throw new Error('User not found for given userId');
-    // }
-
-    // Only use properties defined in the schema
+    
     const createdPost = new this.songPostModel({
       ...createPostDto,
     });
+
     const savedPost = await createdPost.save();
 
-    console.log('Song post created successfully:', savedPost);
+    //console.log('Song post created successfully:', savedPost);
     return savedPost;
   }
 
