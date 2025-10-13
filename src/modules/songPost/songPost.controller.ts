@@ -45,13 +45,13 @@ export class SongPostController {
     @Body() createPostDto: CreatePostDto,
     @JwtUser() user: JwtUserData,
   ): Promise<SongPostDocument> {
-    console.log('Received create post request:', createPostDto);
-    console.log('User from JWT:', user);
+    //console.log('Received create post request:', createPostDto);
+    //console.log('User from JWT:', user);
     
-    // Add the userId from JWT token to the DTO
+    // set userId from JWT token to the DTO
     createPostDto.userId = user.userId;
     
-    // username will be fetched in the service, not from DTO
+    // username will be fetched in the service
     const createdPost = await this.songPostService.create(createPostDto);
 
     return createdPost;
