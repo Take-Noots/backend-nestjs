@@ -8,11 +8,17 @@ import {
   Delete,
   UseInterceptors,
   UploadedFile,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ProfileService } from './profile.service';
 import { ProfileDto } from './dto/profile.dto';
 import { CloudinaryService } from '../../common/services/cloudinary.service';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import {
+  JwtUser,
+  JwtUserData,
+} from '../../common/decorators/jwt-user.decorator';
 
 @Controller('profile')
 export class ProfileController {

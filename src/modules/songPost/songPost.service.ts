@@ -21,7 +21,6 @@ export class SongPostService {
   async create(createPostDto: CreatePostDto): Promise<SongPostDocument> {
     //console.log(createPostDto);
 
-    
     const createdPost = new this.songPostModel({
       ...createPostDto,
     });
@@ -466,5 +465,15 @@ export class SongPostService {
     }
 
     return post;
+  }
+
+  async getPostsByIds(ids: string[]): Promise<SongPostDocument[]> {
+    try {
+      const posts = await this.songPostModel.find({ _id: { $in: ids } }).lean();
+      return posts;
+    } catch (error) {
+      console.error('Error getting posts by ids:', error);
+      return [];
+    }
   }
 }
