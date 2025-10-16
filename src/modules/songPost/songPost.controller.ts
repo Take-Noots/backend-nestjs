@@ -20,7 +20,10 @@ import {
 import { SongPost, SongPostDocument } from './songPost.model';
 import { ProfileService } from '../profile/profile.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { JwtUser, JwtUserData } from '../../common/decorators/jwt-user.decorator';
+import {
+  JwtUser,
+  JwtUserData,
+} from '../../common/decorators/jwt-user.decorator';
 
 import { Delete } from '@nestjs/common';
 
@@ -47,14 +50,20 @@ export class SongPostController {
   ): Promise<SongPostDocument> {
     //console.log('Received create post request:', createPostDto);
     //console.log('User from JWT:', user);
-    
+
     // set userId from JWT token to the DTO
     createPostDto.userId = user.userId;
-    
+
     // username will be fetched in the service
     const createdPost = await this.songPostService.create(createPostDto);
 
     return createdPost;
+  }
+
+  @Post('by-ids')
+  async getPostsByIds(@Body() body: { ids: string[] }) {
+    const posts = await this.songPostService.getPostsByIds(body.ids);
+    return { posts };
   }
 
   @Get()
@@ -124,8 +133,10 @@ export class SongPostController {
     @Param('commentId') commentId: string,
     @JwtUser() user: JwtUserData,
   ) {
-    console.log(`[DEBUG] Controller likeComment: postId=${postId}, commentId=${commentId}, userId=${user.userId}`);
-    
+    console.log(
+      `[DEBUG] Controller likeComment: postId=${postId}, commentId=${commentId}, userId=${user.userId}`,
+    );
+
     const post = await this.songPostService.likeComment(
       postId,
       commentId,
