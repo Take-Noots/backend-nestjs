@@ -9,6 +9,7 @@ import {
 } from './dto/create-post.dto';
 import { UserService } from '../user/user.service';
 import { ProfileService } from '../profile/profile.service';
+import { ColorExtractor } from './utils/color-extractor';
 
 @Injectable()
 export class SongPostService {
@@ -19,16 +20,40 @@ export class SongPostService {
   ) {}
 
   async create(createPostDto: CreatePostDto): Promise<SongPostDocument> {
-    //console.log(createPostDto);
+    console.log('[DEBUG] Creating song post:', createPostDto);
 
+    // Use frontend-provided backgroundColor if available, otherwise extract from album image
+    let backgroundColor: string | undefined = createPostDto.backgroundColor;
+    
+    if (!backgroundColor && createPostDto.albumImage) {
+      try {
+        //console.log('[DEBUG] No frontend color provided, extracting color from album image:', createPostDto.albumImage);
+        const extractedColor = await ColorExtractor.extractColor(createPostDto.albumImage);
+        if (extractedColor) {
+          backgroundColor = extractedColor.color;
+          //console.log('[DEBUG] Extracted color:', backgroundColor);
+        } else {
+          backgroundColor = ColorExtractor.getDefaultColor();
+          //console.log('[DEBUG] Using default color:', backgroundColor);
+        }
+      } catch (error) {
+        console.error('[ERROR] Failed to extract color:', error);
+        //backgroundColor = ColorExtractor.getDefaultColor();
+      }
+    } else if (!backgroundColor) {
+      backgroundColor = ColorExtractor.getDefaultColor();
+      console.log('[DEBUG] No album image, using default color:', backgroundColor);
+    } else {
+      console.log('[DEBUG] Using frontend-provided color:', backgroundColor);
+    }
     
     const createdPost = new this.songPostModel({
       ...createPostDto,
+      backgroundColor,
     });
 
     const savedPost = await createdPost.save();
-
-    //console.log('Song post created successfully:', savedPost);
+    console.log('[DEBUG] Song post created successfully with color:', backgroundColor);
     return savedPost;
   }
 
@@ -96,20 +121,18 @@ export class SongPostService {
 
     let updateOperation;
     if (isLiked) {
-      // Remove like
       updateOperation = {
         $pull: { likedBy: userId },
         $inc: { likes: -1 },
       };
     } else {
-      // Add like
       updateOperation = {
         $addToSet: { likedBy: userId },
         $inc: { likes: 1 },
       };
     }
 
-    // Use findOneAndUpdate for atomic operation
+    // Use findOneAndUpdate for update happens in 1 database call
     const updatedPost = await this.songPostModel.findOneAndUpdate(
       { _id: postId, isDeleted: { $ne: 1 } },
       updateOperation,
