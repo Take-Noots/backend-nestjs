@@ -213,4 +213,41 @@ export class ProfileController {
     const savedPosts = await this.profileService.getSavedPosts(userId);
     return { savedPosts };
   }
+
+  // Save a thoughts post for a user
+  @Post(':userId/save-thoughts/:postId')
+  async saveThoughtsPost(
+    @Param('userId') userId: string,
+    @Param('postId') postId: string,
+  ) {
+    const success = await this.profileService.saveThoughtsPost(userId, postId);
+    return { success, message: 'Thoughts post saved successfully' };
+  }
+
+  // Unsave a thoughts post for a user
+  @Delete(':userId/save-thoughts/:postId')
+  async unsaveThoughtsPost(
+    @Param('userId') userId: string,
+    @Param('postId') postId: string,
+  ) {
+    const success = await this.profileService.unsaveThoughtsPost(userId, postId);
+    return { success, message: 'Thoughts post unsaved successfully' };
+  }
+
+  // Check if a thoughts post is saved by a user
+  @Get(':userId/saved-thoughts/:postId')
+  async isThoughtsPostSaved(
+    @Param('userId') userId: string,
+    @Param('postId') postId: string,
+  ) {
+    const isSaved = await this.profileService.isThoughtsPostSaved(userId, postId);
+    return { isSaved };
+  }
+
+  // Get all saved thoughts posts for a user
+  @Get(':userId/saved-thoughts-posts')
+  async getSavedThoughtsPosts(@Param('userId') userId: string) {
+    const savedPosts = await this.profileService.getSavedThoughtsPosts(userId);
+    return { savedPosts };
+  }
 }
