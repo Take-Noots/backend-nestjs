@@ -9,6 +9,8 @@ import {
 } from './dto/create-post.dto';
 import { UserService } from '../user/user.service';
 import { ProfileService } from '../profile/profile.service';
+import { SpotifySessionService } from '../spotify/services/spotify.session-service'
+import { SpotifyUserService } from '../spotify/services/spotify.user-service'
 
 @Injectable()
 export class SongPostService {
@@ -16,6 +18,8 @@ export class SongPostService {
     @InjectModel(SongPost.name) private songPostModel: Model<SongPostDocument>,
     private readonly userService: UserService,
     private readonly profileService: ProfileService,
+    private readonly spotifySessionService: SpotifySessionService,
+    private readonly spotifyUserService: SpotifyUserService,
   ) {}
 
   async create(createPostDto: CreatePostDto): Promise<SongPostDocument> {
@@ -234,6 +238,66 @@ export class SongPostService {
       }),
     );
     //console.log('Follower posts with usernames and profile images:', postsWithUserData);
+    return postsWithUserData;
+  }
+
+  async getPostsByIds(postIds: string[]): Promise<any[]> {
+    if (!postIds || postIds.length === 0) return [];
+    const posts = await this.songPostModel
+      .find({ _id: { $in: postIds }, isHidden: { $ne: 1 }, isDeleted: { $ne: 1 } })
+      .lean();
+    const postsWithUserData = await Promise.all(
+      posts.map(async (post) => {
+        const username = await this.userService.getUsernameById(post.userId);
+        const profile = await this.profileService.getProfileByUserId(post.userId);
+        const profileImage = profile?.profileImage || '';
+        return { ...post, username: username || '', userImage: profileImage };
+      }),
+    );
+    return postsWithUserData;
+  }
+
+  async getSpotifyUserTopTracks(userId: string): Promise<any> {
+    const spotifyToken = await this.spotifySessionService.getAccessToken(userId);
+    if (!spotifyToken) {
+      return { tracks: [] };
+    }
+    const topTracks = await this.spotifyUserService.getUsersTopTracks(spotifyToken);
+    return topTracks;
+  }
+
+  async getRecentPostsByUserIds(userIds: string[], perUserLimit: number): Promise<any[]> {
+    if (!userIds || userIds.length === 0) return [];
+    const sanitizedLimit = Math.max(1, Math.min(100, perUserLimit || 20));
+    const posts = await this.songPostModel
+      .aggregate([
+        { $match: { userId: { $in: userIds }, isHidden: { $ne: 1 }, isDeleted: { $ne: 1 } } },
+        { $sort: { createdAt: -1 } },
+        {
+          $group: {
+            _id: '$userId',
+            posts: { $push: '$$ROOT' },
+          },
+        },
+        {
+          $project: {
+            posts: { $slice: ['$posts', sanitizedLimit] },
+          },
+        },
+        { $unwind: '$posts' },
+        { $replaceRoot: { newRoot: '$posts' } },
+        { $sort: { createdAt: -1 } },
+      ])
+      .exec();
+
+    const postsWithUserData = await Promise.all(
+      posts.map(async (post) => {
+        const username = await this.userService.getUsernameById(post.userId);
+        const profile = await this.profileService.getProfileByUserId(post.userId);
+        const profileImage = profile?.profileImage || '';
+        return { ...post, username: username || '', userImage: profileImage };
+      }),
+    );
     return postsWithUserData;
   }
 

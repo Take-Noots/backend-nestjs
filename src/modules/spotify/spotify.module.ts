@@ -5,6 +5,7 @@ import { SpotifyAuthService } from "./services/spotify.auth-service";
 import { SpotifySearchService } from "./services/spotify.search-service";
 import { SpotifySessionService } from '@modules/spotify/services/spotify.session-service';
 import { SpotifyPlayerService } from './services/spotify.player-service';
+import { SpotifyUserService } from './services/spotify.user-service';
 import { SpotifySession, SpotifySessionSchema } from './spotify.model';
 
 @Module({
@@ -14,8 +15,8 @@ import { SpotifySession, SpotifySessionSchema } from './spotify.model';
         ]),
     ],
     controllers: [SpotifyController],
-    providers: [SpotifyAuthService, SpotifySearchService, SpotifySessionService, SpotifyPlayerService],
-    exports: [SpotifySessionService, SpotifyPlayerService],
+    providers: [SpotifyAuthService, SpotifySearchService, SpotifySessionService, SpotifyPlayerService, SpotifyUserService],
+    exports: [SpotifySessionService, SpotifyPlayerService, SpotifyUserService],
 })
 
 export class SpotifyModule {}
