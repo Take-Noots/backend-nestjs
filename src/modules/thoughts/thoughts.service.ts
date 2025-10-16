@@ -96,11 +96,24 @@ export class ThoughtsService {
     const username = await this.userService.getUsernameById(post.userId);
     const profile = await this.profileService.getProfileByUserId(post.userId);
     const profileImage = profile?.profileImage || '';
+    
+    // Ensure comments have usernames - optimized with batch lookup
+    const userIds = [...new Set(post.comments.map(c => c.userId))]; // Get unique user IDs
+    const usernamesMap = await this.userService.getUsernamesByIds(userIds);
+    
+    const commentsWithUsernames = post.comments.map((comment) => {
+      return {
+        ...comment,
+        username: usernamesMap.get(comment.userId) || comment.username || 'Unknown',
+      };
+    });
+    
     return {
       ...post,
       username: username || '',
       userImage: profileImage,
       postType: 'thoughts',
+      comments: commentsWithUsernames,
     };
   }
 
@@ -131,7 +144,7 @@ export class ThoughtsService {
   }
 
   // Like a thoughts post
-  async likePost(postId: string, dto: LikeThoughtsDto): Promise<any> {
+  async likePost(postId: string, userId: string): Promise<any> {
     const post = await this.thoughtsModel.findOne({ 
       _id: postId, 
       isHidden: { $ne: 1 }, 
@@ -139,9 +152,9 @@ export class ThoughtsService {
     });
     if (!post) return null;
 
-    const index = post.likedBy.indexOf(dto.userId);
+    const index = post.likedBy.indexOf(userId);
     if (index === -1) {
-      post.likedBy.push(dto.userId);
+      post.likedBy.push(userId);
     } else {
       post.likedBy.splice(index, 1);
     }
@@ -159,12 +172,19 @@ export class ThoughtsService {
 
   // Add comment to thoughts post
   async addComment(postId: string, dto: AddThoughtsCommentDto): Promise<any> {
+    console.log('[DEBUG] ThoughtsService.addComment: postId:', postId, 'dto:', dto);
+    
     const post = await this.thoughtsModel.findOne({ 
       _id: postId, 
       isHidden: { $ne: 1 }, 
       isDeleted: { $ne: 1 } 
     });
-    if (!post) throw new NotFoundException('Thoughts post not found');
+    if (!post) {
+      console.log('[DEBUG] ThoughtsService.addComment: Post not found for ID:', postId);
+      throw new NotFoundException('Thoughts post not found');
+    }
+    
+    console.log('[DEBUG] ThoughtsService.addComment: Found post:', post._id);
 
     // Get username for the comment
     const username = await this.userService.getUsernameById(dto.userId);
@@ -183,7 +203,71 @@ export class ThoughtsService {
     post.comments.push(comment);
     await post.save();
     console.log('Comment added to thoughts post:', comment);
-    return comment;
+    
+    // Get usernames for all comments in parallel for better performance
+    const userIds = [...new Set(post.comments.map(c => c.userId))]; // Get unique user IDs
+    const usernamesMap = await this.userService.getUsernamesByIds(userIds);
+    
+    const commentsWithUsernames = post.comments.map((comment) => {
+      return {
+        ...comment.toObject(),
+        username: usernamesMap.get(comment.userId) || comment.username || 'Unknown',
+      };
+    });
+    
+    // Return the updated post with username and postType
+    const username_post = await this.userService.getUsernameById(post.userId);
+    return {
+      ...post.toObject(),
+      username: username_post || '',
+      postType: 'thoughts',
+      comments: commentsWithUsernames,
+    };
+  }
+
+  // Like/unlike a thoughts comment
+  async likeComment(postId: string, commentId: string, userId: string): Promise<any> {
+    const post = await this.thoughtsModel.findOne({ 
+      _id: postId, 
+      isHidden: { $ne: 1 }, 
+      isDeleted: { $ne: 1 } 
+    });
+    if (!post) return null;
+
+    const comment = post.comments.find(c => c.id.toString() === commentId);
+    if (!comment) return null;
+
+    const index = comment.likedBy.indexOf(userId);
+    if (index === -1) {
+      comment.likedBy.push(userId);
+    } else {
+      comment.likedBy.splice(index, 1);
+    }
+    comment.likes = comment.likedBy.length;
+    comment.updatedAt = new Date();
+    
+    await post.save();
+    console.log('Comment like updated:', comment);
+    
+    // Get usernames for all comments - optimized with batch lookup
+    const userIds = [...new Set(post.comments.map(c => c.userId))]; // Get unique user IDs
+    const usernamesMap = await this.userService.getUsernamesByIds(userIds);
+    
+    const commentsWithUsernames = post.comments.map((comment) => {
+      return {
+        ...comment.toObject(),
+        username: usernamesMap.get(comment.userId) || comment.username || 'Unknown',
+      };
+    });
+    
+    // Return the updated post with username and postType
+    const username = await this.userService.getUsernameById(post.userId);
+    return {
+      ...post.toObject(),
+      username: username || '',
+      postType: 'thoughts',
+      comments: commentsWithUsernames,
+    };
   }
 
   // Delete thoughts post (soft delete)

@@ -12,7 +12,11 @@ import {
   Request,
 } from '@nestjs/common';
 import { SongPostService } from './songPost.service';
-import { CreatePostDto, UpdatePostDto, AddCommentDto } from './dto/create-post.dto';
+import {
+  CreatePostDto,
+  UpdatePostDto,
+  AddCommentDto,
+} from './dto/create-post.dto';
 import { SongPost, SongPostDocument } from './songPost.model';
 import { ProfileService } from '../profile/profile.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -41,13 +45,13 @@ export class SongPostController {
     @Body() createPostDto: CreatePostDto,
     @JwtUser() user: JwtUserData,
   ): Promise<SongPostDocument> {
-    console.log('Received create post request:', createPostDto);
-    console.log('User from JWT:', user);
+    //console.log('Received create post request:', createPostDto);
+    //console.log('User from JWT:', user);
     
-    // Add the userId from JWT token to the DTO
+    // set userId from JWT token to the DTO
     createPostDto.userId = user.userId;
     
-    // username will be fetched in the service, not from DTO
+    // username will be fetched in the service
     const createdPost = await this.songPostService.create(createPostDto);
 
     return createdPost;
@@ -77,6 +81,13 @@ export class SongPostController {
     @Param('userId') userId: string,
   ): Promise<SongPostDocument[]> {
     return this.songPostService.findByUserId(userId);
+  }
+
+  // Return only hidden posts for the specified user
+  @Get('user/:userId/hidden')
+  async findHiddenByUserId(@Param('userId') userId: string) {
+    const posts = await this.songPostService.findHiddenByUserId(userId);
+    return { success: true, data: posts };
   }
 
   @Post(':id/like')
@@ -149,11 +160,18 @@ export class SongPostController {
   @UsePipes(new ValidationPipe())
   async update(@Param('id') id: string, @Body() updatePostDto: UpdatePostDto) {
     console.log('Received update post request:', updatePostDto);
-    const updatedPost = await this.songPostService.updateSongPost(id, updatePostDto);
+    const updatedPost = await this.songPostService.updateSongPost(
+      id,
+      updatePostDto,
+    );
     if (!updatedPost) {
       return { success: false, message: 'Post not found' };
     }
-    return { success: true, data: updatedPost, message: 'Post updated successfully' };
+    return {
+      success: true,
+      data: updatedPost,
+      message: 'Post updated successfully',
+    };
   }
 
   @Delete(':id')
@@ -163,6 +181,14 @@ export class SongPostController {
       return { success: false, message: 'Post not found' };
     }
     return { success: true, message: 'Post deleted successfully' };
+  }
+
+  // Unhide a post (set isHidden = 0)
+  @Patch(':id/unhide')
+  async unhide(@Param('id') id: string) {
+    const post = await this.songPostService.unhidePost(id);
+    if (!post) return { success: false, message: 'Post not found' };
+    return { success: true, data: post };
   }
 
   /*
