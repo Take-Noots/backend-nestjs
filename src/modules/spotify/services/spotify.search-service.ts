@@ -39,6 +39,7 @@ export class SpotifySearchService {
                     limit: 10
                 }
             });
+            //console.log('Search tracks response:', response.data);
 
             const filteredResponse: SearchTracksResponse = {
                 tracks: {

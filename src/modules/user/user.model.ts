@@ -48,3 +48,10 @@ export class User {
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
+
+// Add indexes for better search performance
+UserSchema.index({ username: 'text', email: 'text' });
+UserSchema.index({ username: 1 });
+UserSchema.index({ email: 1 });
+UserSchema.index({ isBlocked: 1 });
+UserSchema.index({ lastActive: 1 });

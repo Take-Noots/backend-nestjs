@@ -41,6 +41,22 @@ export class ThoughtsPost {
 
   @Prop({ default: null })
   FanbaseID: string;
+  
+  @Prop({ required: false })
+  songName?: string;
+
+  @Prop({ required: false })
+  artistName?: string;
+
+  @Prop({ required: false })
+  trackId?: string;
+
+  // Moderation fields
+  @Prop({ default: 0 })
+  isHidden: number; // 0 = visible, 1 = hidden
+
+  @Prop({ default: 0 })
+  isDeleted: number; // 0 = not deleted, 1 = deleted
 }
 
 export const ThoughtsPostSchema = SchemaFactory.createForClass(ThoughtsPost);
