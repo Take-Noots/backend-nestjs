@@ -6,6 +6,7 @@ import { Profile, ProfileSchema } from './profile.model';
 import { SongPost, SongPostSchema } from '../songPost/songPost.model';
 import { User, UserSchema } from '../user/user.model';
 import { Post, PostSchema } from '../posts/post.model';
+import { CloudinaryService } from '../../common/services/cloudinary.service';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { Post, PostSchema } from '../posts/post.model';
     ]),
   ],
   controllers: [ProfileController],
-  providers: [ProfileService],
+  providers: [ProfileService, CloudinaryService],
   exports: [ProfileService],
 })
 export class ProfileModule {}
