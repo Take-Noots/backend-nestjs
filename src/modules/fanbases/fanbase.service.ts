@@ -1,5 +1,5 @@
 import { Model } from 'mongoose';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Fanbase, FanbaseDocument } from './fanbase.model';
 import { User, UserDocument } from '../user/user.model';
@@ -176,6 +176,20 @@ export class FanbaseService {
 
   async countFanbases(filter: any = {}): Promise<number> {
     return await this.fanbaseModel.countDocuments(filter).exec();
+  }
+
+  async addOrUpdateRules(fanbaseId: string, rules: { rule: string }[], userId: string) {
+    const fanbase = await this.fanbaseModel.findById(fanbaseId);
+    if (!fanbase) throw new NotFoundException('Fanbase not found');
+    if (fanbase.createdBy.toString() !== userId) throw new ForbiddenException('Only owner can add rules');
+    fanbase.rules = rules;
+    await fanbase.save();
+    return fanbase;
+  }
+
+  async getRules(fanbaseId: string) {
+    const fanbase = await this.fanbaseModel.findById(fanbaseId);
+    return fanbase?.rules || [];
   }
 
   private toFanbaseType(fanbase: FanbaseDocument, userId?: string): FanbaseType {

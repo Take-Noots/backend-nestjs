@@ -21,6 +21,7 @@ import { RolesGuard } from '../../common/guards/role.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 import { JwtUser, JwtUserData } from '../../common/decorators/jwt-user.decorator';
+import { Req } from '@nestjs/common';
 
 @Controller('fanbase')
 export class FanbaseController {
@@ -185,5 +186,20 @@ export class FanbaseController {
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':fanbaseId/rules')
+  async addOrUpdateRules(
+    @Param('fanbaseId') fanbaseId: string,
+    @Body('rules') rules: { rule: string }[],
+    @Req() req
+  ) {
+    return this.fanbaseService.addOrUpdateRules(fanbaseId, rules, req.user.id);
+  }
+
+  @Get(':fanbaseId/rules')
+  async getRules(@Param('fanbaseId') fanbaseId: string) {
+    return this.fanbaseService.getRules(fanbaseId);
   }
 }
