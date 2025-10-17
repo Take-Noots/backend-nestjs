@@ -18,4 +18,6 @@ export interface FanbaseType {
     _id: string;
     username: string;
   };
+  isDeleted: boolean;
+  rules: { rule: string }[];
 }

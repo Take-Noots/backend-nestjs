@@ -40,6 +40,8 @@ export class ProfileService {
       followers: profile.followers,
       following: profile.following,
       albumArts: profile.albumArts,
+      savedPosts: profile.savedPosts ?? [], // Add this
+      savedThoughtsPosts: profile.savedThoughtsPosts ?? [], // Add this
     };
   }
 
@@ -390,6 +392,56 @@ export class ProfileService {
         success: false,
         message: 'Failed to unfollow user',
       };
+    }
+  }
+
+  // Save a thoughts post for a user
+  async saveThoughtsPost(userId: string, postId: string): Promise<boolean> {
+    try {
+      const result = await this.profileModel.updateOne(
+        { userId },
+        { $addToSet: { savedThoughtsPosts: postId } },
+      );
+      return result.modifiedCount > 0 || result.matchedCount > 0;
+    } catch (error) {
+      console.error('Error saving thoughts post:', error);
+      return false;
+    }
+  }
+
+  // Unsave a thoughts post for a user
+  async unsaveThoughtsPost(userId: string, postId: string): Promise<boolean> {
+    try {
+      const result = await this.profileModel.updateOne(
+        { userId },
+        { $pull: { savedThoughtsPosts: postId } },
+      );
+      return result.modifiedCount > 0 || result.matchedCount > 0;
+    } catch (error) {
+      console.error('Error unsaving thoughts post:', error);
+      return false;
+    }
+  }
+
+  // Check if a thoughts post is saved by a user
+  async isThoughtsPostSaved(userId: string, postId: string): Promise<boolean> {
+    try {
+      const profile = await this.profileModel.findOne({ userId }).lean();
+      return profile?.savedThoughtsPosts?.includes(postId) || false;
+    } catch (error) {
+      console.error('Error checking if thoughts post is saved:', error);
+      return false;
+    }
+  }
+
+  // Get all saved thoughts posts for a user
+  async getSavedThoughtsPosts(userId: string): Promise<string[]> {
+    try {
+      const profile = await this.profileModel.findOne({ userId }).lean();
+      return profile?.savedThoughtsPosts || [];
+    } catch (error) {
+      console.error('Error getting saved thoughts posts:', error);
+      return [];
     }
   }
 }
