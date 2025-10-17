@@ -3,6 +3,7 @@ import { UserService } from '../../user/user.service';
 import { SongPostService } from '../../songPost/songPost.service';
 import { FanbaseService } from '../../fanbases/fanbase.service';
 import { ReportService } from '../../reports/report.service';
+import { PostReportService } from '../../post_report/post_report.service';
 import { BanUserDto } from '../dto/ban-user.dto';
 import { ResolveReportDTO } from '../../reports/dto/resolve-report.dto';
 import { Types } from 'mongoose';
@@ -14,6 +15,7 @@ export class AdminService {
     private readonly songPostService: SongPostService,
     private readonly fanbaseService: FanbaseService,
     private readonly reportService: ReportService,
+    private readonly postReportService: PostReportService,
   ) {}
 
   // ===== HELPER METHOD FOR CLEANING IDS =====
@@ -48,14 +50,65 @@ export class AdminService {
     }
   }
 
-  // ===== USER MANAGEMENT (unchanged) =====
-  async getAllUsers(page: number = 1, limit: number = 10, role?: string) {
+  // ===== USER MANAGEMENT =====
+  async getAllUsers(page: number = 1, limit: number = 10, role?: string, search?: string, status?: string, dateRange?: string) {
     const skip = (page - 1) * limit;
-    
-    const filter = role ? { role } : {};
+
+    // Build filter object
+    const filter: any = {};
+
+    // Role filter
+    if (role) {
+      filter.role = role;
+    }
+
+    // Status filter
+    if (status) {
+      if (status === 'active') {
+        filter.isBlocked = { $ne: true };
+      } else if (status === 'blocked') {
+        filter.isBlocked = true;
+      } else if (status === 'new') {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        filter.createdAt = { $gte: sevenDaysAgo };
+      }
+    }
+
+    // Date range filter
+    if (dateRange) {
+      const now = new Date();
+      let startDate = new Date();
+
+      switch (dateRange) {
+        case 'today':
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'week':
+          startDate.setDate(now.getDate() - 7);
+          break;
+        case 'month':
+          startDate.setMonth(now.getMonth() - 1);
+          break;
+      }
+
+      if (dateRange !== 'all') {
+        filter.createdAt = { ...(filter.createdAt || {}), $gte: startDate };
+      }
+    }
+
+    // Search filter for email and username
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i');
+      filter.$or = [
+        { email: { $regex: searchRegex } },
+        { username: { $regex: searchRegex } }
+      ];
+    }
+
     const users = await this.userService.findAllWithPagination(filter, skip, limit);
     const total = await this.userService.countUsers(filter);
-    
+
     return {
       users: users.map(user => ({
         id: user._id,
@@ -70,7 +123,8 @@ export class AdminService {
         current: page,
         total: Math.ceil(total / limit),
         count: users.length,
-        totalUsers: total
+        totalUsers: total,
+        limit: limit
       }
     };
   }
@@ -92,6 +146,54 @@ export class AdminService {
       banUntil: user.banUntil,
       createdAt: user.createdAt,
       lastActive: user.lastActive,
+    };
+  }
+
+  async updateUser(userId: string, updateData: any) {
+    const user = await this.userService.findById(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Update user with provided data
+    const updatedUser = await this.userService.updateUser(userId, {
+      username: updateData.username,
+      email: updateData.email,
+      role: updateData.role
+    });
+
+    return {
+      id: updatedUser._id,
+      username: updatedUser.username,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      isBlocked: updatedUser.isBlocked || false,
+      createdAt: updatedUser.createdAt,
+      lastActive: updatedUser.lastActive
+    };
+  }
+
+  async deleteUser(userId: string, reason: string, deletedBy: string) {
+    const user = await this.userService.findById(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Check if trying to delete admin user
+    if (user.role === 'admin') {
+      throw new Error('Cannot delete admin users');
+    }
+
+    // Delete user - this will depend on your UserService implementation
+    // For now, we'll use soft delete by marking as deleted
+    await this.userService.deleteUser(userId);
+
+    return {
+      message: 'User deleted successfully',
+      deletedUserId: userId,
+      reason,
+      deletedBy,
+      deletedAt: new Date()
     };
   }
 
@@ -132,7 +234,7 @@ export class AdminService {
   }
 
   // ===== CONTENT MODERATION (FIXED FOR POSTS) =====
-  async getAllPosts(page: number = 1, limit: number = 10, reported?: boolean) {
+  async getAllPosts(page: number = 1, limit: number = 10, filters?: any) {
     try {
       console.log('📊 AdminService.getAllPosts called');
       const skip = (page - 1) * limit;
@@ -141,21 +243,107 @@ export class AdminService {
       console.log('🔄 Getting posts without usernames first...');
       const allPosts = await this.songPostService.findAll();
       console.log(`📈 Found ${allPosts.length} posts from SongPostService`);
-      
+
       // Apply filters
       let filteredPosts = allPosts;
-      if (reported) {
+
+      // Search filter
+      if (filters?.search && filters.search.trim()) {
+        const searchTerm = filters.search.trim().toLowerCase();
+        console.log(`🔍 Applying search filter for: "${searchTerm}"`);
+        filteredPosts = filteredPosts.filter(post =>
+          post.songName?.toLowerCase().includes(searchTerm) ||
+          post.artists?.toLowerCase().includes(searchTerm) ||
+          post.caption?.toLowerCase().includes(searchTerm) ||
+          post.trackId?.toLowerCase().includes(searchTerm)
+        );
+        console.log(`📊 Filtered to ${filteredPosts.length} posts after search`);
+      }
+
+      // Status filter
+      if (filters?.status) {
+        console.log(`📊 Applying status filter: "${filters.status}"`);
+        if (filters.status === 'reported') {
+          // Since songPost model doesn't have isReported field, return empty array for now
+          console.log('⚠️ Reported posts filter applied - no reported posts field in songPost model');
+          filteredPosts = [];
+        } else if (filters.status === 'popular') {
+          const beforeCount = filteredPosts.length;
+          filteredPosts = filteredPosts.filter(post => (post.likes || 0) >= 10);
+          console.log(`🔥 Popular posts filter: ${beforeCount} -> ${filteredPosts.length} posts (10+ likes)`);
+        } else if (filters.status === 'recent') {
+          const beforeCount = filteredPosts.length;
+          const threeDaysAgo = new Date();
+          threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+          filteredPosts = filteredPosts.filter(post => new Date(post.createdAt) >= threeDaysAgo);
+          console.log(`⏰ Recent posts filter: ${beforeCount} -> ${filteredPosts.length} posts (last 3 days)`);
+        }
+      }
+
+      // Date range filter
+      if (filters?.dateRange) {
+        console.log(`📅 Applying date range filter: "${filters.dateRange}"`);
+        const now = new Date();
+        let startDate = new Date();
+        const beforeCount = filteredPosts.length;
+
+        switch (filters.dateRange) {
+          case 'today':
+            startDate.setHours(0, 0, 0, 0);
+            filteredPosts = filteredPosts.filter(post => new Date(post.createdAt) >= startDate);
+            console.log(`📅 Today filter: ${beforeCount} -> ${filteredPosts.length} posts`);
+            break;
+          case 'week':
+            startDate.setDate(now.getDate() - 7);
+            filteredPosts = filteredPosts.filter(post => new Date(post.createdAt) >= startDate);
+            console.log(`📅 Week filter: ${beforeCount} -> ${filteredPosts.length} posts`);
+            break;
+          case 'month':
+            startDate.setMonth(now.getMonth() - 1);
+            filteredPosts = filteredPosts.filter(post => new Date(post.createdAt) >= startDate);
+            console.log(`📅 Month filter: ${beforeCount} -> ${filteredPosts.length} posts`);
+            break;
+        }
+      }
+
+      // Engagement filter
+      if (filters?.engagement) {
+        console.log(`💖 Applying engagement filter: "${filters.engagement}"`);
+        const beforeCount = filteredPosts.length;
+        if (filters.engagement === 'high') {
+          filteredPosts = filteredPosts.filter(post => (post.likes || 0) >= 10);
+          console.log(`💖 High engagement filter: ${beforeCount} -> ${filteredPosts.length} posts (10+ likes)`);
+        } else if (filters.engagement === 'medium') {
+          filteredPosts = filteredPosts.filter(post => {
+            const likes = post.likes || 0;
+            return likes >= 5 && likes < 10;
+          });
+          console.log(`💖 Medium engagement filter: ${beforeCount} -> ${filteredPosts.length} posts (5-9 likes)`);
+        } else if (filters.engagement === 'low') {
+          filteredPosts = filteredPosts.filter(post => (post.likes || 0) < 5);
+          console.log(`💖 Low engagement filter: ${beforeCount} -> ${filteredPosts.length} posts (<5 likes)`);
+        }
+      }
+
+      // Legacy reported filter
+      if (filters?.reported) {
+        console.log('⚠️ Legacy reported filter applied - no reported posts field in songPost model');
         // Since songPost model doesn't have isReported field, return empty array for now
         filteredPosts = [];
-
       }
+
+      console.log(`✅ Final filter result: ${filteredPosts.length} posts after all filters applied`);
       
       // Apply pagination
       const paginatedPosts = filteredPosts.slice(skip, skip + limit);
       const total = filteredPosts.length;
       
       console.log(`📊 Processing ${paginatedPosts.length} posts after pagination`);
-      
+
+      // Get all reported post IDs to check which posts are reported
+      const reportedPostIds = await this.postReportService.getReportedPosts();
+      const reportedPostsSet = new Set(reportedPostIds.map(id => id.toString()));
+
       // Process posts with safe username lookup and ID cleaning
       const processedPosts = await Promise.all(paginatedPosts.map(async (post) => {
         try {
@@ -165,6 +353,11 @@ export class AdminService {
           
           const username = cleanUserId ? await this.safeGetUsername(cleanUserId) : 'Unknown User';
           
+          // Check if this post has any reports
+          const isReported = reportedPostsSet.has(post._id.toString());
+          const postReports = isReported ? await this.postReportService.getReportsByPostId(post._id.toString()) : [];
+          const pendingReportsCount = postReports.filter(r => r.status === 'pending').length;
+
           return {
             id: post._id,
             userId: cleanUserId || post.userId,
@@ -177,7 +370,10 @@ export class AdminService {
             commentsCount: post.comments ? post.comments.length : 0,
             sharesCount: 0, // Not in songPost model
             trackId: post.trackId,
-            isReported: false, // Placeholder - add this field to songPost model if needed
+            isReported: isReported,
+            reportCount: postReports.length,
+            pendingReportsCount: pendingReportsCount,
+            reports: postReports,
             createdAt: post.createdAt,
             updatedAt: post.updatedAt
           };
@@ -197,6 +393,9 @@ export class AdminService {
             sharesCount: 0,
             trackId: post.trackId,
             isReported: false,
+            reportCount: 0,
+            pendingReportsCount: 0,
+            reports: [],
             createdAt: post.createdAt,
             updatedAt: post.updatedAt
           };
@@ -211,7 +410,8 @@ export class AdminService {
           current: page,
           total: Math.ceil(total / limit),
           count: paginatedPosts.length,
-          totalPosts: total
+          totalPosts: total,
+          limit: limit
         }
       };
     } catch (error) {

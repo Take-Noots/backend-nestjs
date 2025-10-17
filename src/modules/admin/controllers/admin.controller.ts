@@ -26,10 +26,13 @@ export class AdminController {
   async getAllUsers(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
-    @Query('role') role?: string
+    @Query('role') role?: string,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('dateRange') dateRange?: string
   ) {
     try {
-      return await this.adminService.getAllUsers(page, limit, role);
+      return await this.adminService.getAllUsers(page, limit, role, search, status, dateRange);
     } catch (error) {
       throw new HttpException(
         `Failed to fetch users: ${error.message}`,
@@ -103,10 +106,20 @@ export class AdminController {
   async getAllPosts(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('dateRange') dateRange?: string,
+    @Query('engagement') engagement?: string,
     @Query('reported') reported?: boolean
   ) {
     try {
-      return await this.adminService.getAllPosts(page, limit, reported);
+      return await this.adminService.getAllPosts(page, limit, {
+        search,
+        status,
+        dateRange,
+        engagement,
+        reported: reported || (status === 'reported')
+      });
     } catch (error) {
       throw new HttpException(
         `Failed to fetch posts: ${error.message}`,

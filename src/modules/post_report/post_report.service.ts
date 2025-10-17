@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { PostReport, PostReportDocument } from './post_report.model';
-import { CreatePostReportDto, UpdatePostReportDto } from './dto/post_report.dto';
+import { CreatePostReportDto, UpdatePostReportDto, ReviewPostReportDto } from './dto/post_report.dto';
 
 @Injectable()
 export class PostReportService {
@@ -81,5 +81,82 @@ export class PostReportService {
       .find({ reporterId: reporterId })
       .sort({ createdAt: -1 })
       .exec();
+  }
+
+  async reviewReport(
+    reportId: string,
+    reviewData: ReviewPostReportDto,
+    reviewedBy: string,
+  ): Promise<PostReport> {
+    const report = await this.postReportModel
+      .findByIdAndUpdate(
+        reportId,
+        {
+          status: reviewData.status,
+          adminNotes: reviewData.adminNotes,
+          reviewedBy: reviewedBy,
+          reviewedAt: new Date(),
+        },
+        { new: true }
+      )
+      .exec();
+
+    if (!report) {
+      throw new NotFoundException('Report not found');
+    }
+
+    return report;
+  }
+
+  async getPendingReports(): Promise<PostReport[]> {
+    return await this.postReportModel
+      .find({ status: 'pending' })
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
+  async getReportsByStatus(status: string): Promise<PostReport[]> {
+    return await this.postReportModel
+      .find({ status })
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
+  async getReportsByPostId(postId: string): Promise<PostReport[]> {
+    return await this.postReportModel
+      .find({ reportedPostId: postId })
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
+  async getReportedPosts(): Promise<string[]> {
+    const reports = await this.postReportModel
+      .distinct('reportedPostId')
+      .exec();
+    return reports;
+  }
+
+  async getReportedPostsWithDetails(): Promise<any[]> {
+    return await this.postReportModel.aggregate([
+      {
+        $group: {
+          _id: '$reportedPostId',
+          reportCount: { $sum: 1 },
+          pendingReports: {
+            $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
+          },
+          approvedReports: {
+            $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] }
+          },
+          rejectedReports: {
+            $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] }
+          },
+          latestReport: { $last: '$$ROOT' }
+        }
+      },
+      {
+        $sort: { 'latestReport.createdAt': -1 }
+      }
+    ]);
   }
 }

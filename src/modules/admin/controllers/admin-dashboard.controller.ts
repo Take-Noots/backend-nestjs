@@ -1,14 +1,15 @@
 // src/modules/admin/controllers/admin-dashboard.controller.ts
-import { 
-  Controller, 
-  Get, 
-  Post, 
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
   Delete,
-  Render, 
-  Req, 
-  Res, 
-  Body, 
-  Param, 
+  Render,
+  Req,
+  Res,
+  Body,
+  Param,
   Query,
   UseGuards,
   HttpException,
@@ -18,8 +19,9 @@ import { Request, Response } from 'express';
 import { AdminGuard } from '../guards/admin.guard';
 import { AdminService } from '../services/admin.service';
 import { AuthService } from '../../auth/auth.service';
-import { FanbaseService } from '../../fanbases/fanbase.service'; 
+import { FanbaseService } from '../../fanbases/fanbase.service';
 import { SongPostService } from '../../songPost/songPost.service';
+import { PostReportService } from '../../post_report/post_report.service';
 
 @Controller('admin')
 export class AdminDashboardController {
@@ -27,7 +29,8 @@ export class AdminDashboardController {
     private readonly adminService: AdminService,
     private readonly authService: AuthService,
     private readonly fanbaseService: FanbaseService,
-    private readonly songPostService: SongPostService
+    private readonly songPostService: SongPostService,
+    private readonly postReportService: PostReportService
   ) {}
 
   // ==================== PUBLIC ROUTES (NO GUARD) ====================
@@ -205,17 +208,21 @@ export class AdminDashboardController {
     @Req() req: Request,
     @Query('page') page: number = 1,
     @Query('role') role?: string,
-    @Query('search') search?: string
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('dateRange') dateRange?: string
   ) {
     try {
-      const usersData = await this.adminService.getAllUsers(page, 20, role);
+      const usersData = await this.adminService.getAllUsers(page, 20, role, search, status, dateRange);
       return {
         title: 'User Management',
         user: req['user'],
         users: usersData.users,
         pagination: usersData.pagination,
         currentRole: role,
-        searchQuery: search
+        searchQuery: search,
+        currentStatus: status,
+        currentDateRange: dateRange
       };
     } catch (error) {
       return {
@@ -223,7 +230,11 @@ export class AdminDashboardController {
         user: req['user'],
         error: 'Failed to load users',
         users: [],
-        pagination: null
+        pagination: null,
+        currentRole: role,
+        searchQuery: search,
+        currentStatus: status,
+        currentDateRange: dateRange
       };
     }
   }
@@ -235,19 +246,33 @@ export class AdminDashboardController {
   async postsPage(
     @Req() req: Request,
     @Query('page') page: number = 1,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('dateRange') dateRange?: string,
+    @Query('engagement') engagement?: string,
     @Query('reported') reported?: boolean
   ) {
     try {
       console.log('📊 Loading posts page...');
-      const postsData = await this.adminService.getAllPosts(page, 20, reported);
+      const postsData = await this.adminService.getAllPosts(page, 20, {
+        search,
+        status,
+        dateRange,
+        engagement,
+        reported: reported || (status === 'reported')
+      });
       console.log('📈 Posts found:', postsData.posts.length);
-      
+
       return {
         title: 'Content Management',
         user: req['user'],
         posts: postsData.posts,
         pagination: postsData.pagination,
-        showReported: reported
+        showReported: reported || (status === 'reported'),
+        searchQuery: search,
+        currentStatus: status,
+        currentDateRange: dateRange,
+        currentEngagement: engagement
       };
     } catch (error) {
       console.error('❌ Failed to load posts:', error);
@@ -256,7 +281,11 @@ export class AdminDashboardController {
         user: req['user'],
         error: 'Failed to load posts: ' + error.message,
         posts: [],
-        pagination: null
+        pagination: null,
+        searchQuery: search,
+        currentStatus: status,
+        currentDateRange: dateRange,
+        currentEngagement: engagement
       };
     }
   }
@@ -383,45 +412,142 @@ export class AdminDashboardController {
     };
   }
 
-  // User Detail Page
-  @Get('users/:id')
-@UseGuards(AdminGuard)
-async userDetailPage(@Req() req: Request, @Res() res: Response, @Param('id') userId: string) {
-  try {
-    const user = await this.adminService.getUserById(userId);
-    
-    // Check if this is an AJAX request
-    if (req.xhr || req.headers['accept']?.includes('application/json')) {
-      // Return JSON for AJAX requests
-      return res.json(user);
+  // Export functionality - MUST be before users/:id to avoid route conflict
+  @Get('users/export')
+  @UseGuards(AdminGuard)
+  async exportUsers(
+    @Query('role') role?: string,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('dateRange') dateRange?: string,
+    @Res() res?: Response
+  ) {
+    try {
+      // Get all users with current filters (no pagination for export)
+      const usersData = await this.adminService.getAllUsers(1, 10000, role, search, status, dateRange);
+
+      // Create CSV content
+      const csvHeader = 'ID,Username,Email,Role,Status,Created At,Last Active\n';
+      const csvData = usersData.users.map(user => {
+        const lastActiveStr = user.lastActive ? new Date(user.lastActive).toISOString() : 'Never';
+        const createdAtStr = user.createdAt ? new Date(user.createdAt).toISOString() : 'Unknown';
+        return `"${user.id}","${user.username || ''}","${user.email}","${user.role}","${user.isBlocked ? 'Blocked' : 'Active'}","${createdAtStr}","${lastActiveStr}"`;
+      }).join('\n');
+
+      const csvContent = csvHeader + csvData;
+
+      if (res) {
+        // Set headers for file download
+        res.set({
+          'Content-Type': 'text/csv',
+          'Content-Disposition': `attachment; filename="users-export-${new Date().toISOString().split('T')[0]}.csv"`
+        });
+
+        return res.send(csvContent);
+      }
+
+      return { csv: csvContent };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to export users: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
     }
-    
-    // Otherwise render the page (if you have a detail page)
-    return res.render('admin/user-detail', {
-      title: 'User Details',
-      user: req['user'],
-      targetUser: user
-    });
-  } catch (error) {
-    if (req.xhr || req.headers['accept']?.includes('application/json')) {
-      return res.status(404).json({ 
+  }
+
+  // User Detail API - Returns JSON only (used by user modal)
+  @Get('users/:id')
+  @UseGuards(AdminGuard)
+  async getUserDetails(@Req() req: Request, @Res() res: Response, @Param('id') userId: string) {
+    try {
+      const user = await this.adminService.getUserById(userId);
+      return res.json(user);
+    } catch (error) {
+      return res.status(404).json({
         error: 'User not found',
-        message: error.message 
+        message: error.message
       });
     }
-    
-    return res.render('admin/user-detail', {
-      title: 'User Details',
-      user: req['user'],
-      error: 'User not found',
-      targetUser: null
-    });
   }
-}
 
   // ==================== API ROUTES FOR ADMIN OPERATIONS ====================
   
   // User Management API
+  @Post('users')
+  @UseGuards(AdminGuard)
+  async createUser(@Body() userData: any, @Req() req: Request) {
+    try {
+      const createdUser = await this.authService.register({
+        email: userData.email,
+        username: userData.username,
+        password: userData.password,
+        role: userData.role || 'user'
+      });
+
+      return {
+        message: 'User created successfully',
+        user: {
+          id: createdUser._id,
+          email: createdUser.email,
+          username: createdUser.username,
+          role: createdUser.role
+        }
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to create user: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Put('users/:id')
+  @UseGuards(AdminGuard)
+  async updateUser(@Param('id') id: string, @Body() updateData: any) {
+    try {
+      const user = await this.adminService.getUserById(id);
+      if (!user) {
+        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      }
+
+      // Update user data
+      const updatedUser = await this.adminService.updateUser(id, updateData);
+
+      return {
+        message: 'User updated successfully',
+        user: updatedUser
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to update user: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Delete('users/:id')
+  @UseGuards(AdminGuard)
+  async deleteUser(@Param('id') id: string, @Body() deleteData: any) {
+    try {
+      const user = await this.adminService.getUserById(id);
+      if (!user) {
+        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      }
+
+      // Delete user
+      await this.adminService.deleteUser(id, deleteData.reason, deleteData.deletedBy);
+
+      return {
+        message: 'User deleted successfully'
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to delete user: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   @Post('users/:id/ban')
   @UseGuards(AdminGuard)
   async banUser(@Param('id') id: string, @Body() banData: any) {
@@ -571,9 +697,12 @@ async userDetailPage(@Req() req: Request, @Res() res: Response, @Param('id') use
   async getUsersApi(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
-    @Query('role') role?: string
+    @Query('role') role?: string,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('dateRange') dateRange?: string
   ) {
-    return await this.adminService.getAllUsers(page, limit, role);
+    return await this.adminService.getAllUsers(page, limit, role, search, status, dateRange);
   }
 
   @Get('api/dashboard')
@@ -601,7 +730,7 @@ async userDetailPage(@Req() req: Request, @Res() res: Response, @Param('id') use
       const allPosts = await this.songPostService.findAll();
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       return {
         total: allPosts.length,
         reported: 0, // Since songPost model doesn't have isReported field
@@ -614,4 +743,123 @@ async userDetailPage(@Req() req: Request, @Res() res: Response, @Param('id') use
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
-  }}
+  }
+
+  @Get('api/users-stats')
+  @UseGuards(AdminGuard)
+  async getUsersStatsApi() {
+    try {
+      const userMetrics = await this.adminService.getUserMetrics();
+
+      return {
+        total: userMetrics.total,
+        active: userMetrics.total - userMetrics.banned, // Active users = total - banned
+        moderators: userMetrics.moderators,
+        banned: userMetrics.banned
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to fetch user stats: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  // ==================== POST REPORT MANAGEMENT ENDPOINTS ====================
+
+  @Post('reports/:id/approve')
+  @UseGuards(AdminGuard)
+  async approveReport(@Param('id') reportId: string, @Body() body: { adminNotes?: string }, @Req() req: Request) {
+    try {
+      const report = await this.postReportService.reviewReport(
+        reportId,
+        { status: 'approved', adminNotes: body.adminNotes },
+        req['user'].id
+      );
+
+      return {
+        message: 'Report approved successfully',
+        report: report
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to approve report: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post('reports/:id/reject')
+  @UseGuards(AdminGuard)
+  async rejectReport(@Param('id') reportId: string, @Body() body: { adminNotes?: string }, @Req() req: Request) {
+    try {
+      const report = await this.postReportService.reviewReport(
+        reportId,
+        { status: 'rejected', adminNotes: body.adminNotes },
+        req['user'].id
+      );
+
+      return {
+        message: 'Report rejected successfully',
+        report: report
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to reject report: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Get('api/reports')
+  @UseGuards(AdminGuard)
+  async getAllReports() {
+    try {
+      const reports = await this.postReportService.findAllReports();
+      return {
+        success: true,
+        data: reports
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to fetch reports: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Get('api/reports/pending')
+  @UseGuards(AdminGuard)
+  async getPendingReports() {
+    try {
+      const reports = await this.postReportService.getPendingReports();
+      return {
+        success: true,
+        data: reports
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to fetch pending reports: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Get('api/reports/post/:postId')
+  @UseGuards(AdminGuard)
+  async getReportsByPostId(@Param('postId') postId: string) {
+    try {
+      const reports = await this.postReportService.getReportsByPostId(postId);
+      return {
+        success: true,
+        data: reports
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to fetch post reports: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+}
