@@ -40,6 +40,8 @@ export class ProfileService {
       followers: profile.followers,
       following: profile.following,
       albumArts: profile.albumArts,
+      savedPosts: profile.savedPosts ?? [], // Add this
+      savedThoughtsPosts: profile.savedThoughtsPosts ?? [], // Add this
     };
   }
 
