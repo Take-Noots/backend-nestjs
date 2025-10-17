@@ -33,6 +33,10 @@ export class CreateThoughtsDto {
   @IsString()
   @IsOptional()
   trackId?: string;
+
+  @IsString()
+  @IsOptional()
+  backgroundColor?: string;
 }
 
 export class AddThoughtsCommentDto {
