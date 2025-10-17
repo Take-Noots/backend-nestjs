@@ -491,10 +491,53 @@ export class SongPostService {
     return post;
   }
 
-  async getPostsByIds(ids: string[]): Promise<SongPostDocument[]> {
+  async getPostsByIds(ids: string[]): Promise<any[]> {
     try {
-      const posts = await this.songPostModel.find({ _id: { $in: ids } }).lean();
-      return posts;
+      const posts = await this.songPostModel
+        .find({
+          _id: { $in: ids },
+          isHidden: { $ne: 1 },
+          isDeleted: { $ne: 1 },
+        })
+        .lean();
+      return Promise.all(
+        posts.map(async (post) => {
+          try {
+            const username = await this.userService.getUsernameById(
+              post.userId,
+            );
+            const profile = await this.profileService.getProfileByUserId(
+              post.userId,
+            );
+            const profileImage = profile?.profileImage || '';
+            return {
+              ...post,
+              username: username || '',
+              userImage: profileImage,
+              comments: await Promise.all(
+                (post.comments || []).map(async (comment) => ({
+                  ...comment,
+                  username:
+                    (await this.userService.getUsernameById(comment.userId)) ||
+                    '',
+                })),
+              ),
+            };
+          } catch (error) {
+            console.error(`Error populating post ${post._id}:`, error);
+            // Return post with default values if population fails
+            return {
+              ...post,
+              username: '',
+              userImage: '',
+              comments: (post.comments || []).map((comment) => ({
+                ...comment,
+                username: '',
+              })),
+            };
+          }
+        }),
+      );
     } catch (error) {
       console.error('Error getting posts by ids:', error);
       return [];
