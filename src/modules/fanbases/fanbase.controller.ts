@@ -11,7 +11,8 @@ import {
   HttpStatus, 
   UseGuards, 
   UseInterceptors,
-  UploadedFile
+  UploadedFile,
+  Req
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FanbaseService } from './fanbase.service';
@@ -21,7 +22,6 @@ import { RolesGuard } from '../../common/guards/role.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 import { JwtUser, JwtUserData } from '../../common/decorators/jwt-user.decorator';
-import { Req } from '@nestjs/common';
 
 @Controller('fanbase')
 export class FanbaseController {
@@ -195,11 +195,30 @@ export class FanbaseController {
     @Body('rules') rules: { rule: string }[],
     @Req() req
   ) {
-    return this.fanbaseService.addOrUpdateRules(fanbaseId, rules, req.user.id);
+    const userId = req.user?.userId || req.user?.id;
+    return this.fanbaseService.addOrUpdateRules(fanbaseId, rules, userId);
   }
 
   @Get(':fanbaseId/rules')
   async getRules(@Param('fanbaseId') fanbaseId: string) {
     return this.fanbaseService.getRules(fanbaseId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':fanbaseId/rules/:ruleIndex')
+  async removeRule(
+    @Param('fanbaseId') fanbaseId: string,
+    @Param('ruleIndex') ruleIndex: string,
+    @Req() req
+  ) {
+    const userId = req.user?.userId || req.user?.id;
+    return this.fanbaseService.removeRule(fanbaseId, parseInt(ruleIndex), userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':fanbaseId')
+  async deleteFanbase(@Param('fanbaseId') fanbaseId: string, @Req() req) {
+    const userId = req.user?.userId || req.user?.id;
+    return this.fanbaseService.deleteFanbase(fanbaseId, userId);
   }
 }

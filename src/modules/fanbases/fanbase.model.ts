@@ -50,6 +50,9 @@ export class Fanbase {
   @Prop({ default: Date.now })
   createdAt: Date;
 
+  @Prop({ default: false})
+  isDeleted: boolean;
+
   @Prop({
     type: [{ rule: { type: String, required: true, maxlength: 300 } }],
     validate: [(val: any[]) => val.length <= 15, '{PATH} exceeds the limit of 15'],

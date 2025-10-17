@@ -180,16 +180,77 @@ export class FanbaseService {
 
   async addOrUpdateRules(fanbaseId: string, rules: { rule: string }[], userId: string) {
     const fanbase = await this.fanbaseModel.findById(fanbaseId);
-    if (!fanbase) throw new NotFoundException('Fanbase not found');
-    if (fanbase.createdBy.toString() !== userId) throw new ForbiddenException('Only owner can add rules');
+    
+    if (!fanbase) {
+      throw new NotFoundException('Fanbase not found');
+    }
+
+    // Extract owner ID from createdBy (handles both object and string formats)
+    const createdByObj = fanbase.createdBy as any;
+    const ownerId = typeof createdByObj === 'object' && createdByObj?._id
+      ? (typeof createdByObj._id === 'string' ? createdByObj._id : createdByObj._id.toString())
+      : createdByObj?.toString();
+
+    if (!ownerId || ownerId !== userId) {
+      throw new ForbiddenException('Only the fanbase owner can add or update rules');
+    }
+
     fanbase.rules = rules;
     await fanbase.save();
+    
     return fanbase;
   }
 
   async getRules(fanbaseId: string) {
     const fanbase = await this.fanbaseModel.findById(fanbaseId);
     return fanbase?.rules || [];
+  }
+
+  async removeRule(fanbaseId: string, ruleIndex: number, userId: string) {
+    const fanbase = await this.fanbaseModel.findById(fanbaseId);
+    
+    if (!fanbase) {
+      throw new NotFoundException('Fanbase not found');
+    }
+
+    // Extract owner ID from createdBy (handles both object and string formats)
+    const createdByObj = fanbase.createdBy as any;
+    const ownerId = typeof createdByObj === 'object' && createdByObj?._id
+      ? (typeof createdByObj._id === 'string' ? createdByObj._id : createdByObj._id.toString())
+      : createdByObj?.toString();
+
+    if (!ownerId || ownerId !== userId) {
+      throw new ForbiddenException('Only the fanbase owner can remove rules');
+    }
+
+    if (ruleIndex < 0 || ruleIndex >= fanbase.rules.length) {
+      throw new NotFoundException('Rule not found at specified index');
+    }
+
+    fanbase.rules.splice(ruleIndex, 1); // Remove rule at specific index
+    await fanbase.save();
+    
+    return fanbase;
+  }
+
+  async deleteFanbase(fanbaseId: string, userId: string): Promise<void> {
+    const fanbase = await this.fanbaseModel.findById(fanbaseId);
+    
+    if (!fanbase) {
+      throw new NotFoundException('Fanbase not found');
+    }
+    
+    // Extract owner ID from createdBy (handles both object and string formats)
+    const createdByObj = fanbase.createdBy as any;
+    const ownerId = typeof createdByObj === 'object' && createdByObj?._id
+      ? (typeof createdByObj._id === 'string' ? createdByObj._id : createdByObj._id.toString())
+      : createdByObj?.toString();
+      
+    if (!ownerId || ownerId !== userId) {
+      throw new ForbiddenException('Only the fanbase owner can delete the fanbase');
+    }
+    fanbase.isDeleted = true;
+    await fanbase.save();
   }
 
   private toFanbaseType(fanbase: FanbaseDocument, userId?: string): FanbaseType {
@@ -210,7 +271,9 @@ export class FanbaseService {
       createdBy: {
         _id: fanbase.createdBy?._id || 'unknown',
         username: fanbase.createdBy?.username || 'Unknown User',
-      }
+      },
+      isDeleted: fanbase.isDeleted || false,
+      rules: fanbase.rules || [],
     };
   }
 }

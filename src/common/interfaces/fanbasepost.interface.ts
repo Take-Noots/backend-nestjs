@@ -18,12 +18,23 @@ export interface PostType {
   comments: {
     userId: string;
     userName: string;
+    commentId: string;
     comment: string;
     likeCount: number;
     likeUserIds: string[];
     createdAt: Date;
+    subComments: {
+      userId: string;
+      userName: string;
+      commentId: string;
+      comment: string;
+      likeCount: number;
+      likeUserIds: string[];
+      createdAt: Date;
+    }[];
   }[];
   fanbaseId: string;
   createdAt: Date;
   updatedAt: Date;
+  isDeleted: boolean;
 }

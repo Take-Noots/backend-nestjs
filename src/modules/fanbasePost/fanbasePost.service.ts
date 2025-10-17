@@ -137,8 +137,10 @@ export class FanbasePostService {
         userId: user._id.toString(),
         userName: user.username,
         comment: comment.trim(),
+        commentId: new Types.ObjectId().toString(),
         likeCount: 0,
         likeUserIds: [],
+        subComments: [],
         createdAt: new Date(),
       };
 
@@ -150,6 +152,109 @@ export class FanbasePostService {
       return this.toPostType(updatedPost, userId);
     } catch (error) {
       throw new Error(`Failed to add comment: ${error.message}`);
+    }
+  }
+
+  async addSubComment(postId: string, comment: string, userId: string, parentCommentId: string): Promise<PostType> {
+    try {
+      const post = await this.fanbasePostModel.findById(postId).exec();
+      if (!post) {
+        throw new NotFoundException('Post not found');
+      }
+
+      const user = await this.userModel.findById(userId).exec();
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      const parentComment = post.comments.find(c => c.commentId === parentCommentId);
+      if (!parentComment) {
+        throw new NotFoundException('Parent comment not found');
+      }
+
+      const newSubComment = {
+        userId: user._id.toString(),
+        userName: user.username,
+        comment: comment.trim(),
+        commentId: new Types.ObjectId().toString(),
+        likeCount: 0,
+        likeUserIds: [],
+        createdAt: new Date(),
+      };
+
+      parentComment.subComments.push(newSubComment);
+      post.updatedAt = new Date();
+
+      const updatedPost = await post.save();
+      return this.toPostType(updatedPost, userId);
+    } catch (error) {
+      throw new Error(`Failed to add sub-comment: ${error.message}`);
+    }
+  }
+
+  async deletePost(postId: string, userId: string): Promise<void> {
+    try {
+      const post = await this.fanbasePostModel.findById(postId).exec();
+      if (!post) {
+        throw new NotFoundException('Post not found');
+      }
+
+      if (post.createdBy.userId !== userId) {
+        throw new NotFoundException('Unauthorized to delete this post');
+      }
+
+      await this.fanbasePostModel.deleteOne({ _id: postId }).exec();
+    } catch (error) {
+      throw new Error(`Failed to delete post: ${error.message}`);
+    }
+  }
+
+  async deleteComment(postId: string, commentId: string, userId: string): Promise<PostType> {
+    try {
+      const post = await this.fanbasePostModel.findById(postId).exec(); 
+      if (!post) {
+        throw new NotFoundException('Post not found');
+      }
+      
+      const commentIndex = post.comments.findIndex(c => c.commentId === commentId && c.userId === userId);
+      if (commentIndex === -1) {
+        throw new NotFoundException('Comment not found or unauthorized');
+      }
+      
+      post.comments.splice(commentIndex, 1);
+      post.commentsCount = post.comments.length;
+      post.updatedAt = new Date();
+      const updatedPost = await post.save();
+
+      return this.toPostType(updatedPost, userId);
+    } catch (error) {
+      throw new Error(`Failed to delete comment: ${error.message}`);
+    }
+  }
+
+  async deleteSubComment(postId: string, parentCommentId: string, subCommentId: string, userId: string): Promise<PostType> {
+    try {
+      const post = await this.fanbasePostModel.findById(postId).exec(); 
+      if (!post) {
+        throw new NotFoundException('Post not found');
+      }
+      
+      const parentComment = post.comments.find(c => c.commentId === parentCommentId);
+      if (!parentComment) {
+        throw new NotFoundException('Parent comment not found');
+      }
+
+      const subCommentIndex = parentComment.subComments.findIndex(sc => sc.commentId === subCommentId && sc.userId === userId);
+      if (subCommentIndex === -1) {
+        throw new NotFoundException('Sub-comment not found or unauthorized');
+      }
+      
+      parentComment.subComments.splice(subCommentIndex, 1);
+      post.updatedAt = new Date();
+      const updatedPost = await post.save();
+      return this.toPostType(updatedPost, userId);
+    } catch (error) {
+      throw new Error(`Failed to delete sub-comment: ${error.message}`);
     }
   }
 
@@ -171,6 +276,7 @@ export class FanbasePostService {
       fanbaseId: post.fanbaseId,
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
+      isDeleted: post.isDeleted || false,
     };
   }
 }
