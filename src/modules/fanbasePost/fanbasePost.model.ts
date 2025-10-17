@@ -14,6 +14,9 @@ export class FanbasePostComment {
   @Prop({ required: true })
   comment: string;
 
+  @Prop({ required: true })
+  commentId: string;
+
   @Prop({ default: 0 })
   likeCount: number;
 
@@ -22,6 +25,17 @@ export class FanbasePostComment {
 
   @Prop({ default: Date.now })
   createdAt: Date;
+
+  @Prop({ default: [] })
+  subComments: {
+    userId: string;
+    userName: string;
+    comment: string;
+    commentId: string;
+    likeCount: number;
+    likeUserIds: string[];
+    createdAt: Date;
+  }[] = [];
 }
 
 @Schema({ timestamps: true })
@@ -76,6 +90,9 @@ export class FanbasePost {
 
   @Prop({ default: Date.now })
   updatedAt: Date;
+
+  @Prop({ default: false })
+  isDeleted: boolean;
 }
 
 export const FanbasePostSchema = SchemaFactory.createForClass(FanbasePost);
