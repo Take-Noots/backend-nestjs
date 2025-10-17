@@ -48,6 +48,9 @@ export class SongPost {
   @Prop()
   caption?: string;
 
+  @Prop()
+  backgroundColor?: string;
+
   @Prop({ required: true })
   userId: string;
 

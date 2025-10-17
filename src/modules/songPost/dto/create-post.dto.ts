@@ -28,6 +28,10 @@ export class CreatePostDto {
   caption?: string;
 
   @IsString()
+  @IsOptional()
+  backgroundColor?: string;
+
+  @IsString()
   @IsNotEmpty()
   userId: string;
 }
