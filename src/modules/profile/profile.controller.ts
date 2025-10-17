@@ -252,4 +252,60 @@ export class ProfileController {
     const savedPosts = await this.profileService.getSavedPosts(userId);
     return { savedPosts };
   }
+
+  @Post('follow')
+  @UseGuards(JwtAuthGuard)
+  async followUser(
+    @Body() body: { followerId: string; followingId: string },
+    @JwtUser() user: JwtUserData,
+  ) {
+    // Verify that the authenticated user matches the followerId
+    if (user.userId !== body.followerId) {
+      return {
+        success: false,
+        message: 'Unauthorized: You can only follow on behalf of yourself',
+      };
+    }
+
+    try {
+      const result = await this.profileService.followUser(
+        body.followerId,
+        body.followingId,
+      );
+      return result;
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to follow user: ${error.message}`,
+      };
+    }
+  }
+
+  @Post('unfollow')
+  @UseGuards(JwtAuthGuard)
+  async unfollowUser(
+    @Body() body: { followerId: string; followingId: string },
+    @JwtUser() user: JwtUserData,
+  ) {
+    // Verify that the authenticated user matches the followerId
+    if (user.userId !== body.followerId) {
+      return {
+        success: false,
+        message: 'Unauthorized: You can only unfollow on behalf of yourself',
+      };
+    }
+
+    try {
+      const result = await this.profileService.unfollowUser(
+        body.followerId,
+        body.followingId,
+      );
+      return result;
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to unfollow user: ${error.message}`,
+      };
+    }
+  }
 }
