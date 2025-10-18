@@ -771,10 +771,15 @@ export class AdminDashboardController {
   @UseGuards(AdminGuard)
   async approveReport(@Param('id') reportId: string, @Body() body: { adminNotes?: string }, @Req() req: Request) {
     try {
+      const userId = req['user']?._id;
+      if (!userId) {
+        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+      }
+      
       const report = await this.postReportService.reviewReport(
         reportId,
         { status: 'approved', adminNotes: body.adminNotes },
-        req['user'].id
+        userId
       );
 
       return {
@@ -793,10 +798,15 @@ export class AdminDashboardController {
   @UseGuards(AdminGuard)
   async rejectReport(@Param('id') reportId: string, @Body() body: { adminNotes?: string }, @Req() req: Request) {
     try {
+      const userId = req['user']?._id;
+      if (!userId) {
+        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+      }
+      
       const report = await this.postReportService.reviewReport(
         reportId,
         { status: 'rejected', adminNotes: body.adminNotes },
-        req['user'].id
+        userId
       );
 
       return {
