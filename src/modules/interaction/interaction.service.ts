@@ -9,22 +9,25 @@ export class RecentlyLikedUserService {
     @InjectModel(RecentlyLikedUserList.name) private model: Model<RecentlyLikedUserList>,
   ) {}
 
-  // Add or update the recently liked user list for a user
-  async addInteraction(userId: string, likedUserId: string) {
-    console.log('addInteraction called with:', userId, likedUserId);
+  // Add or update the recently liked post list for a user
+  async addInteraction(userId: string, likedPostId: string) {
     // Find the user's list
     let doc = await this.model.findOne({ userId });
 
     if (!doc) {
-      // Create new if doesn't exist
-      doc = new this.model({ userId, recentlyLikedUserIds: [likedUserId] });
+      // Create new if it doesn't exist
+      doc = new this.model({ userId, recentlyLikedPostIds: [likedPostId] });
     } else {
-      // Remove if already exists to avoid duplicates, then add to front
-      doc.recentlyLikedUserIds = doc.recentlyLikedUserIds.filter(id => id !== likedUserId);
-      doc.recentlyLikedUserIds.unshift(likedUserId);
-      // Keep only 5
-      if (doc.recentlyLikedUserIds.length > 5) {
-        doc.recentlyLikedUserIds = doc.recentlyLikedUserIds.slice(0, 5);
+      const existing = Array.isArray(doc.recentlyLikedPostIds) ? doc.recentlyLikedPostIds : [];
+      // If already present, do nothing
+      if (existing.includes(likedPostId)) {
+        return { success: true };
+      }
+      // Add to the front
+      doc.recentlyLikedPostIds = [likedPostId, ...existing];
+      // Cap to 5 items (FIFO: newest at front, drop extras at end)
+      if (doc.recentlyLikedPostIds.length > 5) {
+        doc.recentlyLikedPostIds = doc.recentlyLikedPostIds.slice(0, 5);
       }
     }
     await doc.save();
@@ -33,6 +36,6 @@ export class RecentlyLikedUserService {
 
   async getRecentlyLikedUsers(userId: string) {
     const doc = await this.model.findOne({ userId });
-    return doc ? doc.recentlyLikedUserIds : [];
+    return doc ? doc.recentlyLikedPostIds ?? [] : [];
   }
 }

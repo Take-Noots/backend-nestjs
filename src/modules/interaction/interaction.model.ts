@@ -7,7 +7,7 @@ export class RecentlyLikedUserList extends Document {
   userId: string; // The user who performed the likes
 
   @Prop({ type: [String], default: [] })
-  recentlyLikedUserIds: string[]; // Array of user IDs whose posts were recently liked
+  recentlyLikedPostIds: string[]; // Array of post IDs that were recently liked
 }
 
 export const RecentlyLikedUserListSchema = SchemaFactory.createForClass(RecentlyLikedUserList);
