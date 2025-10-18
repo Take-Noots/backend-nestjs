@@ -16,17 +16,17 @@ export interface PostType {
   isLiked?: boolean;
   commentsCount: number;
   comments: {
+    commentId: string; // ✅ Changed from commentIndex
     userId: string;
     userName: string;
-    commentId: string;
     comment: string;
     likeCount: number;
     likeUserIds: string[];
     createdAt: Date;
     subComments: {
+      commentId: string; // ✅ Changed from commentIndex
       userId: string;
       userName: string;
-      commentId: string;
       comment: string;
       likeCount: number;
       likeUserIds: string[];

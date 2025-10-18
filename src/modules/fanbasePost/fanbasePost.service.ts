@@ -134,10 +134,10 @@ export class FanbasePostService {
       }
 
       const newComment = {
+        _id: new Types.ObjectId(),
         userId: user._id.toString(),
         userName: user.username,
         comment: comment.trim(),
-        commentId: new Types.ObjectId().toString(),
         likeCount: 0,
         likeUserIds: [],
         subComments: [],
@@ -155,7 +155,7 @@ export class FanbasePostService {
     }
   }
 
-  async addSubComment(postId: string, comment: string, userId: string, parentCommentId: string): Promise<PostType> {
+  async addSubComment(postId: string, comment: string, userId: string, commentId: string): Promise<PostType> {
     try {
       const post = await this.fanbasePostModel.findById(postId).exec();
       if (!post) {
@@ -167,16 +167,20 @@ export class FanbasePostService {
         throw new NotFoundException('User not found');
       }
 
-      const parentComment = post.comments.find(c => c.commentId === parentCommentId);
+      // ✅ Find comment by _id instead of index
+      const parentComment = post.comments.find(c => 
+        (c._id as Types.ObjectId).toString() === commentId
+      );
+      
       if (!parentComment) {
-        throw new NotFoundException('Parent comment not found');
+        throw new NotFoundException('Comment not found');
       }
 
       const newSubComment = {
+        _id: new Types.ObjectId(),
         userId: user._id.toString(),
         userName: user.username,
         comment: comment.trim(),
-        commentId: new Types.ObjectId().toString(),
         likeCount: 0,
         likeUserIds: [],
         createdAt: new Date(),
@@ -216,9 +220,18 @@ export class FanbasePostService {
         throw new NotFoundException('Post not found');
       }
       
-      const commentIndex = post.comments.findIndex(c => c.commentId === commentId && c.userId === userId);
+      // ✅ Find comment by _id
+      const commentIndex = post.comments.findIndex(c => 
+        (c._id as Types.ObjectId).toString() === commentId
+      );
+      
       if (commentIndex === -1) {
-        throw new NotFoundException('Comment not found or unauthorized');
+        throw new NotFoundException('Comment not found');
+      }
+
+      const comment = post.comments[commentIndex];
+      if (comment.userId !== userId) {
+        throw new NotFoundException('Unauthorized to delete this comment');
       }
       
       post.comments.splice(commentIndex, 1);
@@ -232,21 +245,34 @@ export class FanbasePostService {
     }
   }
 
-  async deleteSubComment(postId: string, parentCommentId: string, subCommentId: string, userId: string): Promise<PostType> {
+  async deleteSubComment(postId: string, commentId: string, subCommentId: string, userId: string): Promise<PostType> {
     try {
       const post = await this.fanbasePostModel.findById(postId).exec(); 
       if (!post) {
         throw new NotFoundException('Post not found');
       }
       
-      const parentComment = post.comments.find(c => c.commentId === parentCommentId);
+      // ✅ Find parent comment by _id
+      const parentComment = post.comments.find(c => 
+        (c._id as Types.ObjectId).toString() === commentId
+      );
+      
       if (!parentComment) {
-        throw new NotFoundException('Parent comment not found');
+        throw new NotFoundException('Comment not found');
+      }
+      
+      // ✅ Find sub-comment by _id
+      const subCommentIndex = parentComment.subComments.findIndex(sc =>
+        (sc._id as Types.ObjectId).toString() === subCommentId
+      );
+      
+      if (subCommentIndex === -1) {
+        throw new NotFoundException('Sub-comment not found');
       }
 
-      const subCommentIndex = parentComment.subComments.findIndex(sc => sc.commentId === subCommentId && sc.userId === userId);
-      if (subCommentIndex === -1) {
-        throw new NotFoundException('Sub-comment not found or unauthorized');
+      const subComment = parentComment.subComments[subCommentIndex];
+      if (subComment.userId !== userId) {
+        throw new NotFoundException('Unauthorized to delete this sub-comment');
       }
       
       parentComment.subComments.splice(subCommentIndex, 1);
@@ -272,7 +298,24 @@ export class FanbasePostService {
       likeUserIds: post.likeUserIds || [],
       isLiked: userId ? post.likeUserIds.includes(userId) : false,
       commentsCount: post.commentsCount || 0,
-      comments: post.comments || [],
+      comments: (post.comments || []).map((comment) => ({
+        commentId: (comment._id as Types.ObjectId).toString(), // ✅ Use _id
+        userId: comment.userId,
+        userName: comment.userName,
+        comment: comment.comment,
+        likeCount: comment.likeCount || 0,
+        likeUserIds: comment.likeUserIds || [],
+        createdAt: comment.createdAt,
+        subComments: (comment.subComments || []).map((subComment) => ({
+          commentId: (subComment._id as Types.ObjectId).toString(), // ✅ Use _id
+          userId: subComment.userId,
+          userName: subComment.userName,
+          comment: subComment.comment,
+          likeCount: subComment.likeCount || 0,
+          likeUserIds: subComment.likeUserIds || [],
+          createdAt: subComment.createdAt,
+        })),
+      })),
       fanbaseId: post.fanbaseId,
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
