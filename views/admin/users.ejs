@@ -537,24 +537,12 @@
                         <i class="fas fa-bolt text-primary mr-2"></i>
                         Quick Actions
                     </h3>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="grid grid-cols-2 gap-4 max-w-md">
                         <button onclick="showCreateUserModal()"
                             class="flex flex-col items-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg hover:from-green-100 hover:to-green-200 transition-all duration-300 group">
                             <i
                                 class="fas fa-user-plus text-2xl text-green-600 mb-2 group-hover:scale-110 transition-transform"></i>
                             <span class="text-sm font-medium text-green-700">Create User</span>
-                        </button>
-                        <button onclick="bulkAction('promote')"
-                            class="flex flex-col items-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg hover:from-blue-100 hover:to-blue-200 transition-all duration-300 group">
-                            <i
-                                class="fas fa-arrow-up text-2xl text-blue-600 mb-2 group-hover:scale-110 transition-transform"></i>
-                            <span class="text-sm font-medium text-blue-700">Bulk Promote</span>
-                        </button>
-                        <button onclick="bulkAction('block')"
-                            class="flex flex-col items-center p-4 bg-gradient-to-br from-red-50 to-red-100 rounded-lg hover:from-red-100 hover:to-red-200 transition-all duration-300 group">
-                            <i
-                                class="fas fa-ban text-2xl text-red-600 mb-2 group-hover:scale-110 transition-transform"></i>
-                            <span class="text-sm font-medium text-red-700">Bulk Block</span>
                         </button>
                         <button onclick="exportUsers()"
                             class="flex flex-col items-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg hover:from-purple-100 hover:to-purple-200 transition-all duration-300 group">
@@ -578,14 +566,8 @@
                                     <span class="text-sm font-normal text-gray-500">(<%= users.length %> total)</span>
                                     <% } %>
                         </h3>
-                        <div class="flex items-center space-x-4">
-                            <label class="flex items-center space-x-2">
-                                <input type="checkbox" id="selectAll" onchange="toggleSelectAll()"
-                                    class="rounded border-gray-300 focus:ring-primary">
-                                <span class="text-sm text-gray-600">Select All</span>
-                            </label>
-                            <span class="text-sm px-3 py-1 bg-gray-100 rounded-full" id="selectedCount">0
-                                selected</span>
+                        <div class="text-sm text-gray-500">
+                            Manage users, roles, and permissions
                         </div>
                     </div>
 
@@ -594,10 +576,6 @@
                             <table class="data-table w-full">
                                 <thead>
                                     <tr class="bg-gray-50">
-                                        <th class="w-12">
-                                            <input type="checkbox" id="selectAllHeader" onchange="toggleSelectAll()"
-                                                class="rounded border-gray-300 focus:ring-primary">
-                                        </th>
                                         <th class="text-left">User</th>
                                         <th class="text-left">Role</th>
                                         <th class="text-left">Status</th>
@@ -610,11 +588,6 @@
                                     <% users.forEach(function(userItem, index) { %>
                                         <tr class="hover:bg-gray-50 transition-colors"
                                             data-user-id="<%= userItem.id %>">
-                                            <td>
-                                                <input type="checkbox"
-                                                    class="user-checkbox rounded border-gray-300 focus:ring-primary"
-                                                    value="<%= userItem.id %>" onchange="updateSelectedCount()">
-                                            </td>
                                             <td>
                                                 <div class="flex items-center space-x-3">
                                                     <div
@@ -740,8 +713,20 @@
                                     <%= pagination.totalUsers %> users
                         </div>
                         <div class="flex items-center space-x-2">
+                            <%
+                                // Build query parameters for pagination
+                                const buildPaginationQuery = (page) => {
+                                    const params = new URLSearchParams();
+                                    params.set('page', page.toString());
+                                    if (typeof searchQuery !== 'undefined' && searchQuery) params.set('search', searchQuery);
+                                    if (typeof currentRole !== 'undefined' && currentRole) params.set('role', currentRole);
+                                    if (typeof currentStatus !== 'undefined' && currentStatus) params.set('status', currentStatus);
+                                    if (typeof currentDateRange !== 'undefined' && currentDateRange) params.set('dateRange', currentDateRange);
+                                    return '?' + params.toString();
+                                };
+                            %>
                             <% if (pagination.current> 1) { %>
-                                <a href="?page=<%= pagination.current - 1 %>"
+                                <a href="<%= buildPaginationQuery(pagination.current - 1) %>"
                                     class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                                     <i class="fas fa-chevron-left mr-1"></i>
                                     Previous
@@ -750,14 +735,14 @@
 
                                     <% for (let i=Math.max(1, pagination.current - 2); i <=Math.min(pagination.total,
                                         pagination.current + 2); i++) { %>
-                                        <a href="?page=<%= i %>"
+                                        <a href="<%= buildPaginationQuery(i) %>"
                                             class="px-3 py-2 text-sm font-medium <%= i === pagination.current ? 'text-white bg-primary' : 'text-gray-500 bg-white hover:bg-gray-50' %> border border-gray-300 rounded-lg transition-colors">
                                             <%= i %>
                                         </a>
                                         <% } %>
 
                                             <% if (pagination.current < pagination.total) { %>
-                                                <a href="?page=<%= pagination.current + 1 %>"
+                                                <a href="<%= buildPaginationQuery(pagination.current + 1) %>"
                                                     class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                                                     Next
                                                     <i class="fas fa-chevron-right ml-1"></i>
@@ -866,7 +851,6 @@
     </div>
 
     <script>
-        let selectedUsers = [];
 
         // Mobile sidebar functionality
         const sidebar = document.getElementById('sidebar');
@@ -940,34 +924,6 @@
             return confirm(message);
         }
 
-        function toggleSelectAll() {
-            const selectAll = document.getElementById('selectAll') || document.getElementById('selectAllHeader');
-            const checkboxes = document.querySelectorAll('.user-checkbox');
-
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = selectAll.checked;
-            });
-
-            updateSelectedCount();
-        }
-
-        function updateSelectedCount() {
-            const checkboxes = document.querySelectorAll('.user-checkbox:checked');
-            selectedUsers = Array.from(checkboxes).map(cb => cb.value);
-
-            document.getElementById('selectedCount').textContent = `${selectedUsers.length} selected`;
-
-            // Update select all checkbox state
-            const allCheckboxes = document.querySelectorAll('.user-checkbox');
-            const selectAllCheckboxes = [document.getElementById('selectAll'), document.getElementById('selectAllHeader')];
-
-            selectAllCheckboxes.forEach(checkbox => {
-                if (checkbox) {
-                    checkbox.checked = selectedUsers.length === allCheckboxes.length;
-                    checkbox.indeterminate = selectedUsers.length > 0 && selectedUsers.length < allCheckboxes.length;
-                }
-            });
-        }
 
         async function toggleUserStatus(userId, block) {
             // If block parameter is not provided, get it from the button's data attribute
@@ -985,9 +941,10 @@
 
             try {
                 showLoading();
-                const response = await axios.post(`/admin/users/${userId}/${action}`, {
+                const endpoint = block ? `/admin/users/${userId}/ban` : `/admin/users/${userId}/unban`;
+                const response = await axios.post(endpoint, {
                     reason,
-                    actionBy: '<%= user ? user.id : "" %>'
+                    bannedBy: '<%= user ? user.id : "" %>'
                 });
 
                 if (response.status === 200) {
@@ -1038,63 +995,161 @@
             document.getElementById('createUserForm').reset();
         }
 
-        function editUser(userId) {
-            // Implement edit functionality
-            showToast('Edit functionality coming soon', 'info');
-        }
-
-        async function bulkAction(action) {
-            if (selectedUsers.length === 0) {
-                showToast('Please select users first', 'warning');
-                return;
-            }
-
-            const reason = prompt(`Enter reason for ${action}:`);
-            if (!reason) return;
-
-            if (!confirmAction(`Are you sure you want to ${action} ${selectedUsers.length} users?`)) return;
-
+        async function editUser(userId) {
             try {
+                // Get current user data
                 showLoading();
-                const response = await axios.post(`/admin/users/bulk-${action}`, {
-                    userIds: selectedUsers,
-                    reason,
-                    actionBy: '<%= user ? user.id : "" %>'
-                });
+                const response = await axios.get(`/admin/users/${userId}`);
+                const userData = response.data;
 
-                if (response.status === 200) {
-                    showToast(`Bulk ${action} completed successfully`, 'success');
-                    setTimeout(() => window.location.reload(), 1000);
-                }
+                // Close the view modal first
+                closeUserModal();
+
+                // Show edit modal with current data
+                showEditUserModal(userData);
             } catch (error) {
-                showToast(`Failed to ${action} users: ` + (error.response?.data?.message || error.message), 'error');
+                showToast('Failed to load user data for editing: ' + (error.response?.data?.message || error.message), 'error');
             } finally {
                 hideLoading();
             }
         }
 
-        function exportUsers() {
-            const params = new URLSearchParams(window.location.search);
-            exportData('users', Object.fromEntries(params));
+        function showEditUserModal(user) {
+            // Create or show edit modal
+            let editModal = document.getElementById('editUserModal');
+            if (!editModal) {
+                // Create the edit modal if it doesn't exist
+                editModal = document.createElement('div');
+                editModal.id = 'editUserModal';
+                editModal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4';
+                editModal.innerHTML = `
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md">
+                        <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-900">
+                                <i class="fas fa-user-edit text-primary mr-2"></i>
+                                Edit User
+                            </h3>
+                            <button onclick="hideEditUserModal()"
+                                class="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <form id="editUserForm" class="p-6 space-y-4">
+                            <input type="hidden" id="editUserId" name="userId" value="">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                                <input type="text" id="editUsername" name="username"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                    placeholder="Enter username">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                                <input type="email" id="editEmail" name="email"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                    placeholder="Enter email">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                                <select id="editRole" name="role"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                    <option value="user">User</option>
+                                    <option value="moderator">Moderator</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                            <div class="flex space-x-4 pt-4">
+                                <button type="button" onclick="hideEditUserModal()"
+                                    class="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                                    Cancel
+                                </button>
+                                <button type="submit"
+                                    class="flex-1 bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                                    Update User
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                `;
+                document.body.appendChild(editModal);
+
+                // Add event listener for form submission
+                document.getElementById('editUserForm').addEventListener('submit', handleEditUserSubmit);
+
+                // Add click outside to close
+                editModal.addEventListener('click', (e) => {
+                    if (e.target.id === 'editUserModal') {
+                        hideEditUserModal();
+                    }
+                });
+            }
+
+            // Populate form with user data
+            document.getElementById('editUserId').value = user.id;
+            document.getElementById('editUsername').value = user.username || '';
+            document.getElementById('editEmail').value = user.email || '';
+            document.getElementById('editRole').value = user.role || 'user';
+
+            // Show the modal
+            editModal.classList.remove('hidden');
         }
 
-        function exportData(type, params = {}) {
-            showLoading();
-            const queryString = new URLSearchParams(params).toString();
-            const url = `/admin/${type}/export${queryString ? '?' + queryString : ''}`;
+        function hideEditUserModal() {
+            const editModal = document.getElementById('editUserModal');
+            if (editModal) {
+                editModal.classList.add('hidden');
+            }
+        }
 
-            // Create download link
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `${type}-export-${new Date().toISOString().split('T')[0]}.csv`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+        async function handleEditUserSubmit(e) {
+            e.preventDefault();
 
-            setTimeout(() => {
+            const formData = new FormData(e.target);
+            const userId = formData.get('userId');
+            const updateData = {
+                username: formData.get('username'),
+                email: formData.get('email'),
+                role: formData.get('role')
+            };
+
+            try {
+                showLoading();
+                const response = await axios.put(`/admin/users/${userId}`, updateData);
+
+                if (response.status === 200) {
+                    showToast('User updated successfully', 'success');
+                    hideEditUserModal();
+                    setTimeout(() => window.location.reload(), 1000);
+                }
+            } catch (error) {
+                showToast('Failed to update user: ' + (error.response?.data?.message || error.message), 'error');
+            } finally {
                 hideLoading();
-                showToast(`${type} data exported successfully!`, 'success');
-            }, 1000);
+            }
+        }
+
+
+        function exportUsers() {
+            try {
+                showLoading();
+                const params = new URLSearchParams(window.location.search);
+                const queryString = params.toString();
+                const url = `/admin/users/export${queryString ? '?' + queryString : ''}`;
+
+                // Create download link
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `users-export-${new Date().toISOString().split('T')[0]}.csv`;
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                hideLoading();
+                showToast('User data exported successfully!', 'success');
+            } catch (error) {
+                hideLoading();
+                showToast('Failed to export user data: ' + error.message, 'error');
+            }
         }
 
         // Create user form submission
@@ -1142,7 +1197,6 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function () {
-            updateSelectedCount();
 
             // Auto-refresh user counts every 60 seconds
             setInterval(async () => {
@@ -1207,27 +1261,11 @@ function showUserModal(user) {
     const formatDate = (dateString) => {
         if (!dateString) return 'Never';
         const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', { 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
         });
-    };
-
-    // Calculate account age
-    const calculateAccountAge = (createdDate) => {
-        if (!createdDate) return 'Unknown';
-        const created = new Date(createdDate);
-        const now = new Date();
-        const diffTime = Math.abs(now - created);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        if (diffDays < 7) return `${diffDays} days`;
-        if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks`;
-        if (diffDays < 365) return `${Math.floor(diffDays / 30)} months`;
-        return `${Math.floor(diffDays / 365)} years`;
     };
 
     // Generate avatar with gradient background
@@ -1251,329 +1289,93 @@ function showUserModal(user) {
         <div class="space-y-6">
             <!-- User Profile Header -->
             <div class="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6">
-                <div class="flex items-start space-x-6">
+                <div class="flex items-center space-x-4">
                     <!-- Avatar -->
-                    <div class="flex-shrink-0">
-                        <div class="w-24 h-24 rounded-full bg-gradient-to-br ${avatarGradient} flex items-center justify-center text-white shadow-lg">
-                            <span class="text-3xl font-bold">${(user.username || user.email).charAt(0).toUpperCase()}</span>
-                        </div>
-                        <!-- Online Status Indicator -->
-                        <div class="mt-2 text-center">
-                            ${user.lastActiveAt && new Date(user.lastActiveAt) > new Date(Date.now() - 5 * 60 * 1000) ? 
-                                '<span class="inline-flex items-center text-xs text-green-600"><i class="fas fa-circle text-green-500 mr-1 animate-pulse"></i> Online</span>' :
-                                '<span class="inline-flex items-center text-xs text-gray-500"><i class="far fa-circle mr-1"></i> Offline</span>'
-                            }
-                        </div>
+                    <div class="w-16 h-16 rounded-full bg-gradient-to-br ${avatarGradient} flex items-center justify-center text-white shadow-lg">
+                        <span class="text-2xl font-bold">${(user.username || user.email).charAt(0).toUpperCase()}</span>
                     </div>
-                    
+
                     <!-- User Info -->
                     <div class="flex-1">
-                        <div class="flex items-start justify-between">
-                            <div>
-                                <h4 class="text-2xl font-bold text-gray-900">${user.username || user.email.split('@')[0]}</h4>
-                                <p class="text-gray-600 mt-1">
-                                    <i class="fas fa-envelope text-gray-400 mr-2"></i>
-                                    ${user.email}
-                                </p>
-                                <p class="text-sm text-gray-500 mt-1">
-                                    <i class="fas fa-fingerprint text-gray-400 mr-2"></i>
-                                    User ID: <span class="font-mono">${user.id}</span>
-                                </p>
-                            </div>
-                            <div class="flex flex-col items-end space-y-2">
-                                <span class="badge ${user.role === 'admin' ? 'admin' : user.role === 'moderator' ? 'moderator' : 'user'}">
-                                    <i class="fas fa-${user.role === 'admin' ? 'crown' : user.role === 'moderator' ? 'shield-alt' : 'user'} mr-1"></i>
-                                    ${user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                                </span>
-                                <span class="badge ${user.isBlocked ? 'banned' : 'active'}">
-                                    <i class="fas fa-${user.isBlocked ? 'ban' : 'check-circle'} mr-1"></i>
-                                    ${user.isBlocked ? 'Blocked' : 'Active'}
-                                </span>
-                                ${user.isBlocked && user.banReason ? `
-                                    <span class="text-xs text-red-600 max-w-xs text-right">
-                                        <i class="fas fa-exclamation-triangle mr-1"></i>
-                                        Ban Reason: ${user.banReason}
-                                    </span>
-                                ` : ''}
-                            </div>
+                        <h4 class="text-xl font-bold text-gray-900">${user.username || user.email.split('@')[0]}</h4>
+                        <p class="text-gray-600 mt-1">${user.email}</p>
+                        <div class="flex items-center space-x-2 mt-2">
+                            <span class="badge ${user.role === 'admin' ? 'admin' : user.role === 'moderator' ? 'moderator' : 'user'}">
+                                <i class="fas fa-${user.role === 'admin' ? 'crown' : user.role === 'moderator' ? 'shield-alt' : 'user'} mr-1"></i>
+                                ${user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                            </span>
+                            <span class="badge ${user.isBlocked ? 'banned' : 'active'}">
+                                <i class="fas fa-${user.isBlocked ? 'ban' : 'check-circle'} mr-1"></i>
+                                ${user.isBlocked ? 'Blocked' : 'Active'}
+                            </span>
                         </div>
+                        ${user.isBlocked && user.banReason ? `
+                            <p class="text-sm text-red-600 mt-2">
+                                <i class="fas fa-exclamation-triangle mr-1"></i>
+                                Ban Reason: ${user.banReason}
+                            </p>
+                        ` : ''}
                     </div>
                 </div>
             </div>
 
-            <!-- Stats Grid -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-blue-50 rounded-lg p-4 text-center">
-                    <div class="text-2xl font-bold text-blue-600">${user.postsCount || 0}</div>
-                    <div class="text-sm text-gray-600 mt-1">
-                        <i class="fas fa-music mr-1"></i> Posts
+            <!-- Basic Account Information -->
+            <div class="bg-white border rounded-xl p-6">
+                <h5 class="text-lg font-medium text-gray-900 mb-4">Account Information</h5>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Username</label>
+                        <p class="text-gray-900 mt-1">${user.username || 'Not set'}</p>
                     </div>
-                </div>
-                <div class="bg-green-50 rounded-lg p-4 text-center">
-                    <div class="text-2xl font-bold text-green-600">${user.commentsCount || 0}</div>
-                    <div class="text-sm text-gray-600 mt-1">
-                        <i class="fas fa-comment mr-1"></i> Comments
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Email</label>
+                        <p class="text-gray-900 mt-1">${user.email}</p>
                     </div>
-                </div>
-                <div class="bg-purple-50 rounded-lg p-4 text-center">
-                    <div class="text-2xl font-bold text-purple-600">${user.followersCount || 0}</div>
-                    <div class="text-sm text-gray-600 mt-1">
-                        <i class="fas fa-users mr-1"></i> Followers
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Account Type</label>
+                        <p class="text-gray-900 mt-1">${user.role.charAt(0).toUpperCase() + user.role.slice(1)}</p>
                     </div>
-                </div>
-                <div class="bg-yellow-50 rounded-lg p-4 text-center">
-                    <div class="text-2xl font-bold text-yellow-600">${user.followingCount || 0}</div>
-                    <div class="text-sm text-gray-600 mt-1">
-                        <i class="fas fa-user-friends mr-1"></i> Following
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Status</label>
+                        <p class="text-gray-900 mt-1">${user.isBlocked ? 'Blocked' : 'Active'}</p>
                     </div>
-                </div>
-            </div>
-
-            <!-- Detailed Information Tabs -->
-            <div class="border rounded-xl overflow-hidden">
-                <!-- Tab Headers -->
-                <div class="flex border-b bg-gray-50">
-                    <button onclick="switchTab('account')" class="tab-btn flex-1 px-4 py-3 text-sm font-medium text-gray-700 hover:text-primary border-b-2 border-primary bg-white" data-tab="account">
-                        <i class="fas fa-user mr-2"></i> Account Info
-                    </button>
-                    <button onclick="switchTab('activity')" class="tab-btn flex-1 px-4 py-3 text-sm font-medium text-gray-700 hover:text-primary border-b-2 border-transparent" data-tab="activity">
-                        <i class="fas fa-chart-line mr-2"></i> Activity
-                    </button>
-                    <button onclick="switchTab('security')" class="tab-btn flex-1 px-4 py-3 text-sm font-medium text-gray-700 hover:text-primary border-b-2 border-transparent" data-tab="security">
-                        <i class="fas fa-shield-alt mr-2"></i> Security
-                    </button>
-                    <button onclick="switchTab('history')" class="tab-btn flex-1 px-4 py-3 text-sm font-medium text-gray-700 hover:text-primary border-b-2 border-transparent" data-tab="history">
-                        <i class="fas fa-history mr-2"></i> History
-                    </button>
-                </div>
-                
-                <!-- Tab Contents -->
-                <div class="p-6">
-                    <!-- Account Info Tab -->
-                    <div id="tab-account" class="tab-content">
-                        <div class="grid grid-cols-2 gap-6">
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wider">Username</label>
-                                    <p class="mt-1 text-sm text-gray-900 font-medium">${user.username || 'Not set'}</p>
-                                </div>
-                                <div>
-                                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wider">Email Address</label>
-                                    <p class="mt-1 text-sm text-gray-900">${user.email}</p>
-                                </div>
-                                <div>
-                                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wider">Account Type</label>
-                                    <p class="mt-1 text-sm">
-                                        <span class="badge ${user.role === 'admin' ? 'admin' : user.role === 'moderator' ? 'moderator' : 'user'}">
-                                            ${user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                                        </span>
-                                    </p>
-                                </div>
-                                <div>
-                                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wider">Account Age</label>
-                                    <p class="mt-1 text-sm text-gray-900">${calculateAccountAge(user.createdAt)}</p>
-                                </div>
-                            </div>
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wider">User ID</label>
-                                    <p class="mt-1 text-sm text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded">${user.id}</p>
-                                </div>
-                                <div>
-                                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wider">Registered</label>
-                                    <p class="mt-1 text-sm text-gray-900">${formatDate(user.createdAt)}</p>
-                                </div>
-                                <div>
-                                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wider">Last Active</label>
-                                    <p class="mt-1 text-sm text-gray-900">${formatDate(user.lastActiveAt)}</p>
-                                </div>
-                                <div>
-                                    <label class="text-xs font-medium text-gray-500 uppercase tracking-wider">Email Verified</label>
-                                    <p class="mt-1 text-sm">
-                                        ${user.emailVerified ? 
-                                            '<span class="text-green-600"><i class="fas fa-check-circle mr-1"></i> Verified</span>' :
-                                            '<span class="text-yellow-600"><i class="fas fa-exclamation-circle mr-1"></i> Not Verified</span>'
-                                        }
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Joined</label>
+                        <p class="text-gray-900 mt-1">${formatDate(user.createdAt)}</p>
                     </div>
-
-                    <!-- Activity Tab -->
-                    <div id="tab-activity" class="tab-content hidden">
-                        <div class="space-y-6">
-                            <div class="grid grid-cols-3 gap-4">
-                                <div class="bg-gray-50 rounded-lg p-4">
-                                    <div class="text-sm text-gray-600 mb-1">Total Posts</div>
-                                    <div class="text-2xl font-bold text-gray-900">${user.postsCount || 0}</div>
-                                    <div class="text-xs text-gray-500 mt-1">
-                                        <i class="fas fa-arrow-up text-green-500"></i> ${user.postsThisWeek || 0} this week
-                                    </div>
-                                </div>
-                                <div class="bg-gray-50 rounded-lg p-4">
-                                    <div class="text-sm text-gray-600 mb-1">Total Comments</div>
-                                    <div class="text-2xl font-bold text-gray-900">${user.commentsCount || 0}</div>
-                                    <div class="text-xs text-gray-500 mt-1">
-                                        <i class="fas fa-arrow-up text-green-500"></i> ${user.commentsThisWeek || 0} this week
-                                    </div>
-                                </div>
-                                <div class="bg-gray-50 rounded-lg p-4">
-                                    <div class="text-sm text-gray-600 mb-1">Total Likes Given</div>
-                                    <div class="text-2xl font-bold text-gray-900">${user.likesGivenCount || 0}</div>
-                                    <div class="text-xs text-gray-500 mt-1">
-                                        <i class="fas fa-heart text-red-500"></i> Active engagement
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div>
-                                <h5 class="text-sm font-medium text-gray-700 mb-3">Engagement Overview</h5>
-                                <div class="space-y-3">
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-sm text-gray-600">Average posts per week</span>
-                                        <span class="text-sm font-medium text-gray-900">${((user.postsCount || 0) / Math.max(1, Math.floor((Date.now() - new Date(user.createdAt)) / (7 * 24 * 60 * 60 * 1000)))).toFixed(1)}</span>
-                                    </div>
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-sm text-gray-600">Engagement rate</span>
-                                        <span class="text-sm font-medium text-gray-900">${user.engagementRate || 'N/A'}%</span>
-                                    </div>
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-sm text-gray-600">Active days</span>
-                                        <span class="text-sm font-medium text-gray-900">${user.activeDaysCount || 0} days</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Security Tab -->
-                    <div id="tab-security" class="tab-content hidden">
-                        <div class="space-y-6">
-                            <div>
-                                <h5 class="text-sm font-medium text-gray-700 mb-3">Account Status</h5>
-                                <div class="bg-${user.isBlocked ? 'red' : 'green'}-50 border border-${user.isBlocked ? 'red' : 'green'}-200 rounded-lg p-4">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <p class="font-medium text-${user.isBlocked ? 'red' : 'green'}-900">
-                                                ${user.isBlocked ? 'Account Blocked' : 'Account Active'}
-                                            </p>
-                                            ${user.isBlocked && user.banReason ? `
-                                                <p class="text-sm text-${user.isBlocked ? 'red' : 'green'}-700 mt-1">
-                                                    Reason: ${user.banReason}
-                                                </p>
-                                                <p class="text-xs text-${user.isBlocked ? 'red' : 'green'}-600 mt-1">
-                                                    Blocked on: ${formatDate(user.bannedAt)}
-                                                </p>
-                                                ${user.banUntil ? `<p class="text-xs text-red-600">Ban expires: ${formatDate(user.banUntil)}</p>` : ''}
-                                            ` : `
-                                                <p class="text-sm text-green-700 mt-1">
-                                                    No restrictions on this account
-                                                </p>
-                                            `}
-                                        </div>
-                                        <i class="fas fa-${user.isBlocked ? 'ban' : 'shield-alt'} text-2xl text-${user.isBlocked ? 'red' : 'green'}-500"></i>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div>
-                                <h5 class="text-sm font-medium text-gray-700 mb-3">Reports & Violations</h5>
-                                <div class="space-y-2">
-                                    <div class="flex items-center justify-between py-2 border-b">
-                                        <span class="text-sm text-gray-600">Reports filed by user</span>
-                                        <span class="text-sm font-medium text-gray-900">${user.reportsFiledCount || 0}</span>
-                                    </div>
-                                    <div class="flex items-center justify-between py-2 border-b">
-                                        <span class="text-sm text-gray-600">Reports against user</span>
-                                        <span class="text-sm font-medium ${(user.reportsAgainstCount || 0) > 0 ? 'text-red-600' : 'text-gray-900'}">${user.reportsAgainstCount || 0}</span>
-                                    </div>
-                                    <div class="flex items-center justify-between py-2 border-b">
-                                        <span class="text-sm text-gray-600">Warnings issued</span>
-                                        <span class="text-sm font-medium ${(user.warningsCount || 0) > 0 ? 'text-yellow-600' : 'text-gray-900'}">${user.warningsCount || 0}</span>
-                                    </div>
-                                    <div class="flex items-center justify-between py-2">
-                                        <span class="text-sm text-gray-600">Previous bans</span>
-                                        <span class="text-sm font-medium text-gray-900">${user.previousBansCount || 0}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- History Tab -->
-                    <div id="tab-history" class="tab-content hidden">
-                        <div class="space-y-4">
-                            <h5 class="text-sm font-medium text-gray-700">Recent Activity Log</h5>
-                            <div class="space-y-2 max-h-64 overflow-y-auto">
-                                ${user.activityLog && user.activityLog.length > 0 ? user.activityLog.map(log => `
-                                    <div class="flex items-start space-x-3 py-2 border-b border-gray-100">
-                                        <div class="flex-shrink-0 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                                            <i class="fas fa-${log.type === 'login' ? 'sign-in-alt' : log.type === 'post' ? 'music' : log.type === 'comment' ? 'comment' : 'circle'} text-xs text-gray-600"></i>
-                                        </div>
-                                        <div class="flex-1">
-                                            <p class="text-sm text-gray-900">${log.description}</p>
-                                            <p class="text-xs text-gray-500">${formatDate(log.timestamp)}</p>
-                                        </div>
-                                    </div>
-                                `).join('') : `
-                                    <div class="text-center py-8 text-gray-500">
-                                        <i class="fas fa-inbox text-3xl mb-2"></i>
-                                        <p class="text-sm">No activity history available</p>
-                                    </div>
-                                `}
-                            </div>
-                        </div>
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Last Active</label>
+                        <p class="text-gray-900 mt-1">${formatDate(user.lastActive)}</p>
                     </div>
                 </div>
             </div>
 
             <!-- Action Buttons -->
             <div class="flex flex-wrap gap-3 pt-4 border-t">
-                <button onclick="editUser('${user.id}')" 
-                    class="flex-1 min-w-[140px] bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center">
+                <button onclick="editUser('${user.id}')"
+                    class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center">
                     <i class="fas fa-edit mr-2"></i>
-                    Edit User
+                    Edit
                 </button>
-                
+
                 ${user.role !== 'admin' ? `
-                    <button onclick="toggleUserStatus('${user.id}', ${!user.isBlocked})" 
-                        class="flex-1 min-w-[140px] bg-${user.isBlocked ? 'green' : 'yellow'}-500 text-white px-4 py-2 rounded-lg hover:bg-${user.isBlocked ? 'green' : 'yellow'}-600 transition-colors flex items-center justify-center">
-                        <i class="fas fa-${user.isBlocked ? 'check' : 'exclamation-triangle'} mr-2"></i>
-                        ${user.isBlocked ? 'Unblock' : 'Block'} User
+                    <button onclick="toggleUserStatus('${user.id}', ${!user.isBlocked})"
+                        class="bg-${user.isBlocked ? 'green' : 'yellow'}-500 text-white px-4 py-2 rounded-lg hover:bg-${user.isBlocked ? 'green' : 'yellow'}-600 transition-colors flex items-center">
+                        <i class="fas fa-${user.isBlocked ? 'unlock' : 'ban'} mr-2"></i>
+                        ${user.isBlocked ? 'Unblock' : 'Block'}
                     </button>
                 ` : ''}
-                
-                ${user.role === 'user' ? `
-                    <button onclick="promoteUser('${user.id}')" 
-                        class="flex-1 min-w-[140px] bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors flex items-center justify-center">
-                        <i class="fas fa-arrow-up mr-2"></i>
-                        Promote to Moderator
-                    </button>
-                ` : user.role === 'moderator' ? `
-                    <button onclick="demoteUser('${user.id}')" 
-                        class="flex-1 min-w-[140px] bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors flex items-center justify-center">
-                        <i class="fas fa-arrow-down mr-2"></i>
-                        Demote to User
-                    </button>
-                ` : ''}
-                
-                <button onclick="viewUserPosts('${user.id}')" 
-                    class="flex-1 min-w-[140px] bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors flex items-center justify-center">
-                    <i class="fas fa-music mr-2"></i>
-                    View Posts
-                </button>
-                
+
                 ${user.role !== 'admin' ? `
-                    <button onclick="deleteUser('${user.id}')" 
-                        class="flex-1 min-w-[140px] bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center">
+                    <button onclick="deleteUser('${user.id}')"
+                        class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors flex items-center">
                         <i class="fas fa-trash mr-2"></i>
-                        Delete User
+                        Delete
                     </button>
                 ` : ''}
-                
-                <button onclick="closeUserModal()" 
-                    class="flex-1 min-w-[140px] bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors flex items-center justify-center">
+
+                <button onclick="closeUserModal()"
+                    class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors flex items-center ml-auto">
                     <i class="fas fa-times mr-2"></i>
                     Close
                 </button>
@@ -1582,9 +1384,6 @@ function showUserModal(user) {
     `;
 
     modal.classList.remove('hidden');
-    
-    // Initialize first tab as active
-    switchTab('account');
 }
 
 function closeUserModal() {

@@ -11,4 +11,6 @@ export class ProfileDto {
   followers: string[];
   following: string[];
   albumArts: string[];
+  savedPosts: string[];
+  savedThoughtsPosts: string[];
 }

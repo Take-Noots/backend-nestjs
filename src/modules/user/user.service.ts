@@ -256,6 +256,32 @@ export class UserService {
     return this.toUserType(updatedUser);
   }
 
+  async updateUser(userId: string, updateData: { username?: string; email?: string; role?: string }): Promise<UserType> {
+    const updatedUser = await this.userModel.findByIdAndUpdate(
+      userId,
+      {
+        ...(updateData.username && { username: updateData.username }),
+        ...(updateData.email && { email: updateData.email }),
+        ...(updateData.role && { role: updateData.role })
+      },
+      { new: true }
+    ).exec();
+
+    if (!updatedUser) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    return this.toUserType(updatedUser);
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    const result = await this.userModel.findByIdAndDelete(userId).exec();
+
+    if (!result) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+  }
+
   async countRecentUsers(days: number): Promise<number> {
     const dateFrom = new Date();
     dateFrom.setDate(dateFrom.getDate() - days);

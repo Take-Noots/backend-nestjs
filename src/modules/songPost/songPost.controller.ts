@@ -12,6 +12,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { SongPostService } from './songPost.service';
+import { RecentlyLikedUserService } from '../interaction/interaction.service';
 import {
   CreatePostDto,
   UpdatePostDto,
@@ -20,7 +21,10 @@ import {
 import { SongPost, SongPostDocument } from './songPost.model';
 import { ProfileService } from '../profile/profile.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { JwtUser, JwtUserData } from '../../common/decorators/jwt-user.decorator';
+import {
+  JwtUser,
+  JwtUserData,
+} from '../../common/decorators/jwt-user.decorator';
 
 import { Delete } from '@nestjs/common';
 
@@ -29,6 +33,7 @@ export class SongPostController {
   constructor(
     private readonly songPostService: SongPostService,
     private readonly profileService: ProfileService,
+    private readonly recentlyLikedUserService: RecentlyLikedUserService,
   ) {}
 
   @Patch(':id/hide')
@@ -47,14 +52,20 @@ export class SongPostController {
   ): Promise<SongPostDocument> {
     //console.log('Received create post request:', createPostDto);
     //console.log('User from JWT:', user);
-    
+
     // set userId from JWT token to the DTO
     createPostDto.userId = user.userId;
-    
+
     // username will be fetched in the service
     const createdPost = await this.songPostService.create(createPostDto);
 
     return createdPost;
+  }
+
+  @Post('by-ids')
+  async getPostsByIds(@Body() body: { ids: string[] }) {
+    const posts = await this.songPostService.getPostsByIds(body.ids);
+    return { posts };
   }
 
   @Get()
@@ -124,8 +135,10 @@ export class SongPostController {
     @Param('commentId') commentId: string,
     @JwtUser() user: JwtUserData,
   ) {
-    console.log(`[DEBUG] Controller likeComment: postId=${postId}, commentId=${commentId}, userId=${user.userId}`);
-    
+    console.log(
+      `[DEBUG] Controller likeComment: postId=${postId}, commentId=${commentId}, userId=${user.userId}`,
+    );
+
     const post = await this.songPostService.likeComment(
       postId,
       commentId,
@@ -139,14 +152,58 @@ export class SongPostController {
     return { success: true, data: post };
   }
 
+  @Get('testing/:userId')
+  async getSpotifyUserTopTracks(@Param('userId') userId: string) {
+    return await this.songPostService.getSpotifyUserTopTracks(userId);
+  }
+
+
   @Get('followers/:userId')
   async getFollowerPosts(@Param('userId') userId: string) {
+    // Feed Algorithm here
     // 1. Get followers
     const followers = await this.profileService.getFollowers(userId);
-    // 2. Get posts by followers
-    const posts = await this.songPostService.getPostsByUserIds(followers);
-    // 3. Print to terminal (already done in service)
-    return { success: true, data: posts };
+    if (!followers || followers.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    // 2. Sample up to 10 followers (random if more than 10)
+    let sampledFollowers: string[] = followers;
+    if (followers.length > 10) {
+      const shuffled = [...followers].sort(() => Math.random() - 0.5);
+      sampledFollowers = shuffled.slice(0, 10);
+    }
+
+    // 3. Get recent posts by followers with per-user upper bound (20)
+    const recentFollowerPosts = await this.songPostService.getRecentPostsByUserIds(followers, 20);
+
+    // 4. For each sampled follower, fetch their recently liked post IDs
+    const likedPostIdsNested = await Promise.all(
+      sampledFollowers.map((fid) => this.recentlyLikedUserService.getRecentlyLikedUsers(fid)),
+    );
+    const likedPostIds = Array.from(new Set(likedPostIdsNested.flat())) as string[];
+
+    // 5. Fetch details for liked post IDs
+    const likedPosts = await this.songPostService.getPostsByIds(likedPostIds);
+
+    // 6. Merge and de-duplicate by _id
+    const merged = [...recentFollowerPosts, ...likedPosts];
+    const seen = new Set<string>();
+    const deduped = merged.filter((p: any) => {
+      const id = (p._id || '').toString();
+      if (!id || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+
+    // 7. Sort by createdAt desc (if present)
+    deduped.sort((a: any, b: any) => {
+      const aTime = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bTime = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bTime - aTime;
+    });
+
+    return { success: true, data: deduped };
   }
 
   @Get('notifications/:userId')

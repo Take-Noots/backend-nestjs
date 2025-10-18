@@ -38,7 +38,10 @@ export class Profile {
   albumArts: string[];
 
   @Prop({ type: [String], default: [] })
-  savedPosts: string[]; // Array of post IDs that the user has saved
+  savedPosts: string[]; 
+
+  @Prop({ type: [String], default: [] })
+  savedThoughtsPosts: string[]; 
 }
 
 export const ProfileSchema = SchemaFactory.createForClass(Profile);

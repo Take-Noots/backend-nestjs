@@ -1,18 +1,24 @@
 // src/modules/chat/chat.service.ts
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { HttpService } from '@nestjs/axios';
 import { Model, Types } from 'mongoose';
 import { Chat, ChatDocument, Message } from './chat.model';
 import { CreateChatDto } from './dto/create-chat.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { ChatType, MessageType } from '../../common/interfaces/chat.interface';
+import { NotificationGateway } from '../notification/notification.gateway';
 
 @Injectable()
 export class ChatService {
-  constructor(@InjectModel(Chat.name) private chatModel: Model<ChatDocument>) {}
+  constructor(
+    @InjectModel(Chat.name) private chatModel: Model<ChatDocument>,
+    private readonly httpService: HttpService,
+    private readonly notificationGateway: NotificationGateway, // Add notification gateway
+  ) {}
 
   async getUserChats(userId: string): Promise<ChatType[]> {
-    console.log('🔍 Getting chats for user:', userId);
+    console.log('📋 Getting chats for user:', userId);
     
     if (!Types.ObjectId.isValid(userId)) {
       throw new BadRequestException('Invalid user ID format');
@@ -63,14 +69,14 @@ export class ChatService {
       throw new BadRequestException('Invalid chat ID or sender ID format');
     }
 
-    const chat = await this.chatModel.findById(chatId).exec();
+    const chat = await this.chatModel.findById(chatId).populate('participants', 'username').exec();
 
     if (!chat) {
       throw new NotFoundException('Chat not found');
     }
 
     // Check if sender is a participant
-    if (!chat.participants.some(participant => participant.toString() === senderId)) {
+    if (!chat.participants.some(participant => participant._id.toString() === senderId)) {
       throw new BadRequestException('User is not a participant in this chat');
     }
 
@@ -91,6 +97,31 @@ export class ChatService {
 
     await chat.save();
     console.log('✅ Message sent successfully');
+
+    // Send notification to the other participant using NotificationGateway
+    try {
+      const recipient = chat.participants.find(participant => 
+        participant._id.toString() !== senderId
+      );
+      
+      if (recipient) {
+        console.log('📢 Sending notification to:', recipient._id.toString());
+        
+        // Use the notification gateway for real-time notifications
+        await this.notificationGateway.sendMessageNotification({
+          recipientId: recipient._id.toString(),
+          senderId: senderId,
+          senderUsername: senderUsername,
+          chatId: chatId,
+          messageText: text.trim(),
+        });
+        
+        console.log('✅ Notification sent successfully');
+      }
+    } catch (error) {
+      console.error('❌ Failed to send notification:', error);
+      // Don't fail the message sending if notification fails
+    }
 
     return this.toMessageType(newMessage as Message);
   }
@@ -132,7 +163,7 @@ export class ChatService {
         return this.toChatType(existingChat);
       }
 
-      console.log('📝 Creating new chat...');
+      console.log('🔍 Creating new chat...');
       
       // Create chat data object (let Mongoose auto-generate _id)
       const chatData = {

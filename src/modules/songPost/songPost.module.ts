@@ -5,6 +5,8 @@ import { SongPostService } from './songPost.service';
 import { SongPost, SongPostSchema } from './songPost.model';
 import { UserModule } from '../user/user.module';
 import { ProfileModule } from '../profile/profile.module';
+import { RecentlyLikedUserModule } from '../interaction/interaction.module';
+import { SpotifyModule } from '../spotify/spotify.module';
 
 @Module({
   imports: [
@@ -13,6 +15,8 @@ import { ProfileModule } from '../profile/profile.module';
     ]),
     UserModule,
     ProfileModule,
+    RecentlyLikedUserModule,
+    SpotifyModule,
   ],
   controllers: [SongPostController],
   providers: [SongPostService],

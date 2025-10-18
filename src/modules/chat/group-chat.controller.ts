@@ -1,14 +1,19 @@
 // src/modules/group-chat/group-chat.controller.ts
-import { Controller, Get, Post, Put, Delete, Param, Body, HttpException, HttpStatus, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, HttpException, HttpStatus, UsePipes, ValidationPipe, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { GroupChatService } from './group-chat.service';
 import { CreateGroupChatDto } from './dto/create-group-chat.dto';
 import { SendGroupMessageDto } from './dto/send-group-message.dto';
 import { UpdateGroupChatDto } from './dto/update-group-chat.dto';
 import { AddRemoveMemberDto } from './dto/add-remove-member.dto';
+import { CloudinaryService } from '../../common/services/cloudinary.service';
 
 @Controller('chat/group')
 export class GroupChatController {
-  constructor(private readonly groupChatService: GroupChatService) {}
+  constructor(
+    private readonly groupChatService: GroupChatService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
   @Post('create')
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
@@ -175,6 +180,85 @@ export class GroupChatController {
         `Failed to remove member from group: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
       );
+    }
+  }
+
+  @Post(':groupChatId/upload-group-icon')
+  @UseInterceptors(FileInterceptor('groupIcon'))
+  async uploadGroupIcon(
+    @Param('groupChatId') groupChatId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    try {
+      if (!file) {
+        return {
+          success: false,
+          message: 'No file provided',
+        };
+      }
+
+      // Upload to Cloudinary
+      const imageUrl = await this.cloudinaryService.uploadImage(
+        file,
+        'group_icons',
+      );
+
+      // Update group chat with new icon URL
+      const result = await this.groupChatService.updateGroupChat(groupChatId, {
+        groupIcon: imageUrl,
+      });
+
+      return {
+        success: true,
+        message: 'Group icon uploaded successfully',
+        imageUrl,
+        groupChat: result,
+      };
+    } catch (error) {
+      console.error('❌ Error in uploadGroupIcon:', error);
+      return {
+        success: false,
+        message: `Failed to upload group icon: ${error.message}`,
+      };
+    }
+  }
+
+  @Post(':groupChatId/upload-group-icon-base64')
+  async uploadGroupIconBase64(
+    @Param('groupChatId') groupChatId: string,
+    @Body() body: { imageData: string },
+  ) {
+    try {
+      if (!body.imageData) {
+        return {
+          success: false,
+          message: 'No image data provided',
+        };
+      }
+
+      // Upload to Cloudinary
+      const imageUrl = await this.cloudinaryService.uploadImageFromBase64(
+        body.imageData,
+        'group_icons',
+      );
+
+      // Update group chat with new icon URL
+      const result = await this.groupChatService.updateGroupChat(groupChatId, {
+        groupIcon: imageUrl,
+      });
+
+      return {
+        success: true,
+        message: 'Group icon uploaded successfully',
+        imageUrl,
+        groupChat: result,
+      };
+    } catch (error) {
+      console.error('❌ Error in uploadGroupIconBase64:', error);
+      return {
+        success: false,
+        message: `Failed to upload group icon: ${error.message}`,
+      };
     }
   }
 

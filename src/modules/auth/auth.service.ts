@@ -17,7 +17,7 @@ const myRefreshTokenDuration = process.env.REFRESH_TOKEN_DURATION ? parseInt(pro
 export class AuthService {
     constructor(private userService: UserService, private spotifySessionService: SpotifySessionService) {}
 
-    async register(newUser: RegisterUserDTO): Promise<void> {
+    async register(newUser: RegisterUserDTO): Promise<any> {
         // Check if user already exists
         const existingUser = await this.userService.findByEmail(newUser.email);
         if (existingUser) {
@@ -29,11 +29,12 @@ export class AuthService {
         const user = {
             email: newUser.email,
             username: newUser.username,
-            password: hashedPassword, 
+            password: hashedPassword,
             role: newUser.role,
         };
 
-        await this.userService.create(user);
+        const createdUser = await this.userService.create(user);
+        return createdUser;
     }
 
     async login(user: LoginUserDTO): Promise<[UserType, string, string, boolean]> {

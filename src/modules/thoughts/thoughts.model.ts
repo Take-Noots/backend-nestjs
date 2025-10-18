@@ -51,6 +51,9 @@ export class ThoughtsPost {
   @Prop({ required: false })
   trackId?: string;
 
+  @Prop({ required: false })
+  backgroundColor?: string;
+
   // Moderation fields
   @Prop({ default: 0 })
   isHidden: number; // 0 = visible, 1 = hidden

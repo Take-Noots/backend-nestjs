@@ -23,6 +23,8 @@ import { FanbasePostModule } from './modules/fanbasePost/fanbasePost.module';
 import { PostReportModule } from './modules/post_report/post_report.module';
 import { AdvertisementModule } from './modules/advertisement/advertisement.module';
 
+// Add notification module import
+import { NotificationModule } from './modules/notification/notification.module';
 
 import 'dotenv/config';
 
@@ -48,7 +50,8 @@ const dbUrl: string = process.env.DB_CONN_STRING as string;
     RecentlyLikedUserModule,
     FanbasePostModule,
     PostReportModule,
-    AdvertisementModule
+    AdvertisementModule,
+    NotificationModule // Add notification module here
   ]
 })
 export class AppModule {}

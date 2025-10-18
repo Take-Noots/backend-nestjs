@@ -9,6 +9,9 @@ import {
 } from './dto/create-post.dto';
 import { UserService } from '../user/user.service';
 import { ProfileService } from '../profile/profile.service';
+import { SpotifySessionService } from '../spotify/services/spotify.session-service'
+import { SpotifyUserService } from '../spotify/services/spotify.user-service'
+import { ColorExtractor } from './utils/color-extractor';
 
 @Injectable()
 export class SongPostService {
@@ -16,19 +19,45 @@ export class SongPostService {
     @InjectModel(SongPost.name) private songPostModel: Model<SongPostDocument>,
     private readonly userService: UserService,
     private readonly profileService: ProfileService,
+    private readonly spotifySessionService: SpotifySessionService,
+    private readonly spotifyUserService: SpotifyUserService,
   ) {}
 
   async create(createPostDto: CreatePostDto): Promise<SongPostDocument> {
-    //console.log(createPostDto);
+    console.log('[DEBUG] Creating song post:', createPostDto);
 
+    // Use frontend-provided backgroundColor if available, otherwise extract from album image
+    let backgroundColor: string | undefined = createPostDto.backgroundColor;
+    
+    if (!backgroundColor && createPostDto.albumImage) {
+      try {
+        //console.log('[DEBUG] No frontend color provided, extracting color from album image:', createPostDto.albumImage);
+        const extractedColor = await ColorExtractor.extractColor(createPostDto.albumImage);
+        if (extractedColor) {
+          backgroundColor = extractedColor.color;
+          //console.log('[DEBUG] Extracted color:', backgroundColor);
+        } else {
+          backgroundColor = ColorExtractor.getDefaultColor();
+          //console.log('[DEBUG] Using default color:', backgroundColor);
+        }
+      } catch (error) {
+        console.error('[ERROR] Failed to extract color:', error);
+        //backgroundColor = ColorExtractor.getDefaultColor();
+      }
+    } else if (!backgroundColor) {
+      backgroundColor = ColorExtractor.getDefaultColor();
+      console.log('[DEBUG] No album image, using default color:', backgroundColor);
+    } else {
+      console.log('[DEBUG] Using frontend-provided color:', backgroundColor);
+    }
     
     const createdPost = new this.songPostModel({
       ...createPostDto,
+      backgroundColor,
     });
 
     const savedPost = await createdPost.save();
-
-    //console.log('Song post created successfully:', savedPost);
+    console.log('[DEBUG] Song post created successfully with color:', backgroundColor);
     return savedPost;
   }
 
@@ -96,20 +125,18 @@ export class SongPostService {
 
     let updateOperation;
     if (isLiked) {
-      // Remove like
       updateOperation = {
         $pull: { likedBy: userId },
         $inc: { likes: -1 },
       };
     } else {
-      // Add like
       updateOperation = {
         $addToSet: { likedBy: userId },
         $inc: { likes: 1 },
       };
     }
 
-    // Use findOneAndUpdate for atomic operation
+    // Use findOneAndUpdate for update happens in 1 database call
     const updatedPost = await this.songPostModel.findOneAndUpdate(
       { _id: postId, isDeleted: { $ne: 1 } },
       updateOperation,
@@ -234,6 +261,66 @@ export class SongPostService {
       }),
     );
     //console.log('Follower posts with usernames and profile images:', postsWithUserData);
+    return postsWithUserData;
+  }
+
+  // async getPostsByIds(postIds: string[]): Promise<any[]> {
+  //   if (!postIds || postIds.length === 0) return [];
+  //   const posts = await this.songPostModel
+  //     .find({ _id: { $in: postIds }, isHidden: { $ne: 1 }, isDeleted: { $ne: 1 } })
+  //     .lean();
+  //   const postsWithUserData = await Promise.all(
+  //     posts.map(async (post) => {
+  //       const username = await this.userService.getUsernameById(post.userId);
+  //       const profile = await this.profileService.getProfileByUserId(post.userId);
+  //       const profileImage = profile?.profileImage || '';
+  //       return { ...post, username: username || '', userImage: profileImage };
+  //     }),
+  //   );
+  //   return postsWithUserData;
+  // }
+
+  async getSpotifyUserTopTracks(userId: string): Promise<any> {
+    const spotifyToken = await this.spotifySessionService.getAccessToken(userId);
+    if (!spotifyToken) {
+      return { tracks: [] };
+    }
+    const topTracks = await this.spotifyUserService.getUsersTopTracks(spotifyToken);
+    return topTracks;
+  }
+
+  async getRecentPostsByUserIds(userIds: string[], perUserLimit: number): Promise<any[]> {
+    if (!userIds || userIds.length === 0) return [];
+    const sanitizedLimit = Math.max(1, Math.min(100, perUserLimit || 20));
+    const posts = await this.songPostModel
+      .aggregate([
+        { $match: { userId: { $in: userIds }, isHidden: { $ne: 1 }, isDeleted: { $ne: 1 } } },
+        { $sort: { createdAt: -1 } },
+        {
+          $group: {
+            _id: '$userId',
+            posts: { $push: '$$ROOT' },
+          },
+        },
+        {
+          $project: {
+            posts: { $slice: ['$posts', sanitizedLimit] },
+          },
+        },
+        { $unwind: '$posts' },
+        { $replaceRoot: { newRoot: '$posts' } },
+        { $sort: { createdAt: -1 } },
+      ])
+      .exec();
+
+    const postsWithUserData = await Promise.all(
+      posts.map(async (post) => {
+        const username = await this.userService.getUsernameById(post.userId);
+        const profile = await this.profileService.getProfileByUserId(post.userId);
+        const profileImage = profile?.profileImage || '';
+        return { ...post, username: username || '', userImage: profileImage };
+      }),
+    );
     return postsWithUserData;
   }
 
@@ -466,5 +553,58 @@ export class SongPostService {
     }
 
     return post;
+  }
+
+  async getPostsByIds(ids: string[]): Promise<any[]> {
+    try {
+      const posts = await this.songPostModel
+        .find({
+          _id: { $in: ids },
+          isHidden: { $ne: 1 },
+          isDeleted: { $ne: 1 },
+        })
+        .lean();
+      return Promise.all(
+        posts.map(async (post) => {
+          try {
+            const username = await this.userService.getUsernameById(
+              post.userId,
+            );
+            const profile = await this.profileService.getProfileByUserId(
+              post.userId,
+            );
+            const profileImage = profile?.profileImage || '';
+            return {
+              ...post,
+              username: username || '',
+              userImage: profileImage,
+              comments: await Promise.all(
+                (post.comments || []).map(async (comment) => ({
+                  ...comment,
+                  username:
+                    (await this.userService.getUsernameById(comment.userId)) ||
+                    '',
+                })),
+              ),
+            };
+          } catch (error) {
+            console.error(`Error populating post ${post._id}:`, error);
+            // Return post with default values if population fails
+            return {
+              ...post,
+              username: '',
+              userImage: '',
+              comments: (post.comments || []).map((comment) => ({
+                ...comment,
+                username: '',
+              })),
+            };
+          }
+        }),
+      );
+    } catch (error) {
+      console.error('Error getting posts by ids:', error);
+      return [];
+    }
   }
 }

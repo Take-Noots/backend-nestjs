@@ -7,10 +7,14 @@ import { CreateGroupChatDto } from './dto/create-group-chat.dto';
 import { SendGroupMessageDto } from './dto/send-group-message.dto';
 import { UpdateGroupChatDto } from './dto/update-group-chat.dto';
 import { GroupChatType, GroupMessageType } from '../../common/interfaces/group-chat.interface';
+import { NotificationGateway } from '../notification/notification.gateway';
 
 @Injectable()
 export class GroupChatService {
-  constructor(@InjectModel(GroupChat.name) private groupChatModel: Model<GroupChatDocument>) {}
+  constructor(
+    @InjectModel(GroupChat.name) private groupChatModel: Model<GroupChatDocument>,
+    private readonly notificationGateway: NotificationGateway, // Add notification gateway
+  ) {}
 
   async createGroupChat(createGroupChatDto: CreateGroupChatDto): Promise<GroupChatType> {
     const { name, description, groupIcon, createdBy, memberIds } = createGroupChatDto;
@@ -130,14 +134,17 @@ export class GroupChatService {
       throw new BadRequestException('Invalid group chat ID or sender ID format');
     }
 
-    const groupChat = await this.groupChatModel.findById(groupChatId).exec();
+    const groupChat = await this.groupChatModel
+      .findById(groupChatId)
+      .populate('members', 'username _id')
+      .exec();
 
     if (!groupChat) {
       throw new NotFoundException('Group chat not found');
     }
 
     // Check if sender is a member
-    if (!groupChat.members.some(member => member.toString() === senderId)) {
+    if (!groupChat.members.some(member => member._id.toString() === senderId)) {
       throw new BadRequestException('User is not a member of this group chat');
     }
 
@@ -158,6 +165,51 @@ export class GroupChatService {
 
     await groupChat.save();
     console.log('✅ Group message sent successfully');
+
+    // Send notifications to all group members except the sender
+    try {
+      const memberIds = groupChat.members
+        .filter(member => member._id.toString() !== senderId)
+        .map(member => member._id.toString());
+      
+      if (memberIds.length > 0) {
+        console.log('📢 Sending notifications to group members:', memberIds.length);
+        
+        // Use the notification gateway for group message notifications
+        await this.notificationGateway.sendMessageNotification({
+          recipientId: 'GROUP', // Special indicator for group messages
+          senderId: senderId,
+          senderUsername: senderUsername,
+          chatId: groupChatId,
+          messageText: text.trim(),
+          isGroup: true,
+          groupName: groupChat.name,
+        });
+
+        // Send individual notifications to each member
+        for (const memberId of memberIds) {
+          try {
+            await this.notificationGateway.sendMessageNotification({
+              recipientId: memberId,
+              senderId: senderId,
+              senderUsername: senderUsername,
+              chatId: groupChatId,
+              messageText: text.trim(),
+              isGroup: true,
+              groupName: groupChat.name,
+            });
+          } catch (memberError) {
+            console.error(`❌ Failed to send notification to member ${memberId}:`, memberError);
+            // Continue with other members if one fails
+          }
+        }
+        
+        console.log('✅ Group notifications sent successfully');
+      }
+    } catch (error) {
+      console.error('❌ Failed to send group notifications:', error);
+      // Don't fail the message sending if notification fails
+    }
 
     return this.toGroupMessageType(newMessage as GroupMessage);
   }
@@ -183,7 +235,7 @@ export class GroupChatService {
   }
 
   async updateGroupChat(groupChatId: string, updateGroupChatDto: UpdateGroupChatDto): Promise<GroupChatType> {
-    console.log('📝 Updating group chat:', groupChatId);
+    console.log('🔍 Updating group chat:', groupChatId);
     
     if (!Types.ObjectId.isValid(groupChatId)) {
       throw new BadRequestException('Invalid group chat ID format');
