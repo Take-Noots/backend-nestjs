@@ -15,14 +15,15 @@ export class NotificationController {
     try {
       const pageNumber = page ? parseInt(page) : 1;
       const limitNumber = limit ? parseInt(limit) : 20;
-      
-      return await this.notificationService.getUserNotifications(userId, pageNumber, limitNumber);
+
+      const result = await this.notificationService.getUserNotifications(userId, pageNumber, limitNumber);
+      return result;
     } catch (error) {
       console.error('Error in getUserNotifications:', error);
-      throw new HttpException(
-        `Failed to fetch notifications: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      return {
+        success: false,
+        message: error.message || 'Failed to fetch notifications'
+      };
     }
   }
 

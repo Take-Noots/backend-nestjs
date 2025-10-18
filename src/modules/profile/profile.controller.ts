@@ -351,4 +351,26 @@ export class ProfileController {
       };
     }
   }
+
+  @Get('follow-status/:followerId/:followingId')
+  async checkFollowStatus(
+    @Param('followerId') followerId: string,
+    @Param('followingId') followingId: string,
+  ) {
+    try {
+      const followers = await this.profileService.getFollowers(followingId);
+      const isFollowing = followers.includes(followerId);
+
+      return {
+        success: true,
+        isFollowing,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        isFollowing: false,
+        message: `Failed to check follow status: ${error.message}`,
+      };
+    }
+  }
 }
