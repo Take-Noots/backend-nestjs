@@ -264,21 +264,21 @@ export class SongPostService {
     return postsWithUserData;
   }
 
-  async getPostsByIds(postIds: string[]): Promise<any[]> {
-    if (!postIds || postIds.length === 0) return [];
-    const posts = await this.songPostModel
-      .find({ _id: { $in: postIds }, isHidden: { $ne: 1 }, isDeleted: { $ne: 1 } })
-      .lean();
-    const postsWithUserData = await Promise.all(
-      posts.map(async (post) => {
-        const username = await this.userService.getUsernameById(post.userId);
-        const profile = await this.profileService.getProfileByUserId(post.userId);
-        const profileImage = profile?.profileImage || '';
-        return { ...post, username: username || '', userImage: profileImage };
-      }),
-    );
-    return postsWithUserData;
-  }
+  // async getPostsByIds(postIds: string[]): Promise<any[]> {
+  //   if (!postIds || postIds.length === 0) return [];
+  //   const posts = await this.songPostModel
+  //     .find({ _id: { $in: postIds }, isHidden: { $ne: 1 }, isDeleted: { $ne: 1 } })
+  //     .lean();
+  //   const postsWithUserData = await Promise.all(
+  //     posts.map(async (post) => {
+  //       const username = await this.userService.getUsernameById(post.userId);
+  //       const profile = await this.profileService.getProfileByUserId(post.userId);
+  //       const profileImage = profile?.profileImage || '';
+  //       return { ...post, username: username || '', userImage: profileImage };
+  //     }),
+  //   );
+  //   return postsWithUserData;
+  // }
 
   async getSpotifyUserTopTracks(userId: string): Promise<any> {
     const spotifyToken = await this.spotifySessionService.getAccessToken(userId);
