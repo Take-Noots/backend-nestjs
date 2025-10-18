@@ -104,7 +104,9 @@ export class FanbaseController {
   ) {
     try {
       const skip = (page - 1) * limit;
-      return await this.fanbaseService.findAllWithPagination({}, skip, limit, user?.userId);
+      // Add isDeleted filter
+      const filter = { isDeleted: { $ne: true } };
+      return await this.fanbaseService.findAllWithPagination(filter, skip, limit, user?.userId);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
