@@ -173,10 +173,19 @@ export class ProfileController {
 
   // Save a post
   @Post(':userId/save/:postId')
+  @UseGuards(JwtAuthGuard)
   async savePost(
     @Param('userId') userId: string,
     @Param('postId') postId: string,
+    @JwtUser() user: JwtUserData,
   ) {
+    // Verify that the authenticated user matches the requested userId
+    if (user.userId !== userId) {
+      return {
+        success: false,
+        message: 'Unauthorized: You can only save posts to your own profile',
+      };
+    }
     const success = await this.profileService.savePost(userId, postId);
     return {
       success,
@@ -186,10 +195,20 @@ export class ProfileController {
 
   // Unsave a post
   @Delete(':userId/save/:postId')
+  @UseGuards(JwtAuthGuard)
   async unsavePost(
     @Param('userId') userId: string,
     @Param('postId') postId: string,
+    @JwtUser() user: JwtUserData,
   ) {
+    // Verify that the authenticated user matches the requested userId
+    if (user.userId !== userId) {
+      return {
+        success: false,
+        message:
+          'Unauthorized: You can only unsave posts from your own profile',
+      };
+    }
     const success = await this.profileService.unsavePost(userId, postId);
     return {
       success,
@@ -199,17 +218,37 @@ export class ProfileController {
 
   // Check if a post is saved
   @Get(':userId/saved/:postId')
+  @UseGuards(JwtAuthGuard)
   async isPostSaved(
     @Param('userId') userId: string,
     @Param('postId') postId: string,
+    @JwtUser() user: JwtUserData,
   ) {
+    // Verify that the authenticated user matches the requested userId
+    if (user.userId !== userId) {
+      return {
+        success: false,
+        message: 'Unauthorized: You can only check your own saved posts',
+      };
+    }
     const isSaved = await this.profileService.isPostSaved(userId, postId);
     return { isSaved };
   }
 
   // Get all saved posts for a user
   @Get(':userId/saved-posts')
-  async getSavedPosts(@Param('userId') userId: string) {
+  @UseGuards(JwtAuthGuard)
+  async getSavedPosts(
+    @Param('userId') userId: string,
+    @JwtUser() user: JwtUserData,
+  ) {
+    // Verify that the authenticated user matches the requested userId
+    if (user.userId !== userId) {
+      return {
+        success: false,
+        message: 'Unauthorized: You can only access your own saved posts',
+      };
+    }
     const savedPosts = await this.profileService.getSavedPosts(userId);
     return { savedPosts };
   }
@@ -230,7 +269,10 @@ export class ProfileController {
     @Param('userId') userId: string,
     @Param('postId') postId: string,
   ) {
-    const success = await this.profileService.unsaveThoughtsPost(userId, postId);
+    const success = await this.profileService.unsaveThoughtsPost(
+      userId,
+      postId,
+    );
     return { success, message: 'Thoughts post unsaved successfully' };
   }
 
@@ -240,7 +282,10 @@ export class ProfileController {
     @Param('userId') userId: string,
     @Param('postId') postId: string,
   ) {
-    const isSaved = await this.profileService.isThoughtsPostSaved(userId, postId);
+    const isSaved = await this.profileService.isThoughtsPostSaved(
+      userId,
+      postId,
+    );
     return { isSaved };
   }
 
@@ -249,5 +294,61 @@ export class ProfileController {
   async getSavedThoughtsPosts(@Param('userId') userId: string) {
     const savedPosts = await this.profileService.getSavedThoughtsPosts(userId);
     return { savedPosts };
+  }
+
+  @Post('follow')
+  @UseGuards(JwtAuthGuard)
+  async followUser(
+    @Body() body: { followerId: string; followingId: string },
+    @JwtUser() user: JwtUserData,
+  ) {
+    // Verify that the authenticated user matches the followerId
+    if (user.userId !== body.followerId) {
+      return {
+        success: false,
+        message: 'Unauthorized: You can only follow on behalf of yourself',
+      };
+    }
+
+    try {
+      const result = await this.profileService.followUser(
+        body.followerId,
+        body.followingId,
+      );
+      return result;
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to follow user: ${error.message}`,
+      };
+    }
+  }
+
+  @Post('unfollow')
+  @UseGuards(JwtAuthGuard)
+  async unfollowUser(
+    @Body() body: { followerId: string; followingId: string },
+    @JwtUser() user: JwtUserData,
+  ) {
+    // Verify that the authenticated user matches the followerId
+    if (user.userId !== body.followerId) {
+      return {
+        success: false,
+        message: 'Unauthorized: You can only unfollow on behalf of yourself',
+      };
+    }
+
+    try {
+      const result = await this.profileService.unfollowUser(
+        body.followerId,
+        body.followingId,
+      );
+      return result;
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to unfollow user: ${error.message}`,
+      };
+    }
   }
 }
