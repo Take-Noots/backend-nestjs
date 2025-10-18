@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Delete, Param, Body, HttpException, HttpStatus, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, HttpException, HttpStatus, Request, UseGuards, UsePipes } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 import { AdvertisementService } from './advertisement.service';
 import { CreateAdvertisementDTO } from './dto/create-advertisement.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -9,6 +10,7 @@ export class AdvertisementController {
 
   @Post('create')
   @UseGuards(JwtAuthGuard)
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async createAdvertisement(@Request() req, @Body() createAdvertisementDto: CreateAdvertisementDTO) {
     try {
       const advertisementData = {
