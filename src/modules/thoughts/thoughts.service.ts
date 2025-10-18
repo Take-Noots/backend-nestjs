@@ -291,6 +291,38 @@ export class ThoughtsService {
     return true;
   }
 
+  // Update thoughts post
+  async updatePost(
+    postId: string,
+    updateData: { thoughtsText: string },
+  ): Promise<any> {
+    //console.log(`[DEBUG] Updating thoughts post with ID: ${postId}`);
+    //console.log(`[DEBUG] Update data:`, updateData);
+
+    const post = await this.thoughtsModel
+      .findOneAndUpdate(
+        { _id: postId, isDeleted: { $ne: 1 } },
+        { thoughtsText: updateData.thoughtsText },
+        { new: true },
+      )
+      .exec();
+
+    if (post) {
+      //console.log(`[DEBUG] Thoughts post updated successfully:`, post);
+      
+      // Get username for the response
+      const username = await this.userService.getUsernameById(post.userId);
+      
+      return {
+        ...post.toObject(),
+        username: username || '',
+      };
+    } else {
+      console.log(`[DEBUG] Thoughts post not found with ID: ${postId}`);
+      return null;
+    }
+  }
+
   // Hide thoughts post
   async hidePost(postId: string): Promise<any> {
     console.log(`[DEBUG] Hiding thoughts post with ID: ${postId}`);

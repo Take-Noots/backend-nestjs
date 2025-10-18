@@ -90,6 +90,23 @@ export class ThoughtsController {
     return { success: true, data: post };
   }
 
+  // Update thoughts post
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  @UsePipes(new ValidationPipe())
+  async updateThoughts(@Param('id') id: string, @Body() updateData: { thoughtsText: string }, @JwtUser() user: JwtUserData) {
+    console.log('Received update thoughts request:', updateData);
+    const updatedPost = await this.thoughtsService.updatePost(id, updateData);
+    if (!updatedPost) {
+      return { success: false, message: 'Post not found' };
+    }
+    return {
+      success: true,
+      data: updatedPost,
+      message: 'Post updated successfully',
+    };
+  }
+
   // Hide thoughts post
   @Patch(':id/hide')
   hideThoughts(@Param('id') id: string) {
