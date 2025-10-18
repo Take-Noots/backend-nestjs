@@ -36,6 +36,21 @@ export class Advertisement {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   userId: Types.ObjectId;
 
+  @Prop({ default: 0 })
+  status: number;
+
+  @Prop({ default: 0 })
+  likesCount: number;
+
+  @Prop({ default: 0 })
+  commentsCount: number;
+
+  @Prop({ type: [Types.ObjectId], ref: 'User', default: [] })
+  likedBy: Types.ObjectId[];
+
+  @Prop({ type: [Types.ObjectId], ref: 'Comment', default: [] })
+  comments: Types.ObjectId[];
+
   @Prop({ default: Date.now })
   createdAt: Date;
 

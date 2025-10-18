@@ -9,7 +9,8 @@ export class AdvertisementService {
   constructor(@InjectModel(Advertisement.name) private advertisementModel: Model<AdvertisementDocument>) {}
 
   async create(createAdvertisementDto: CreateAdvertisementDTO): Promise<Advertisement> {
-    const createdAdvertisement = new this.advertisementModel(createAdvertisementDto);
+    const advertisementData = { ...createAdvertisementDto, status: 0 };
+    const createdAdvertisement = new this.advertisementModel(advertisementData);
     return await createdAdvertisement.save();
   }
 
