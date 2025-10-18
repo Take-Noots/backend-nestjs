@@ -19,6 +19,9 @@ import { User, UserSchema } from '../user/user.model';
 // Notification module for real-time notifications
 import { NotificationModule } from '../notification/notification.module';
 
+// Cloudinary service for image uploads
+import { CloudinaryService } from '../../common/services/cloudinary.service';
+
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -35,7 +38,8 @@ import { NotificationModule } from '../notification/notification.module';
   ],
   providers: [
     ChatService,
-    GroupChatService
+    GroupChatService,
+    CloudinaryService
   ],
   exports: [
     ChatService,
