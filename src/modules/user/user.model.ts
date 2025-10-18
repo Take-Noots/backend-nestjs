@@ -45,6 +45,10 @@ export class User {
 
   @Prop({ default: Date.now })
   updatedAt: Date;
+
+  // Profile information for notifications
+  @Prop({ required: false })
+  profileImage: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

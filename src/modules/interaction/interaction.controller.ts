@@ -7,10 +7,10 @@ export class RecentlyLikedUserController {
 
   @Post()
   async addInteraction(
-    @Body() body: { userId: string; likedUserId: string }
+    @Body() body: { userId: string; likedPostId: string }
   ) {
     console.log('Received addInteraction:', body);
-    return this.service.addInteraction(body.userId, body.likedUserId);
+    return this.service.addInteraction(body.userId, body.likedPostId);
   }
 
   @Get(':userId')

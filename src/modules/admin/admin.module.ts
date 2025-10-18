@@ -8,6 +8,7 @@ import { UserModule } from '../user/user.module';
 import { PostModule } from '../posts/posts.module';
 import { FanbaseModule } from '../fanbases/fanbase.module';
 import { ReportModule } from '../reports/reports.module';
+import { PostReportModule } from '../post_report/post_report.module';
 import { AuthModule } from '../auth/auth.module';
 import { SongPostModule } from '../songPost/songPost.module';
 
@@ -18,6 +19,7 @@ import { SongPostModule } from '../songPost/songPost.module';
     SongPostModule,
     FanbaseModule,
     ReportModule,
+    PostReportModule,
     AuthModule, // This provides AuthService for login
   ],
   controllers: [
