@@ -524,40 +524,7 @@
                     </form>
                 </div>
 
-                <!-- Quick Actions -->
-                <div class="bg-white rounded-xl shadow-sm p-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                        <i class="fas fa-bolt text-primary mr-2"></i>
-                        Quick Actions
-                    </h3>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <button onclick="showCreateFanbaseModal()"
-                            class="flex flex-col items-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg hover:from-green-100 hover:to-green-200 transition-all duration-300 group">
-                            <i
-                                class="fas fa-plus text-2xl text-green-600 mb-2 group-hover:scale-110 transition-transform"></i>
-                            <span class="text-sm font-medium text-green-700">Create Fanbase</span>
-                        </button>
-                        <button onclick="refreshData()"
-                            class="flex flex-col items-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg hover:from-blue-100 hover:to-blue-200 transition-all duration-300 group">
-                            <i
-                                class="fas fa-sync-alt text-2xl text-blue-600 mb-2 group-hover:scale-110 transition-transform"></i>
-                            <span class="text-sm font-medium text-blue-700">Refresh Data</span>
-                        </button>
-                        <button onclick="exportFanbases()"
-                            class="flex flex-col items-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg hover:from-purple-100 hover:to-purple-200 transition-all duration-300 group">
-                            <i
-                                class="fas fa-download text-2xl text-purple-600 mb-2 group-hover:scale-110 transition-transform"></i>
-                            <span class="text-sm font-medium text-purple-700">Export Data</span>
-                        </button>
-                        <button onclick="showAnalytics()"
-                            class="flex flex-col items-center p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg hover:from-yellow-100 hover:to-yellow-200 transition-all duration-300 group">
-                            <i
-                                class="fas fa-chart-line text-2xl text-yellow-600 mb-2 group-hover:scale-110 transition-transform"></i>
-                            <span class="text-sm font-medium text-yellow-700">View Analytics</span>
-                        </button>
-                    </div>
-                </div>
-
+                
                 <!-- Fanbases Grid -->
                 <div class="bg-white rounded-xl shadow-sm overflow-hidden">
                     <div class="flex items-center justify-between p-6 border-b border-gray-200">
@@ -653,8 +620,7 @@
                                             <div class="text-xs text-gray-500 space-y-1 text-center">
                                                 <div>Created: <%= new Date(fanbase.createdAt).toLocaleDateString() %>
                                                 </div>
-                                                <div>ID: <%= fanbase._id %>
-                                                </div>
+                                            
                                                 <div>Creator: <%= (fanbase.createdUserId || '' ).substring(0, 8) %>...</div>
                                             </div>
                                         </div>
@@ -1027,10 +993,7 @@
                         <div>
                             <h5 class="font-medium text-gray-900 mb-2">Fanbase Information</h5>
                             <div class="space-y-2 text-sm">
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Fanbase ID:</span>
-                                    <span class="font-mono text-gray-900">${fanbase._id}</span>
-                                </div>
+                                
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">Name:</span>
                                     <span class="text-gray-900">${fanbase.fanbaseName}</span>

@@ -11,7 +11,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { PostReportService } from './post_report.service';
-import { CreatePostReportDto, UpdatePostReportDto } from './dto/post_report.dto';
+import { CreatePostReportDto, UpdatePostReportDto, ReviewPostReportDto } from './dto/post_report.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/role.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -108,6 +108,70 @@ export class PostReportController {
     return {
       success: true,
       message: 'Report deleted successfully',
+    };
+  }
+
+  @Put(':id/review')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  async reviewReport(
+    @Param('id') id: string,
+    @Body() reviewData: ReviewPostReportDto,
+    @Request() req,
+  ) {
+    const report = await this.postReportService.reviewReport(
+      id,
+      reviewData,
+      req.user.userId,
+    );
+    return {
+      success: true,
+      message: `Report ${reviewData.status} successfully`,
+      data: report,
+    };
+  }
+
+  @Get('status/:status')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  async getReportsByStatus(@Param('status') status: string) {
+    const reports = await this.postReportService.getReportsByStatus(status);
+    return {
+      success: true,
+      data: reports,
+    };
+  }
+
+  @Get('pending')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  async getPendingReports() {
+    const reports = await this.postReportService.getPendingReports();
+    return {
+      success: true,
+      data: reports,
+    };
+  }
+
+  @Get('posts/reported')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  async getReportedPosts() {
+    const reportedPosts = await this.postReportService.getReportedPostsWithDetails();
+    return {
+      success: true,
+      data: reportedPosts,
+    };
+  }
+
+  @Get('post/:postId')
+  @UseGuards(RolesGuard)
+  @Roles(Role.Admin)
+  async getReportsByPostId(@Param('postId') postId: string) {
+    const reports = await this.postReportService.getReportsByPostId(postId);
+    return {
+      success: true,
+      data: reports,
     };
   }
 }
