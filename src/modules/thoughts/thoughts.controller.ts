@@ -30,13 +30,15 @@ export class ThoughtsController {
 
   // Get thoughts posts by user ID (for user profile)
   @Get('user/:userId')
-  getThoughtsByUser(@Param('userId') userId: string) {
-    return this.thoughtsService.findByUserId(userId);
+  @UseGuards(JwtAuthGuard)
+  getThoughtsByUser(@Param('userId') userId: string, @JwtUser() user: JwtUserData) {
+    return this.thoughtsService.findByUserId(userId, user.userId);
   }
 
   @Get('followers/:userId')
-  getFollowerPosts(@Param('userId') userId: string) {
-    return this.thoughtsService.getFollowerPosts(userId);
+  @UseGuards(JwtAuthGuard)
+  getFollowerPosts(@Param('userId') userId: string, @JwtUser() user: JwtUserData) {
+    return this.thoughtsService.getFollowerPosts(userId, user.userId);
   }
 
 
