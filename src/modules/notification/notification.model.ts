@@ -54,6 +54,9 @@ export class Notification {
     
     // For comments
     commentText?: string;
+
+    // For group messages
+    groupName?: string;
   };
 
   @Prop({ default: false })
