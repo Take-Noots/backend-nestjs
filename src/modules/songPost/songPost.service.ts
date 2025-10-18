@@ -11,6 +11,7 @@ import { UserService } from '../user/user.service';
 import { ProfileService } from '../profile/profile.service';
 import { SpotifySessionService } from '../spotify/services/spotify.session-service'
 import { SpotifyUserService } from '../spotify/services/spotify.user-service'
+import { ColorExtractor } from './utils/color-extractor';
 
 @Injectable()
 export class SongPostService {
@@ -23,16 +24,40 @@ export class SongPostService {
   ) {}
 
   async create(createPostDto: CreatePostDto): Promise<SongPostDocument> {
-    //console.log(createPostDto);
+    console.log('[DEBUG] Creating song post:', createPostDto);
 
+    // Use frontend-provided backgroundColor if available, otherwise extract from album image
+    let backgroundColor: string | undefined = createPostDto.backgroundColor;
+    
+    if (!backgroundColor && createPostDto.albumImage) {
+      try {
+        //console.log('[DEBUG] No frontend color provided, extracting color from album image:', createPostDto.albumImage);
+        const extractedColor = await ColorExtractor.extractColor(createPostDto.albumImage);
+        if (extractedColor) {
+          backgroundColor = extractedColor.color;
+          //console.log('[DEBUG] Extracted color:', backgroundColor);
+        } else {
+          backgroundColor = ColorExtractor.getDefaultColor();
+          //console.log('[DEBUG] Using default color:', backgroundColor);
+        }
+      } catch (error) {
+        console.error('[ERROR] Failed to extract color:', error);
+        //backgroundColor = ColorExtractor.getDefaultColor();
+      }
+    } else if (!backgroundColor) {
+      backgroundColor = ColorExtractor.getDefaultColor();
+      console.log('[DEBUG] No album image, using default color:', backgroundColor);
+    } else {
+      console.log('[DEBUG] Using frontend-provided color:', backgroundColor);
+    }
     
     const createdPost = new this.songPostModel({
       ...createPostDto,
+      backgroundColor,
     });
 
     const savedPost = await createdPost.save();
-
-    //console.log('Song post created successfully:', savedPost);
+    console.log('[DEBUG] Song post created successfully with color:', backgroundColor);
     return savedPost;
   }
 
@@ -100,20 +125,18 @@ export class SongPostService {
 
     let updateOperation;
     if (isLiked) {
-      // Remove like
       updateOperation = {
         $pull: { likedBy: userId },
         $inc: { likes: -1 },
       };
     } else {
-      // Add like
       updateOperation = {
         $addToSet: { likedBy: userId },
         $inc: { likes: 1 },
       };
     }
 
-    // Use findOneAndUpdate for atomic operation
+    // Use findOneAndUpdate for update happens in 1 database call
     const updatedPost = await this.songPostModel.findOneAndUpdate(
       { _id: postId, isDeleted: { $ne: 1 } },
       updateOperation,
@@ -530,5 +553,58 @@ export class SongPostService {
     }
 
     return post;
+  }
+
+  async getPostsByIds(ids: string[]): Promise<any[]> {
+    try {
+      const posts = await this.songPostModel
+        .find({
+          _id: { $in: ids },
+          isHidden: { $ne: 1 },
+          isDeleted: { $ne: 1 },
+        })
+        .lean();
+      return Promise.all(
+        posts.map(async (post) => {
+          try {
+            const username = await this.userService.getUsernameById(
+              post.userId,
+            );
+            const profile = await this.profileService.getProfileByUserId(
+              post.userId,
+            );
+            const profileImage = profile?.profileImage || '';
+            return {
+              ...post,
+              username: username || '',
+              userImage: profileImage,
+              comments: await Promise.all(
+                (post.comments || []).map(async (comment) => ({
+                  ...comment,
+                  username:
+                    (await this.userService.getUsernameById(comment.userId)) ||
+                    '',
+                })),
+              ),
+            };
+          } catch (error) {
+            console.error(`Error populating post ${post._id}:`, error);
+            // Return post with default values if population fails
+            return {
+              ...post,
+              username: '',
+              userImage: '',
+              comments: (post.comments || []).map((comment) => ({
+                ...comment,
+                username: '',
+              })),
+            };
+          }
+        }),
+      );
+    } catch (error) {
+      console.error('Error getting posts by ids:', error);
+      return [];
+    }
   }
 }

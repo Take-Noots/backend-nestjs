@@ -40,11 +40,16 @@ export class ProfileService {
       followers: profile.followers,
       following: profile.following,
       albumArts: profile.albumArts,
+      savedPosts: profile.savedPosts ?? [], // Add this
+      savedThoughtsPosts: profile.savedThoughtsPosts ?? [], // Add this
     };
   }
 
   async getPostsByUserId(userId: string) {
-    return this.songPostModel.find({ userId, isHidden: { $ne: 1 }, isDeleted: { $ne: 1 } }).sort({ createdAt: -1 }).lean();
+    return this.songPostModel
+      .find({ userId, isHidden: { $ne: 1 }, isDeleted: { $ne: 1 } })
+      .sort({ createdAt: -1 })
+      .lean();
   }
 
   async updateProfileByUserId(userId: string, updateData: any) {
@@ -196,7 +201,9 @@ export class ProfileService {
   }
 
   async countPostsByUser(userId: string): Promise<number> {
-    return this.songPostModel.countDocuments({ userId, isHidden: { $ne: 1 }, isDeleted: { $ne: 1 } }).exec();
+    return this.songPostModel
+      .countDocuments({ userId, isHidden: { $ne: 1 }, isDeleted: { $ne: 1 } })
+      .exec();
   }
 
   async getFollowersListWithDetails(userId: string) {
@@ -274,7 +281,7 @@ export class ProfileService {
     try {
       const result = await this.profileModel.updateOne(
         { userId },
-        { $addToSet: { savedPosts: postId } }
+        { $addToSet: { savedPosts: postId } },
       );
       return result.modifiedCount > 0 || result.matchedCount > 0;
     } catch (error) {
@@ -288,7 +295,7 @@ export class ProfileService {
     try {
       const result = await this.profileModel.updateOne(
         { userId },
-        { $pull: { savedPosts: postId } }
+        { $pull: { savedPosts: postId } },
       );
       return result.modifiedCount > 0 || result.matchedCount > 0;
     } catch (error) {
@@ -300,10 +307,12 @@ export class ProfileService {
   // Check if a post is saved by a user
   async isPostSaved(userId: string, postId: string): Promise<boolean> {
     try {
-      const profile = await this.profileModel.findOne({
-        userId,
-        savedPosts: postId
-      }).lean();
+      const profile = await this.profileModel
+        .findOne({
+          userId,
+          savedPosts: postId,
+        })
+        .lean();
       return profile !== null;
     } catch (error) {
       console.error('Error checking if post is saved:', error);
@@ -318,6 +327,120 @@ export class ProfileService {
       return profile?.savedPosts || [];
     } catch (error) {
       console.error('Error getting saved posts:', error);
+      return [];
+    }
+  }
+
+  async followUser(followerId: string, followingId: string) {
+    try {
+      // Prevent following yourself
+      if (followerId === followingId) {
+        return {
+          success: false,
+          message: 'You cannot follow yourself',
+        };
+      }
+
+      // Check if already following
+      const followerProfile = await this.profileModel.findOne({
+        userId: followerId,
+      });
+      if (followerProfile?.following?.includes(followingId)) {
+        return {
+          success: false,
+          message: 'You are already following this user',
+        };
+      }
+
+      // Use the existing addFollowers method
+      await this.addFollowers(followingId, followerId);
+
+      return {
+        success: true,
+        message: 'User followed successfully',
+      };
+    } catch (error) {
+      console.error('Error following user:', error);
+      return {
+        success: false,
+        message: 'Failed to follow user',
+      };
+    }
+  }
+
+  async unfollowUser(followerId: string, followingId: string) {
+    try {
+      // Remove from followers array of the following user
+      await this.profileModel.updateOne(
+        { userId: followingId },
+        { $pull: { followers: followerId } },
+      );
+
+      // Remove from following array of the follower user
+      await this.profileModel.updateOne(
+        { userId: followerId },
+        { $pull: { following: followingId } },
+      );
+
+      return {
+        success: true,
+        message: 'User unfollowed successfully',
+      };
+    } catch (error) {
+      console.error('Error unfollowing user:', error);
+      return {
+        success: false,
+        message: 'Failed to unfollow user',
+      };
+    }
+  }
+
+  // Save a thoughts post for a user
+  async saveThoughtsPost(userId: string, postId: string): Promise<boolean> {
+    try {
+      const result = await this.profileModel.updateOne(
+        { userId },
+        { $addToSet: { savedThoughtsPosts: postId } },
+      );
+      return result.modifiedCount > 0 || result.matchedCount > 0;
+    } catch (error) {
+      console.error('Error saving thoughts post:', error);
+      return false;
+    }
+  }
+
+  // Unsave a thoughts post for a user
+  async unsaveThoughtsPost(userId: string, postId: string): Promise<boolean> {
+    try {
+      const result = await this.profileModel.updateOne(
+        { userId },
+        { $pull: { savedThoughtsPosts: postId } },
+      );
+      return result.modifiedCount > 0 || result.matchedCount > 0;
+    } catch (error) {
+      console.error('Error unsaving thoughts post:', error);
+      return false;
+    }
+  }
+
+  // Check if a thoughts post is saved by a user
+  async isThoughtsPostSaved(userId: string, postId: string): Promise<boolean> {
+    try {
+      const profile = await this.profileModel.findOne({ userId }).lean();
+      return profile?.savedThoughtsPosts?.includes(postId) || false;
+    } catch (error) {
+      console.error('Error checking if thoughts post is saved:', error);
+      return false;
+    }
+  }
+
+  // Get all saved thoughts posts for a user
+  async getSavedThoughtsPosts(userId: string): Promise<string[]> {
+    try {
+      const profile = await this.profileModel.findOne({ userId }).lean();
+      return profile?.savedThoughtsPosts || [];
+    } catch (error) {
+      console.error('Error getting saved thoughts posts:', error);
       return [];
     }
   }

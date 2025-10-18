@@ -16,6 +16,23 @@ export class UpdatePostReportDto {
   @IsOptional()
   @IsString()
   adminNotes?: string;
+
+  @IsOptional()
+  @IsEnum(['pending', 'approved', 'rejected'])
+  status?: string;
+
+  @IsOptional()
+  @IsString()
+  reviewedBy?: string;
+}
+
+export class ReviewPostReportDto {
+  @IsEnum(['approved', 'rejected'])
+  status: string;
+
+  @IsOptional()
+  @IsString()
+  adminNotes?: string;
 }
 
 export class PostReportResponseDto {
@@ -24,7 +41,10 @@ export class PostReportResponseDto {
   reportedUserId: string;
   reportedPostId: string;
   reason: string;
+  status: string;
   adminNotes?: string;
+  reviewedBy?: string;
+  reviewedAt?: Date;
   reportTime: Date;
   createdAt: Date;
   updatedAt: Date;
