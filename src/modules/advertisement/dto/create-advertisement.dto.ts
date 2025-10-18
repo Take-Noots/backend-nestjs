@@ -36,4 +36,7 @@ export class CreateAdvertisementDTO {
   @IsOptional()
   @IsString()
   keywords?: string;
+
+  @IsOptional()
+  status?: number;
 }
