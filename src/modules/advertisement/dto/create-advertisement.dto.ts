@@ -39,4 +39,13 @@ export class CreateAdvertisementDTO {
 
   @IsOptional()
   status?: number;
+
+  @IsOptional()
+  payedViewsCount?: number;
+
+  @IsOptional()
+  remainViews?: number;
+
+  @IsOptional()
+  reqViews?: number;
 }
