@@ -14,28 +14,35 @@ export class CloudinaryService {
   async uploadImage(
     file: Express.Multer.File,
     folder: string = 'profile_pictures',
+    preset?: string,
   ): Promise<string> {
     return new Promise((resolve, reject) => {
+      const uploadOptions: any = {
+        folder: folder,
+        resource_type: 'auto',
+      };
+
+      // If preset is provided, use it instead of manual transformations
+      if (preset) {
+        uploadOptions.upload_preset = preset;
+      } else {
+        // Default transformations for backward compatibility
+        uploadOptions.transformation = [
+          { width: 500, height: 500, crop: 'fill', gravity: 'face' },
+          { quality: 'auto', fetch_format: 'auto' },
+        ];
+      }
+
       cloudinary.uploader
-        .upload_stream(
-          {
-            folder: folder,
-            resource_type: 'auto',
-            transformation: [
-              { width: 500, height: 500, crop: 'fill', gravity: 'face' },
-              { quality: 'auto', fetch_format: 'auto' },
-            ],
-          },
-          (error, result) => {
-            if (error) {
-              reject(error);
-            } else if (result) {
-              resolve(result.secure_url);
-            } else {
-              reject(new Error('Upload failed: No result returned'));
-            }
-          },
-        )
+        .upload_stream(uploadOptions, (error, result) => {
+          if (error) {
+            reject(error);
+          } else if (result) {
+            resolve(result.secure_url);
+          } else {
+            reject(new Error('Upload failed: No result returned'));
+          }
+        })
         .end(file.buffer);
     });
   }
@@ -43,16 +50,29 @@ export class CloudinaryService {
   async uploadImageFromBase64(
     base64Image: string,
     folder: string = 'profile_pictures',
+    preset?: string,
   ): Promise<string> {
     try {
-      const result = await cloudinary.uploader.upload(base64Image, {
+      const uploadOptions: any = {
         folder: folder,
         resource_type: 'auto',
-        transformation: [
+      };
+
+      // If preset is provided, use it instead of manual transformations
+      if (preset) {
+        uploadOptions.upload_preset = preset;
+      } else {
+        // Default transformations for backward compatibility
+        uploadOptions.transformation = [
           { width: 500, height: 500, crop: 'fill', gravity: 'face' },
           { quality: 'auto', fetch_format: 'auto' },
-        ],
-      });
+        ];
+      }
+
+      const result = await cloudinary.uploader.upload(
+        base64Image,
+        uploadOptions,
+      );
       return result.secure_url;
     } catch (error) {
       throw new Error(`Failed to upload image: ${error.message}`);
