@@ -340,6 +340,49 @@ export class GroupChatService {
     return this.toGroupChatType(updatedGroupChat!);
   }
 
+  async leaveGroup(groupChatId: string, userId: string): Promise<{ success: boolean; message: string; deleted?: boolean }> {
+    console.log('🚪 User leaving group:', { groupChatId, userId });
+    // Leave group functionality
+
+    if (!Types.ObjectId.isValid(groupChatId) || !Types.ObjectId.isValid(userId)) {
+      throw new BadRequestException('Invalid group chat ID or user ID format');
+    }
+
+    const groupChat = await this.groupChatModel.findById(groupChatId).exec();
+
+    if (!groupChat) {
+      throw new NotFoundException('Group chat not found');
+    }
+
+    // Check if user is a member
+    if (!groupChat.members.some(member => member.toString() === userId)) {
+      throw new BadRequestException('User is not a member of this group');
+    }
+
+    // If user is the creator, delete the entire group
+    if (groupChat.createdBy.toString() === userId) {
+      console.log('👑 Creator is leaving, deleting group');
+      await this.groupChatModel.findByIdAndDelete(groupChatId).exec();
+      return {
+        success: true,
+        message: 'Group deleted successfully as you were the creator',
+        deleted: true
+      };
+    }
+
+    // If user is a regular member, remove them from the group
+    console.log('👤 Regular member leaving group');
+    groupChat.members = groupChat.members.filter(member => member.toString() !== userId);
+    groupChat.updatedAt = new Date();
+    await groupChat.save();
+
+    return {
+      success: true,
+      message: 'Left group successfully',
+      deleted: false
+    };
+  }
+
   async deleteGroupChat(groupChatId: string, userId: string): Promise<void> {
     if (!Types.ObjectId.isValid(groupChatId) || !Types.ObjectId.isValid(userId)) {
       throw new BadRequestException('Invalid group chat ID or user ID format');
