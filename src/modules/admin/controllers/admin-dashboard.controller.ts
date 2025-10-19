@@ -22,6 +22,8 @@ import { AuthService } from '../../auth/auth.service';
 import { FanbaseService } from '../../fanbases/fanbase.service';
 import { SongPostService } from '../../songPost/songPost.service';
 import { PostReportService } from '../../post_report/post_report.service';
+import { UserService } from '../../user/user.service';
+import { NotificationService } from '../../notification/notification.service';
 
 @Controller('admin')
 export class AdminDashboardController {
@@ -30,7 +32,9 @@ export class AdminDashboardController {
     private readonly authService: AuthService,
     private readonly fanbaseService: FanbaseService,
     private readonly songPostService: SongPostService,
-    private readonly postReportService: PostReportService
+    private readonly postReportService: PostReportService,
+    private readonly userService: UserService,
+    private readonly notificationService: NotificationService
   ) {}
 
   // ==================== PUBLIC ROUTES (NO GUARD) ====================
@@ -314,9 +318,11 @@ export class AdminDashboardController {
       return {
         title: 'Reports Management',
         user: req['user'],
-        error: 'Failed to load reports',
+        error: 'Failed to load reports: ' + error.message,
         reports: [],
-        pagination: null
+        pagination: null,
+        currentStatus: status,
+        currentCategory: category
       };
     }
   }
@@ -691,7 +697,43 @@ export class AdminDashboardController {
   }
 
   // ==================== API ROUTES FOR AJAX CALLS ====================
-  
+
+  @Get('api/reports/:id')
+  @UseGuards(AdminGuard)
+  async getReportById(@Param('id') id: string) {
+    try {
+      const report = await this.postReportService.findReportById(id);
+
+      // Get additional information about the report
+      const [reporterInfo, reportedUserInfo, postInfo] = await Promise.all([
+        this.userService.getUsernameById(report.reporterId).catch(() => 'Unknown'),
+        this.userService.getUsernameById(report.reportedUserId).catch(() => 'Unknown'),
+        this.adminService.getPostById(report.reportedPostId).catch(() => null)
+      ]);
+
+      return {
+        id: (report as any)._id,
+        reporterId: report.reporterId,
+        reporterName: reporterInfo,
+        reportedUserId: report.reportedUserId,
+        reportedUserName: reportedUserInfo,
+        reportedPostId: report.reportedPostId,
+        postInfo: postInfo,
+        reason: report.reason,
+        status: report.status,
+        adminNotes: report.adminNotes,
+        reviewedBy: report.reviewedBy,
+        reviewedAt: report.reviewedAt,
+        createdAt: (report as any).createdAt || report.reportTime
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to fetch report: ${error.message}`,
+        HttpStatus.NOT_FOUND
+      );
+    }
+  }
+
   @Get('api/users')
   @UseGuards(AdminGuard)
   async getUsersApi(
@@ -819,6 +861,135 @@ export class AdminDashboardController {
     }
   }
 
+
+  @Post('api/reports/:id/delete-and-warn')
+  @UseGuards(AdminGuard)
+  async deletePostAndWarnUser(@Param('id') reportId: string, @Body() body: { postId: string; userId: string; warningMessage: string; adminNotes: string }, @Req() req: Request) {
+    try {
+      if (!req['user']?._id) {
+        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+      }
+
+      // Delete the post
+      await this.adminService.deletePost(body.postId, `Report violation: ${body.warningMessage}`, req['user']._id);
+
+      // Send warning notification to user
+      await this.notificationService.createAdminWarningNotification(
+        body.userId,
+        body.warningMessage,
+        req['user']?.username || 'Admin'
+      );
+
+      // Update the report status
+      const report = await this.postReportService.reviewReport(
+        reportId,
+        { status: 'approved', adminNotes: body.adminNotes },
+        req['user']._id
+      );
+
+      return {
+        message: 'Post deleted and user warned successfully',
+        report: report
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to delete post and warn user: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post('api/reports/:id/delete-post')
+  @UseGuards(AdminGuard)
+  async deletePostOnly(@Param('id') reportId: string, @Body() body: { postId: string; adminNotes: string }, @Req() req: Request) {
+    try {
+      if (!req['user']?._id) {
+        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+      }
+
+      // Delete the post
+      await this.adminService.deletePost(body.postId, 'Content violation', req['user']._id);
+
+      // Update the report status
+      const report = await this.postReportService.reviewReport(
+        reportId,
+        { status: 'approved', adminNotes: body.adminNotes },
+        req['user']._id
+      );
+
+      return {
+        message: 'Post deleted successfully',
+        report: report
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to delete post: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post('api/reports/:id/warn-user')
+  @UseGuards(AdminGuard)
+  async warnUserOnly(@Param('id') reportId: string, @Body() body: { userId: string; warningMessage: string; adminNotes: string }, @Req() req: Request) {
+    try {
+      if (!req['user']?._id) {
+        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+      }
+
+      // Send warning notification to user
+      await this.notificationService.createAdminWarningNotification(
+        body.userId,
+        body.warningMessage,
+        req['user']?.username || 'Admin'
+      );
+
+      // Update the report status
+      const report = await this.postReportService.reviewReport(
+        reportId,
+        { status: 'approved', adminNotes: body.adminNotes },
+        req['user']._id
+      );
+
+      return {
+        message: 'User warned successfully',
+        report: report
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to warn user: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post('api/reports/:id/dismiss')
+  @UseGuards(AdminGuard)
+  async dismissReportNew(@Param('id') reportId: string, @Body() body: { adminNotes: string }, @Req() req: Request) {
+    try {
+      if (!req['user']?._id) {
+        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+      }
+
+      // Update the report status to rejected/dismissed
+      const report = await this.postReportService.reviewReport(
+        reportId,
+        { status: 'rejected', adminNotes: body.adminNotes },
+        req['user']._id
+      );
+
+      return {
+        message: 'Report dismissed successfully',
+        report: report
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to dismiss report: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   @Get('api/reports')
   @UseGuards(AdminGuard)
   async getAllReports() {
@@ -853,6 +1024,7 @@ export class AdminDashboardController {
     }
   }
 
+
   @Get('api/reports/post/:postId')
   @UseGuards(AdminGuard)
   async getReportsByPostId(@Param('postId') postId: string) {
@@ -865,6 +1037,90 @@ export class AdminDashboardController {
     } catch (error) {
       throw new HttpException(
         `Failed to fetch post reports: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post('reports/post/:postId/approve')
+  @UseGuards(AdminGuard)
+  async approvePostReports(@Param('postId') postId: string, @Body() body: { adminNotes?: string }, @Req() req: Request) {
+    try {
+      if (!req['user']?._id) {
+        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+      }
+
+      // Get all pending reports for this post
+      const reports = await this.postReportService.getReportsByPostId(postId);
+      const pendingReports = reports.filter(r => r.status === 'pending');
+
+      if (pendingReports.length === 0) {
+        return {
+          message: 'No pending reports found for this post',
+          approved: 0
+        };
+      }
+
+      // Approve all pending reports for the post
+      const approvalPromises = pendingReports.map(report =>
+        this.postReportService.reviewReport(
+          (report as any)._id.toString(),
+          { status: 'approved', adminNotes: body.adminNotes },
+          req['user']?._id || 'admin'
+        )
+      );
+
+      await Promise.all(approvalPromises);
+
+      return {
+        message: `${pendingReports.length} report(s) approved successfully`,
+        approved: pendingReports.length
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to approve post reports: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post('reports/post/:postId/dismiss')
+  @UseGuards(AdminGuard)
+  async dismissPostReports(@Param('postId') postId: string, @Body() body: { adminNotes?: string }, @Req() req: Request) {
+    try {
+      if (!req['user']?._id) {
+        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+      }
+
+      // Get all pending reports for this post
+      const reports = await this.postReportService.getReportsByPostId(postId);
+      const pendingReports = reports.filter(r => r.status === 'pending');
+
+      if (pendingReports.length === 0) {
+        return {
+          message: 'No pending reports found for this post',
+          dismissed: 0
+        };
+      }
+
+      // Dismiss all pending reports for the post
+      const dismissalPromises = pendingReports.map(report =>
+        this.postReportService.reviewReport(
+          (report as any)._id.toString(),
+          { status: 'rejected', adminNotes: body.adminNotes },
+          req['user']?._id || 'admin'
+        )
+      );
+
+      await Promise.all(dismissalPromises);
+
+      return {
+        message: `${pendingReports.length} report(s) dismissed successfully`,
+        dismissed: pendingReports.length
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to dismiss post reports: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }

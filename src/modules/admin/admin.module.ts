@@ -11,16 +11,22 @@ import { ReportModule } from '../reports/reports.module';
 import { PostReportModule } from '../post_report/post_report.module';
 import { AuthModule } from '../auth/auth.module';
 import { SongPostModule } from '../songPost/songPost.module';
+import { DesSongPostModule } from '../desSongPost/desSongPost.module';
+import { FanbasePostModule } from '../fanbasePost/fanbasePost.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
     UserModule,
     PostModule,
     SongPostModule,
+    DesSongPostModule,
     FanbaseModule,
+    FanbasePostModule,
     ReportModule,
     PostReportModule,
     AuthModule, // This provides AuthService for login
+    NotificationModule,
   ],
   controllers: [
     // REMOVE AdminController to avoid route conflicts
