@@ -870,4 +870,62 @@ export class AdminDashboardController {
     }
   }
 
+  // Export Analytics Report
+  @Get('analytics/export')
+  @UseGuards(AdminGuard)
+  async exportAnalyticsReport(
+    @Query('period') period: string = '30d',
+    @Res() res: Response
+  ) {
+    try {
+      const [userMetrics, contentMetrics, reportMetrics, growthMetrics] = await Promise.all([
+        this.adminService.getUserMetrics(),
+        this.adminService.getContentMetrics(),
+        this.adminService.getReportMetrics(),
+        this.adminService.getGrowthMetrics(period)
+      ]);
+
+      // Generate CSV content
+      const csvData: (string | number)[][] = [];
+      csvData.push(['Metric Type', 'Metric', 'Value', 'Period']);
+
+      // User Metrics
+      csvData.push(['Users', 'Total Users', userMetrics.total || 0, period]);
+      csvData.push(['Users', 'Moderators', userMetrics.moderators || 0, period]);
+      csvData.push(['Users', 'Banned Users', userMetrics.banned || 0, period]);
+      csvData.push(['Users', 'New This Week', userMetrics.newThisWeek || 0, period]);
+
+      // Content Metrics
+      csvData.push(['Content', 'Total Posts', contentMetrics.totalPosts || 0, period]);
+      csvData.push(['Content', 'Total Fanbases', contentMetrics.totalFanbases || 0, period]);
+      csvData.push(['Content', 'Posts Today', contentMetrics.postsToday || 0, period]);
+
+      // Report Metrics
+      csvData.push(['Reports', 'Total Reports', reportMetrics.total || 0, period]);
+      if (reportMetrics.byStatus) {
+        Object.entries(reportMetrics.byStatus).forEach(([status, count]) => {
+          csvData.push(['Reports', `${status} Reports`, count as number, period]);
+        });
+      }
+
+      // Convert to CSV string
+      const csvContent = csvData
+        .map(row => row.map(field => `"${field}"`).join(','))
+        .join('\n');
+
+      // Set response headers
+      res.set({
+        'Content-Type': 'text/csv',
+        'Content-Disposition': `attachment; filename="analytics-report-${period}-${new Date().toISOString().split('T')[0]}.csv"`
+      });
+
+      return res.send(csvContent);
+    } catch (error) {
+      throw new HttpException(
+        `Failed to export analytics: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
 }
