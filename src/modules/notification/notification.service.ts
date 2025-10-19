@@ -25,21 +25,40 @@ export class NotificationService {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
+      .lean()
       .exec();
 
     const total = await this.notificationModel.countDocuments({ recipientId: userId });
-    const unreadCount = await this.notificationModel.countDocuments({ 
-      recipientId: userId, 
-      isRead: false 
+    const unreadCount = await this.notificationModel.countDocuments({
+      recipientId: userId,
+      isRead: false
     });
 
+    // Format notifications for frontend
+    const formattedNotifications = notifications.map(notification => ({
+      id: notification._id.toString(),
+      recipientId: notification.recipientId.toString(),
+      senderId: notification.senderId?.toString() || notification.senderId,
+      senderUsername: notification.senderUsername,
+      type: notification.type,
+      title: notification.title,
+      message: notification.message,
+      data: notification.data,
+      isRead: notification.isRead,
+      createdAt: notification.createdAt,
+      updatedAt: notification.updatedAt
+    }));
+
     return {
-      notifications,
-      pagination: {
-        currentPage: page,
-        totalPages: Math.ceil(total / limit),
-        totalNotifications: total,
-        unreadCount
+      success: true,
+      data: {
+        notifications: formattedNotifications,
+        pagination: {
+          currentPage: page,
+          totalPages: Math.ceil(total / limit),
+          totalNotifications: total,
+          unreadCount
+        }
       }
     };
   }
@@ -60,7 +79,15 @@ export class NotificationService {
       throw new NotFoundException('Notification not found');
     }
 
-    return notification;
+    return {
+      success: true,
+      data: {
+        id: notification._id.toString(),
+        isRead: notification.isRead,
+        updatedAt: notification.updatedAt
+      },
+      message: 'Notification marked as read'
+    };
   }
 
   // Mark all notifications as read for a user
@@ -69,12 +96,18 @@ export class NotificationService {
       throw new BadRequestException('Invalid user ID format');
     }
 
-    await this.notificationModel.updateMany(
+    const result = await this.notificationModel.updateMany(
       { recipientId: userId, isRead: false },
       { isRead: true, updatedAt: new Date() }
     );
 
-    return { message: 'All notifications marked as read' };
+    return {
+      success: true,
+      data: {
+        modifiedCount: result.modifiedCount
+      },
+      message: 'All notifications marked as read'
+    };
   }
 
   // Delete notification
@@ -92,7 +125,13 @@ export class NotificationService {
       throw new NotFoundException('Notification not found');
     }
 
-    return { message: 'Notification deleted successfully' };
+    return {
+      success: true,
+      data: {
+        deletedId: notificationId
+      },
+      message: 'Notification deleted successfully'
+    };
   }
 
   // Get unread count
@@ -106,7 +145,12 @@ export class NotificationService {
       isRead: false
     });
 
-    return { unreadCount: count };
+    return {
+      success: true,
+      data: {
+        unreadCount: count
+      }
+    };
   }
 
   // Create notification for new message

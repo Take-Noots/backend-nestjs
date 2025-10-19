@@ -41,5 +41,6 @@ export class CreateNotificationDto {
     fanbaseName?: string;
     postTopic?: string;
     commentText?: string;
+    groupName?: string;
   };
 }

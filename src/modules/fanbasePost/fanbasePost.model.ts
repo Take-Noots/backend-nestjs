@@ -4,7 +4,9 @@ import { Document, Types } from 'mongoose';
 export type FanbasePostDocument = FanbasePost & Document;
 
 @Schema()
-export class FanbasePostComment {
+export class FanbasePostSubComment {
+  _id: Types.ObjectId; // ✅ MongoDB will auto-generate this
+  
   @Prop({ required: true })
   userId: string;
 
@@ -14,8 +16,30 @@ export class FanbasePostComment {
   @Prop({ required: true })
   comment: string;
 
+  @Prop({ default: 0 })
+  likeCount: number;
+
+  @Prop({ type: [String], default: [] })
+  likeUserIds: string[];
+
+  @Prop({ default: Date.now })
+  createdAt: Date;
+}
+
+const FanbasePostSubCommentSchema = SchemaFactory.createForClass(FanbasePostSubComment);
+
+@Schema()
+export class FanbasePostComment {
+  _id: Types.ObjectId; // ✅ MongoDB will auto-generate this
+  
   @Prop({ required: true })
-  commentId: string;
+  userId: string;
+
+  @Prop({ required: true })
+  userName: string;
+
+  @Prop({ required: true })
+  comment: string;
 
   @Prop({ default: 0 })
   likeCount: number;
@@ -26,17 +50,11 @@ export class FanbasePostComment {
   @Prop({ default: Date.now })
   createdAt: Date;
 
-  @Prop({ default: [] })
-  subComments: {
-    userId: string;
-    userName: string;
-    comment: string;
-    commentId: string;
-    likeCount: number;
-    likeUserIds: string[];
-    createdAt: Date;
-  }[] = [];
+  @Prop({ type: [FanbasePostSubCommentSchema], default: [] })
+  subComments: FanbasePostSubComment[];
 }
+
+const FanbasePostCommentSchema = SchemaFactory.createForClass(FanbasePostComment);
 
 @Schema({ timestamps: true })
 export class FanbasePost {
@@ -79,7 +97,7 @@ export class FanbasePost {
   @Prop({ default: 0 })
   commentsCount: number;
 
-  @Prop({ type: [FanbasePostComment], default: [] })
+  @Prop({ type: [FanbasePostCommentSchema], default: [] })
   comments: FanbasePostComment[];
 
   @Prop({ required: true, type: Types.ObjectId, ref: 'Fanbase' })

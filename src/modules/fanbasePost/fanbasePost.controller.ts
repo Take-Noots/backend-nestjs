@@ -112,4 +112,25 @@ export class FanbasePostController {
       );
     }
   }
+
+  @Post(':postId/comment/:commentId/subcomment')
+  async addSubComment(
+    @Param('fanbaseId') fanbaseId: string,
+    @Param('postId') postId: string,
+    @Param('commentId') commentId: string,
+    @Body('comment') comment: string,
+    @JwtUser() user: JwtUserData,
+  ) {
+    try {
+      if (!comment || comment.trim().length === 0) {
+        throw new HttpException('Sub-comment cannot be empty', HttpStatus.BAD_REQUEST);
+      }
+      return await this.fanbasePostService.addSubComment(postId, comment, user.userId, commentId);
+    } catch (error) {
+      throw new HttpException(
+        `Failed to add sub-comment: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }
