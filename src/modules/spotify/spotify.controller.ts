@@ -197,6 +197,118 @@ export class SpotifyController {
     }
   }
 
+  // ---------- SESSION STATUS & MANAGEMENT ENDPOINTS ----------
+
+  /**
+   * Get Spotify session status for current user
+   * Returns whether session exists, requires confirmation, retry count, and last error
+   */
+  @Get('session/status')
+  @UseGuards(JwtAuthGuard)
+  async getSessionStatus(@JwtUser() user: JwtUserData): Promise<{
+    isLinked: boolean;
+    requiresConfirmation: boolean;
+    retryCount: number;
+    lastError: string | null;
+    message?: string;
+  }> {
+    try {
+      const status = await this.sessionService.getSessionStatus(user.userId);
+
+      let message: string | undefined;
+      if (status.requiresConfirmation) {
+        message =
+          'Your Spotify connection is experiencing issues. ' +
+          'Please confirm if you want to disconnect and re-link your account.';
+      } else if (status.retryCount > 0) {
+        message =
+          `Spotify connection temporarily failed (attempt ${status.retryCount}/3). ` +
+          'Will retry automatically.';
+      }
+
+      return { ...status, message };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to get session status: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * User confirms they want to clear/unlink their Spotify account
+   * This should only be called after user explicitly confirms
+   */
+  @Post('session/confirm-clear')
+  @UseGuards(JwtAuthGuard)
+  async confirmClearSession(@JwtUser() user: JwtUserData): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    try {
+      const result = await this.sessionService.confirmClearSession(user.userId);
+
+      if (result) {
+        return {
+          success: true,
+          message:
+            'Spotify account unlinked successfully. You can re-link anytime.',
+        };
+      } else {
+        return {
+          success: false,
+          message: 'No Spotify session found to clear.',
+        };
+      }
+    } catch (error) {
+      throw new HttpException(
+        `Failed to clear session: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * User wants to retry the connection without clearing
+   * Resets retry count and lets the system try again
+   */
+  @Post('session/retry')
+  @UseGuards(JwtAuthGuard)
+  async retrySession(@JwtUser() user: JwtUserData): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    try {
+      const session = await this.sessionService['sessionModel']
+        .findOne({ user_id: user.userId })
+        .exec();
+
+      if (!session) {
+        return {
+          success: false,
+          message: 'No Spotify session found. Please link your account first.',
+        };
+      }
+
+      // Reset retry counter and confirmation flag
+      session.retry_count = 0;
+      session.requires_user_confirmation = false;
+      session.last_error_message = '';
+      session.updatedAt = new Date();
+      await session.save();
+
+      return {
+        success: true,
+        message: 'Retry counter reset. System will attempt to reconnect.',
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to retry session: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   // ---------- SEARCH ENDPOINTS ----------
   @Get('search/track')
   @UseGuards(JwtAuthGuard, RolesGuard)

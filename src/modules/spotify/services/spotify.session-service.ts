@@ -24,6 +24,9 @@ export class SpotifySessionService {
   private readonly ENCRYPTION_IV: string =
     process.env.SPOTIFY_ENCRYPTION_IV || 'default-iv-16chr';
 
+  // Retry configuration
+  private readonly MAX_RETRY_COUNT = 3;
+
   constructor(
     @InjectModel(SpotifySession.name)
     private sessionModel: Model<SpotifySessionDocument>,
@@ -106,7 +109,12 @@ export class SpotifySessionService {
 
       try {
         // Get refresh token from database
-        const refreshToken = await this.getRefreshToken(userId);
+        const session = await this.sessionModel
+          .findOne({ user_id: userId })
+          .exec();
+        const refreshToken = session
+          ? this.decryptToken(session.refresh_token)
+          : null;
 
         if (!refreshToken) {
           throw new Error('No refresh token available for user: ' + userId);
@@ -118,9 +126,18 @@ export class SpotifySessionService {
         );
         const spotifyAuthService = new SpotifyAuthService();
 
-        // Get new tokens using the refresh token
+        // Get new tokens using the refresh token WITH RETRY
         const { access_token, new_refresh_token } =
-          await spotifyAuthService.refreshToken(refreshToken);
+          await spotifyAuthService.refreshTokenWithRetry(refreshToken);
+
+        // Reset retry count on successful refresh
+        if (session) {
+          session.retry_count = 0;
+          session.requires_user_confirmation = false;
+          session.last_error_message = '';
+          session.updatedAt = new Date();
+          await session.save();
+        }
 
         // Save new refresh token if provided (Spotify may not always return a new one)
         if (new_refresh_token && new_refresh_token !== refreshToken) {
@@ -137,18 +154,8 @@ export class SpotifySessionService {
           error,
         );
 
-        // If refresh token is invalid (400 error), clear it from database
-        if (
-          error.message &&
-          (error.message.includes('400') ||
-            error.message.includes('Bad Request') ||
-            error.message.includes('invalid'))
-        ) {
-          console.warn(
-            `Invalid refresh token for user ${userId}, clearing from database`,
-          );
-          // await this.clearRefreshToken(userId);
-        }
+        // Track retry attempts and handle failure
+        await this.handleRefreshFailure(userId, error);
 
         return null; // Return null instead of empty string to indicate failure
       }
@@ -213,5 +220,103 @@ export class SpotifySessionService {
       .exec();
     this.tokenStore.delete(userId);
     return result.deletedCount > 0;
+  }
+
+  // Handle refresh token failure and track retries
+  private async handleRefreshFailure(
+    userId: string,
+    error: any,
+  ): Promise<void> {
+    try {
+      const session = await this.sessionModel
+        .findOne({ user_id: userId })
+        .exec();
+
+      if (!session) {
+        console.warn(`No session found for user ${userId}, cannot track retry`);
+        return;
+      }
+
+      // Increment retry count
+      session.retry_count = (session.retry_count || 0) + 1;
+      session.last_retry_at = new Date();
+      session.last_error_message = error.message || 'Unknown error';
+
+      // Check if error is a permanent failure (invalid_grant, revoked token)
+      const isInvalidToken =
+        error.message?.includes('invalid_grant') ||
+        error.message?.includes('Refresh token revoked') ||
+        error.spotifyError === 'invalid_grant';
+
+      if (isInvalidToken) {
+        console.warn(
+          `[Spotify Session] Invalid/revoked token for user ${userId}. ` +
+            `Marking for user confirmation (retry count: ${session.retry_count})`,
+        );
+        session.requires_user_confirmation = true;
+      } else if (session.retry_count >= this.MAX_RETRY_COUNT) {
+        // After max retries, require user confirmation
+        console.warn(
+          `[Spotify Session] Max retries (${this.MAX_RETRY_COUNT}) reached for user ${userId}. ` +
+            `Marking for user confirmation`,
+        );
+        session.requires_user_confirmation = true;
+      } else {
+        console.log(
+          `[Spotify Session] Retry ${session.retry_count}/${this.MAX_RETRY_COUNT} ` +
+            `for user ${userId}. Will retry automatically next time.`,
+        );
+      }
+
+      await session.save();
+    } catch (saveError) {
+      console.error(
+        `[Spotify Session] Failed to update session after refresh failure:`,
+        saveError,
+      );
+    }
+  }
+
+  // Get session status for a user
+  async getSessionStatus(userId: string): Promise<{
+    isLinked: boolean;
+    requiresConfirmation: boolean;
+    retryCount: number;
+    lastError: string | null;
+  }> {
+    const session = await this.sessionModel.findOne({ user_id: userId }).exec();
+
+    if (!session) {
+      return {
+        isLinked: false,
+        requiresConfirmation: false,
+        retryCount: 0,
+        lastError: null,
+      };
+    }
+
+    return {
+      isLinked: true,
+      requiresConfirmation: session.requires_user_confirmation || false,
+      retryCount: session.retry_count || 0,
+      lastError: session.last_error_message || null,
+    };
+  }
+
+  // User confirms they want to clear/relink Spotify
+  async confirmClearSession(userId: string): Promise<boolean> {
+    const session = await this.sessionModel.findOne({ user_id: userId }).exec();
+
+    if (!session) {
+      console.warn(`No session found for user ${userId} to clear`);
+      return false;
+    }
+
+    console.log(
+      `[Spotify Session] User ${userId} confirmed clearing Spotify session ` +
+        `(retry count was: ${session.retry_count})`,
+    );
+
+    return this.deleteSession(userId);
   }
 }

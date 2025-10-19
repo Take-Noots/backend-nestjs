@@ -33,6 +33,10 @@ const generateCodeChallenge = (verifier: string): string => {
 
 @Injectable()
 export class SpotifyAuthService {
+  // Retry configuration
+  private readonly MAX_RETRIES = 3;
+  private readonly RETRY_DELAY_MS = 3000; // 3 seconds base delay
+
   async getUsername(accessToken: string): Promise<string> {
     try {
       const response = await axios.get('https://api.spotify.com/v1/me', {
@@ -167,9 +171,90 @@ export class SpotifyAuthService {
         'Debug [at.spotify.auth.service] : Refresh token error details:',
         error.response?.data || error.message,
       );
-      throw new Error(
+
+      // Rethrow with error details for retry logic
+      const errorData = error.response?.data;
+      const errorObj = new Error(
         `[At.spotify.auth.service] Failed to refresh token: ${error.message}`,
       );
+      (errorObj as any).statusCode = error.response?.status;
+      (errorObj as any).spotifyError = errorData?.error;
+      (errorObj as any).errorDescription = errorData?.error_description;
+
+      throw errorObj;
+    }
+  }
+
+  // Helper method to determine if error is retryable
+  isRetryableError(error: any): boolean {
+    const statusCode = error.statusCode || error.response?.status;
+    const spotifyError = error.spotifyError || error.response?.data?.error;
+
+    // Don't retry on invalid_grant (revoked/expired token)
+    if (spotifyError === 'invalid_grant') {
+      return false;
+    }
+
+    // Don't retry on 400 (bad request) or 403 (forbidden)
+    if (statusCode === 400 || statusCode === 403) {
+      return false;
+    }
+
+    // Retry on network errors, 5xx errors, or rate limits (429)
+    if (!statusCode || statusCode >= 500 || statusCode === 429) {
+      return true;
+    }
+
+    return false;
+  }
+
+  // Refresh token with retry logic
+  async refreshTokenWithRetry(
+    refresh_token: string,
+    attempt: number = 1,
+  ): Promise<{ access_token: string; new_refresh_token?: string }> {
+    try {
+      console.log(
+        `[Spotify Auth] Token refresh attempt ${attempt}/${this.MAX_RETRIES}`,
+      );
+
+      const result = await this.refreshToken(refresh_token);
+
+      console.log(
+        `[Spotify Auth] Token refresh succeeded on attempt ${attempt}`,
+      );
+
+      return result;
+    } catch (error: any) {
+      console.error(
+        `[Spotify Auth] Token refresh failed on attempt ${attempt}:`,
+        error.message,
+      );
+
+      // Check if error is retryable
+      if (!this.isRetryableError(error)) {
+        console.log('[Spotify Auth] Error is not retryable, giving up');
+        throw error;
+      }
+
+      // If we've exhausted retries, throw
+      if (attempt >= this.MAX_RETRIES) {
+        console.error(
+          `[Spotify Auth] All ${this.MAX_RETRIES} retry attempts failed`,
+        );
+        throw error;
+      }
+
+      // Wait before retrying (exponential backoff)
+      const delay = this.RETRY_DELAY_MS * attempt;
+      console.log(
+        `[Spotify Auth] Retrying in ${delay}ms (attempt ${attempt + 1}/${this.MAX_RETRIES})`,
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, delay));
+
+      // Retry
+      return this.refreshTokenWithRetry(refresh_token, attempt + 1);
     }
   }
 }
