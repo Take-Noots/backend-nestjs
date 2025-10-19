@@ -44,9 +44,7 @@ export class SpotifyController {
   @Get('whoami')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.User, Role.Admin)
-  async getUsername(
-    @JwtUser() user: JwtUserData,
-  ): Promise<
+  async getUsername(@JwtUser() user: JwtUserData): Promise<
     | { username: string }
     | {
         success: boolean;
@@ -271,9 +269,7 @@ export class SpotifyController {
   @Get('player/current-track')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.User, Role.Admin)
-  async getCurrentTrack(
-    @JwtUser() user: JwtUserData,
-  ): Promise<
+  async getCurrentTrack(@JwtUser() user: JwtUserData): Promise<
     | any
     | {
         success: boolean;
