@@ -302,7 +302,7 @@
                                     <option value="7d" <%= (typeof currentPeriod !== 'undefined' && currentPeriod === '7d') ? 'selected' : '' %>>Last 7 Days</option>
                                     <option value="30d" <%= (typeof currentPeriod !== 'undefined' && currentPeriod === '30d') ? 'selected' : '' %>>Last 30 Days</option>
                                     <option value="90d" <%= (typeof currentPeriod !== 'undefined' && currentPeriod === '90d') ? 'selected' : '' %>>Last 90 Days</option>
-                                    <option value="1y" <%= (typeof currentPeriod !== 'undefined' && currentPeriod === '1y') ? 'selected' : '' %>>Last Year</option>
+                                    <option value="1y" <%= (typeof currentPeriod !== 'undefined' && currentPeriod === '1y') ? 'selected' : '' %>>This Year (Monthly)</option>
                                 </select>
                             </div>
                             <button onclick="refreshData()" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors flex items-center">
@@ -718,162 +718,347 @@
         });
 
         function initializeCharts() {
-            // User Growth Chart
-            const userCtx = document.getElementById('userGrowthChart').getContext('2d');
-            userGrowthChart = new Chart(userCtx, {
-                type: 'line',
-                data: {
-                    labels: generateDateLabels(),
-                    datasets: [{
-                        label: 'New Users',
-                        data: generateUserGrowthData(),
-                        borderColor: '#667eea',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(0,0,0,0.1)'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                color: 'rgba(0,0,0,0.1)'
-                            }
-                        }
-                    }
-                }
-            });
+            console.log('Initializing charts...');
 
-            // Content Growth Chart
-            const contentCtx = document.getElementById('contentGrowthChart').getContext('2d');
-            contentGrowthChart = new Chart(contentCtx, {
-                type: 'line',
-                data: {
-                    labels: generateDateLabels(),
-                    datasets: [{
-                        label: 'Posts',
-                        data: generateContentGrowthData('posts'),
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }, {
-                        label: 'Fanbases',
-                        data: generateContentGrowthData('fanbases'),
-                        borderColor: '#f59e0b',
-                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                        tension: 0.4,
-                        fill: false
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(0,0,0,0.1)'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                color: 'rgba(0,0,0,0.1)'
-                            }
-                        }
-                    }
-                }
-            });
+            // Get current period
+            const periodSelector = document.getElementById('periodSelector');
+            const period = periodSelector ? periodSelector.value : '7d';
+            const isMonthlyView = period === '1y';
 
-            // Content Distribution Pie Chart
-            const pieCtx = document.getElementById('contentPieChart').getContext('2d');
-            const totalPosts = parseInt('<%= (typeof contentMetrics !== "undefined" && contentMetrics) ? (contentMetrics.totalPosts || 0) : 0 %>');
-            const totalFanbases = parseInt('<%= (typeof contentMetrics !== "undefined" && contentMetrics) ? (contentMetrics.totalFanbases || 0) : 0 %>');
-            
-            contentPieChart = new Chart(pieCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Posts', 'Fanbases', 'Comments'],
-                    datasets: [{
-                        data: [totalPosts, totalFanbases, Math.floor(totalPosts * 0.3)], // Estimate comments
-                        backgroundColor: ['#667eea', '#f59e0b', '#10b981'],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                padding: 20,
-                                usePointStyle: true
-                            }
-                        }
-                    }
-                }
-            });
+            console.log('Current period:', period, 'Monthly view:', isMonthlyView);
+
+            // Destroy existing charts
+            if (window.userGrowthChart) {
+                window.userGrowthChart.destroy();
+            }
+            if (window.contentGrowthChart) {
+                window.contentGrowthChart.destroy();
+            }
+            if (window.contentPieChart) {
+                window.contentPieChart.destroy();
+            }
+
+            // Initialize User Growth Chart
+            initUserGrowthChart(period, isMonthlyView);
+
+            // Initialize Content Growth Chart
+            initContentGrowthChart(period, isMonthlyView);
+
+            // Initialize Content Distribution Pie Chart
+            initContentPieChart();
         }
 
-        function generateDateLabels() {
+        function initUserGrowthChart(period, isMonthlyView) {
+            const canvas = document.getElementById('userGrowthChart');
+            if (!canvas) {
+                console.error('User growth chart canvas not found');
+                return;
+            }
+
+            const ctx = canvas.getContext('2d');
+            const { labels, data } = generateUserChartData(period, isMonthlyView);
+
+            console.log('User chart data:', { labels, data });
+
+            try {
+                window.userGrowthChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: isMonthlyView ? 'New Users (Monthly)' : 'New Users (Daily)',
+                            data: data,
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: 'rgba(0,0,0,0.1)'
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    color: 'rgba(0,0,0,0.1)'
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log('User growth chart created successfully');
+            } catch (error) {
+                console.error('Error creating user growth chart:', error);
+            }
+        }
+
+        function initContentGrowthChart(period, isMonthlyView) {
+            const canvas = document.getElementById('contentGrowthChart');
+            if (!canvas) {
+                console.error('Content growth chart canvas not found');
+                return;
+            }
+
+            const ctx = canvas.getContext('2d');
+            const { labels, postsData, fanbasesData } = generateContentChartData(period, isMonthlyView);
+
+            console.log('Content chart data:', { labels, postsData, fanbasesData });
+
+            try {
+                window.contentGrowthChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: isMonthlyView ? 'Posts (Monthly)' : 'Posts (Daily)',
+                            data: postsData,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            pointRadius: 4
+                        }, {
+                            label: isMonthlyView ? 'Fanbases (Monthly)' : 'Fanbases (Daily)',
+                            data: fanbasesData,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            tension: 0.4,
+                            fill: false,
+                            pointRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: 'rgba(0,0,0,0.1)'
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    color: 'rgba(0,0,0,0.1)'
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log('Content growth chart created successfully');
+            } catch (error) {
+                console.error('Error creating content growth chart:', error);
+            }
+        }
+
+        function initContentPieChart() {
+            const canvas = document.getElementById('contentPieChart');
+            if (!canvas) {
+                console.error('Content pie chart canvas not found');
+                return;
+            }
+
+            const ctx = canvas.getContext('2d');
+            const totalPosts = <%= (typeof contentMetrics !== 'undefined' && contentMetrics && contentMetrics.totalPosts) ? contentMetrics.totalPosts : 0 %>;
+            const totalFanbases = <%= (typeof contentMetrics !== 'undefined' && contentMetrics && contentMetrics.totalFanbases) ? contentMetrics.totalFanbases : 0 %>;
+            const estimatedComments = Math.floor(totalPosts * 0.3);
+
+            console.log('Pie chart data:', { totalPosts, totalFanbases, estimatedComments });
+
+            try {
+                window.contentPieChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Posts', 'Fanbases', 'Comments (est.)'],
+                        datasets: [{
+                            data: [totalPosts, totalFanbases, estimatedComments],
+                            backgroundColor: ['#667eea', '#f59e0b', '#10b981'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 15,
+                                    usePointStyle: true
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log('Content pie chart created successfully');
+            } catch (error) {
+                console.error('Error creating content pie chart:', error);
+            }
+        }
+
+        // Clean data generation functions
+        function generateUserChartData(period, isMonthlyView) {
+            const labels = generateDateLabels(period, isMonthlyView);
+            let data = [];
+
+            // Use real backend data if available
+            const hasRealData = <%= (typeof growthMetrics !== 'undefined' && growthMetrics && growthMetrics.userGrowth) ? 'true' : 'false' %>;
+
+            if (hasRealData) {
+                const userGrowthData = <%= JSON.stringify(typeof growthMetrics !== 'undefined' && growthMetrics ? (growthMetrics.userGrowth || []) : []) %>;
+                console.log('Real user growth data:', userGrowthData);
+
+                if (Array.isArray(userGrowthData) && userGrowthData.length > 0) {
+                    if (isMonthlyView) {
+                        data = new Array(12).fill(0);
+                        userGrowthData.forEach(item => {
+                            if (item._id && typeof item._id === 'string' && item._id.includes('-')) {
+                                const monthPart = item._id.split('-')[1];
+                                if (monthPart) {
+                                    const month = parseInt(monthPart) - 1;
+                                    if (month >= 0 && month < 12) {
+                                        data[month] = item.count || 0;
+                                    }
+                                }
+                            }
+                        });
+                    } else {
+                        data = userGrowthData.map(item => item.count || 0);
+                    }
+                }
+            }
+
+            // Generate sample data if no real data
+            if (data.length === 0) {
+                const totalUsers = <%= (typeof userMetrics !== 'undefined' && userMetrics) ? (userMetrics.total || 0) : 50 %>;
+                const baseDaily = Math.max(1, Math.floor(totalUsers / 30));
+
+                for (let i = 0; i < labels.length; i++) {
+                    const variation = Math.floor(Math.random() * 5) - 2; // -2 to +2
+                    data.push(Math.max(0, baseDaily + variation));
+                }
+            }
+
+            return { labels, data };
+        }
+
+        function generateContentChartData(period, isMonthlyView) {
+            const labels = generateDateLabels(period, isMonthlyView);
+            let postsData = [];
+            let fanbasesData = [];
+
+            // Use real backend data if available
+            const hasRealData = <%= (typeof growthMetrics !== 'undefined' && growthMetrics && growthMetrics.contentGrowth) ? 'true' : 'false' %>;
+
+            if (hasRealData) {
+                const contentGrowth = <%= JSON.stringify(typeof growthMetrics !== 'undefined' && growthMetrics ? (growthMetrics.contentGrowth || {}) : {}) %>;
+                console.log('Real content growth data:', contentGrowth);
+
+                // Process posts data
+                if (contentGrowth.posts && Array.isArray(contentGrowth.posts)) {
+                    if (isMonthlyView) {
+                        postsData = new Array(12).fill(0);
+                        contentGrowth.posts.forEach(item => {
+                            if (item._id && typeof item._id === 'string' && item._id.includes('-')) {
+                                const monthPart = item._id.split('-')[1];
+                                if (monthPart) {
+                                    const month = parseInt(monthPart) - 1;
+                                    if (month >= 0 && month < 12) {
+                                        postsData[month] = item.count || 0;
+                                    }
+                                }
+                            }
+                        });
+                    } else {
+                        postsData = contentGrowth.posts.map(item => item.count || 0);
+                    }
+                }
+
+                // Process fanbases data
+                if (contentGrowth.fanbases && Array.isArray(contentGrowth.fanbases)) {
+                    if (isMonthlyView) {
+                        fanbasesData = new Array(12).fill(0);
+                        contentGrowth.fanbases.forEach(item => {
+                            if (item._id && typeof item._id === 'string' && item._id.includes('-')) {
+                                const monthPart = item._id.split('-')[1];
+                                if (monthPart) {
+                                    const month = parseInt(monthPart) - 1;
+                                    if (month >= 0 && month < 12) {
+                                        fanbasesData[month] = item.count || 0;
+                                    }
+                                }
+                            }
+                        });
+                    } else {
+                        fanbasesData = contentGrowth.fanbases.map(item => item.count || 0);
+                    }
+                }
+            }
+
+            // Generate sample data if no real data
+            if (postsData.length === 0) {
+                const totalPosts = <%= (typeof contentMetrics !== 'undefined' && contentMetrics) ? (contentMetrics.totalPosts || 0) : 100 %>;
+                const baseDaily = Math.max(1, Math.floor(totalPosts / 30));
+
+                for (let i = 0; i < labels.length; i++) {
+                    const variation = Math.floor(Math.random() * 8) - 4; // -4 to +4
+                    postsData.push(Math.max(0, baseDaily + variation));
+                }
+            }
+
+            if (fanbasesData.length === 0) {
+                const totalFanbases = <%= (typeof contentMetrics !== 'undefined' && contentMetrics) ? (contentMetrics.totalFanbases || 0) : 10 %>;
+                const baseDaily = Math.max(0, Math.floor(totalFanbases / 90));
+
+                for (let i = 0; i < labels.length; i++) {
+                    const variation = Math.floor(Math.random() * 3); // 0 to +2
+                    fanbasesData.push(baseDaily + variation);
+                }
+            }
+
+            return { labels, postsData, fanbasesData };
+        }
+
+        function generateDateLabels(period, isMonthlyView) {
             const labels = [];
-            const period = '<%= typeof currentPeriod !== "undefined" ? currentPeriod : "7d" %>';
-            const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 365;
-            
-            for (let i = days - 1; i >= 0; i--) {
-                const date = new Date();
-                date.setDate(date.getDate() - i);
-                labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+
+            if (isMonthlyView) {
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const currentYear = new Date().getFullYear();
+
+                for (let month = 0; month < 12; month++) {
+                    labels.push(`${monthNames[month]} ${currentYear}`);
+                }
+            } else {
+                const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 7;
+
+                for (let i = days - 1; i >= 0; i--) {
+                    const date = new Date();
+                    date.setDate(date.getDate() - i);
+                    labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                }
             }
-            
+
             return labels;
-        }
-
-        function generateUserGrowthData() {
-            const period = '<%= typeof currentPeriod !== "undefined" ? currentPeriod : "7d" %>';
-            const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 365;
-            
-            // Simulated data - replace with real data from backend
-            const data = [];
-            for (let i = 0; i < days; i++) {
-                data.push(Math.floor(Math.random() * 10) + 1);
-            }
-            
-            return data;
-        }
-
-        function generateContentGrowthData(type) {
-            const period = '<%= typeof currentPeriod !== "undefined" ? currentPeriod : "7d" %>';
-            const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 365;
-            
-            // Simulated data - replace with real data from backend
-            const data = [];
-            const multiplier = type === 'posts' ? 5 : 1;
-            
-            for (let i = 0; i < days; i++) {
-                data.push(Math.floor(Math.random() * 20 * multiplier) + multiplier);
-            }
-            
-            return data;
         }
 
         function changePeriod() {
@@ -883,21 +1068,31 @@
 
         async function refreshData() {
             const period = document.getElementById('periodSelector').value;
-            
+
             try {
                 showLoading();
                 const response = await fetch(`/admin/api/analytics/${period}`, {
-                    credentials: 'include'
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 });
-                
+
                 if (response.ok) {
+                    const data = await response.json();
+                    console.log('Refreshed analytics data:', data);
                     showToast('Data refreshed successfully', 'success');
-                    setTimeout(() => window.location.reload(), 1000);
+                    // Reload the page with the new period to get updated server-side data
+                    setTimeout(() => window.location.href = `/admin/analytics?period=${period}`, 500);
                 } else {
-                    showToast('Failed to refresh data', 'error');
+                    const errorText = await response.text();
+                    console.error('Failed to refresh data:', response.status, errorText);
+                    showToast('Failed to refresh data: ' + response.status, 'error');
                 }
             } catch (error) {
-                showToast('Failed to refresh data: ' + error.message, 'error');
+                console.error('Network error refreshing data:', error);
+                showToast('Failed to refresh data: Network error', 'error');
             } finally {
                 hideLoading();
             }
@@ -927,16 +1122,24 @@
                 try {
                     const period = document.getElementById('periodSelector').value;
                     const response = await fetch(`/admin/api/analytics/${period}`, {
-                        credentials: 'include'
+                        method: 'GET',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
                     });
-                    
+
                     if (response.ok) {
                         const data = await response.json();
-                        console.log('Analytics data refreshed');
-                        // Update charts with new data if needed
+                        console.log('Analytics data auto-refreshed:', data);
+                        // Update the page with fresh data by reloading
+                        if (data && (data.userMetrics || data.contentMetrics || data.growthMetrics)) {
+                            console.log('New analytics data available, consider updating charts dynamically');
+                            // For now, we'll just log. In the future, we could update charts without full page reload
+                        }
                     }
                 } catch (error) {
-                    console.log('Failed to refresh analytics:', error);
+                    console.log('Auto-refresh failed:', error.message);
                 }
             }
         }, 300000); // 5 minutes

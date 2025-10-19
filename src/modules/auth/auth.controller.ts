@@ -17,7 +17,9 @@ import { UserType } from '@interfaces/user.interface';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService,
+    // private readonly logger = new Logger(AuthController.name),
+  ) {}
 
   @Post('register')
   async register(@Body() user: RegisterUserDTO): Promise<{ message: string }> {
@@ -64,9 +66,11 @@ export class AuthController {
   async refresh(@Req() req: Request, @Res() res: Response) {
     try {
       // Extract refresh token from cookies
+      console.log(`[Auth.Controller] Refreshing token...`);
       const refreshToken = req.cookies?.refresh_token;
 
       if (!refreshToken) {
+        console.log(`[Auth.Controller]No refresh token found.`);
         throw new Error('Refresh token not provided');
       }
 
@@ -74,6 +78,7 @@ export class AuthController {
       const [accessToken, newRefreshToken, userId, role, isSpotifyLinked] =
         await this.authService.refresh(refreshToken);
 
+      console.log(`[Auth.Controller] New refresh token generated = ${newRefreshToken}`);
       // Set new refresh token in cookie
       res.cookie('refresh_token', newRefreshToken, { httpOnly: true });
 
