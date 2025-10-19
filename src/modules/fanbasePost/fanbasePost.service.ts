@@ -284,6 +284,99 @@ export class FanbasePostService {
     }
   }
 
+  async likeComment(postId: string, commentId: string, userId: string): Promise<PostType> {
+    try {
+      const post = await this.fanbasePostModel.findById(postId).exec();
+      if (!post) {
+        throw new NotFoundException('Post not found');
+      }
+
+      const user = await this.userModel.findById(userId).exec();
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // ✅ Find comment by _id
+      const comment = post.comments.find(c => 
+        (c._id as Types.ObjectId).toString() === commentId
+      );
+      
+      if (!comment) {
+        throw new NotFoundException('Comment not found');
+      }
+
+      const userAlreadyLiked = comment.likeUserIds.includes(userId);
+
+      if (userAlreadyLiked) {
+        // Unlike the comment
+        comment.likeUserIds = comment.likeUserIds.filter(id => id !== userId);
+        comment.likeCount = Math.max(0, comment.likeCount - 1);
+      } else {
+        // Like the comment
+        comment.likeUserIds.push(userId);
+        comment.likeCount += 1;
+      }
+
+      post.updatedAt = new Date();
+      const updatedPost = await post.save();
+
+      return this.toPostType(updatedPost, userId);
+    } catch (error) {
+      throw new Error(`Failed to like/unlike comment: ${error.message}`);
+    }
+  }
+
+  async likeSubComment(postId: string, commentId: string, subCommentId: string, userId: string): Promise<PostType> {
+    try {
+      const post = await this.fanbasePostModel.findById(postId).exec();
+      if (!post) {
+        throw new NotFoundException('Post not found');
+      }
+
+      const user = await this.userModel.findById(userId).exec();
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // ✅ Find parent comment by _id
+      const parentComment = post.comments.find(c => 
+        (c._id as Types.ObjectId).toString() === commentId
+      );
+      
+      if (!parentComment) {
+        throw new NotFoundException('Comment not found');
+      }
+
+      // ✅ Find sub-comment by _id
+      const subComment = parentComment.subComments.find(sc =>
+        (sc._id as Types.ObjectId).toString() === subCommentId
+      );
+      
+      if (!subComment) {
+        throw new NotFoundException('Sub-comment not found');
+      }
+
+      const userAlreadyLiked = subComment.likeUserIds.includes(userId);
+
+      if (userAlreadyLiked) {
+        // Unlike the sub-comment
+        subComment.likeUserIds = subComment.likeUserIds.filter(id => id !== userId);
+        subComment.likeCount = Math.max(0, subComment.likeCount - 1);
+      } else {
+        // Like the sub-comment
+        subComment.likeUserIds.push(userId);
+        subComment.likeCount += 1;
+      }
+
+      post.updatedAt = new Date();
+      const updatedPost = await post.save();
+
+      return this.toPostType(updatedPost, userId);
+    } catch (error) {
+      throw new Error(`Failed to like/unlike sub-comment: ${error.message}`);
+    }
+  }
+
   private toPostType(post: FanbasePostDocument, userId?: string): PostType {
     return {
       _id: (post._id as Types.ObjectId).toString(),
@@ -305,6 +398,7 @@ export class FanbasePostService {
         comment: comment.comment,
         likeCount: comment.likeCount || 0,
         likeUserIds: comment.likeUserIds || [],
+        isLiked: userId ? comment.likeUserIds.includes(userId) : false,
         createdAt: comment.createdAt,
         subComments: (comment.subComments || []).map((subComment) => ({
           commentId: (subComment._id as Types.ObjectId).toString(), // ✅ Use _id
@@ -313,6 +407,7 @@ export class FanbasePostService {
           comment: subComment.comment,
           likeCount: subComment.likeCount || 0,
           likeUserIds: subComment.likeUserIds || [],
+          isLiked: userId ? subComment.likeUserIds.includes(userId) : false,
           createdAt: subComment.createdAt,
         })),
       })),
