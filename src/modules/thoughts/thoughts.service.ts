@@ -424,4 +424,44 @@ export class ThoughtsService {
     
     return post;
   }
+
+  // Get thoughts posts by IDs
+  async getPostsByIds(ids: string[]): Promise<any[]> {
+    try {
+      const posts = await this.thoughtsModel
+        .find({
+          _id: { $in: ids },
+          isHidden: { $ne: 1 },
+          isDeleted: { $ne: 1 },
+        })
+        .lean();
+      
+      return Promise.all(
+        posts.map(async (post) => {
+          try {
+            const username = await this.userService.getUsernameById(post.userId);
+            const profile = await this.profileService.getProfileByUserId(post.userId);
+            const profileImage = profile?.profileImage || '';
+            return {
+              ...post,
+              username: username || '',
+              userImage: profileImage,
+              postType: 'thoughts',
+            };
+          } catch (error) {
+            console.error(`Error fetching user data for post ${post._id}:`, error);
+            return {
+              ...post,
+              username: '',
+              userImage: '',
+              postType: 'thoughts',
+            };
+          }
+        }),
+      );
+    } catch (error) {
+      console.error('Error fetching thoughts posts by IDs:', error);
+      return [];
+    }
+  }
 }

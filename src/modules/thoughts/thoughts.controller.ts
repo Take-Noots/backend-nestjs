@@ -28,6 +28,14 @@ export class ThoughtsController {
     return this.thoughtsService.findById(id);
   }
 
+  // Get thoughts posts by IDs
+  @Post('by-ids')
+  @UseGuards(JwtAuthGuard)
+  async getPostsByIds(@Body() body: { ids: string[] }) {
+    const posts = await this.thoughtsService.getPostsByIds(body.ids);
+    return { posts };
+  }
+
   // Get thoughts posts by user ID (for user profile)
   @Get('user/:userId')
   @UseGuards(JwtAuthGuard)
