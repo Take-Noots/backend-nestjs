@@ -81,4 +81,22 @@ export class AdvertisementController {
       );
     }
   }
+
+  @Post(':id')
+  @UseGuards(JwtAuthGuard)
+  async updateAdvertisement(@Param('id') id: string, @Body() body: any, @Request() req) {
+    try {
+      // Optional: verify owner
+      const updated = await this.advertisementService.updateById(id, body);
+      if (!updated) {
+        throw new HttpException('Advertisement not found', HttpStatus.NOT_FOUND);
+      }
+      return updated;
+    } catch (error) {
+      throw new HttpException(
+        `Failed to update advertisement: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
 }
