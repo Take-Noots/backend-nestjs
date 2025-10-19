@@ -8,6 +8,7 @@ import { AddPostToFanbaseDto } from './dto/add-to-fanbase.dto';
 import { LikeCommentDto } from './dto/like-comment.dto';
 import { LikePostDto } from './dto/like-post.dto';
 import { UserService } from '../user/user.service';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class DesSongPostService {
@@ -15,6 +16,7 @@ export class DesSongPostService {
     @InjectModel(DesSongPost.name)
     private readonly desPostModel: Model<DesSongPostDocument>,
     private readonly userService: UserService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async createPost(dto: CreateDesSongPostDto) {
@@ -59,6 +61,7 @@ export class DesSongPostService {
     const post = await this.desPostModel.findById(dto.postId);
     if (!post) throw new NotFoundException('Post not found');
     console.log(Post, 'Adding comment to post:', post.id);
+
     const comment = {
       id: new Types.ObjectId(),
       userId: dto.userId,
@@ -68,10 +71,34 @@ export class DesSongPostService {
       likes: 0,
       likedBy: [],
     };
+
     console.log('Comment to be added:', comment);
     post.comments.push(comment);
     await post.save();
     console.log('Comment added successfully:', comment);
+
+    // Trigger notification if commenter is not the post owner
+    if (post.userId.toString() !== dto.userId) {
+      try {
+        // Get commenter's username
+        const commenter = await this.userService.findById(dto.userId);
+        if (commenter) {
+          await this.notificationService.createPostCommentNotification(
+            post.userId.toString(),      // post owner (recipient)
+            dto.userId,                  // commenter (sender)
+            commenter.username,          // commenter username
+            dto.postId,                  // post ID
+            post.songName,               // song name
+            post.artists,                // artist name
+            dto.text                     // comment text
+          );
+          console.log(`✅ Comment notification sent to user ${post.userId} from ${commenter.username}`);
+        }
+      } catch (error) {
+        console.error('❌ Failed to create comment notification:', error);
+      }
+    }
+
     return comment;
   }
 
@@ -80,6 +107,9 @@ export class DesSongPostService {
     if (!post) return null;
 
     const index = post.likedBy.indexOf(dto.userId);
+    const wasLiked = index !== -1;
+    const isLiking = index === -1;
+
     if (index === -1) {
       post.likedBy.push(dto.userId);
     } else {
@@ -87,6 +117,28 @@ export class DesSongPostService {
     }
     post.likes = post.likedBy.length;
     await post.save();
+
+    // Trigger notification only when liking (not unliking) and liker is not the post owner
+    if (isLiking && post.userId.toString() !== dto.userId) {
+      try {
+        // Get liker's username
+        const liker = await this.userService.findById(dto.userId);
+        if (liker) {
+          await this.notificationService.createPostLikeNotification(
+            post.userId.toString(),    // post owner (recipient)
+            dto.userId,                // liker (sender)
+            liker.username,            // liker username
+            dto.postId,                // post ID
+            post.songName,             // song name
+            post.artists               // artist name
+          );
+          console.log(`✅ Like notification sent to user ${post.userId} from ${liker.username}`);
+        }
+      } catch (error) {
+        console.error('❌ Failed to create like notification:', error);
+      }
+    }
+
     return post;
   }
 
