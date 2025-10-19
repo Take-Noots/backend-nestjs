@@ -112,6 +112,23 @@ export class ThoughtsController {
   hideThoughts(@Param('id') id: string) {
     return this.thoughtsService.hidePost(id);
   }
+
+  // Unhide thoughts post
+  @Patch(':id/unhide')
+  async unhideThoughts(@Param('id') id: string) {
+    const post = await this.thoughtsService.unhidePost(id);
+    if (!post) {
+      return { success: false, message: 'Post not found' };
+    }
+    return { success: true, message: 'Post unhidden successfully', data: post };
+  }
+
+  // Get hidden thoughts posts by user ID
+  @Get('user/:userId/hidden')
+  async getHiddenThoughtsByUser(@Param('userId') userId: string) {
+    const posts = await this.thoughtsService.getHiddenPostsByUserId(userId);
+    return { success: true, data: posts };
+  }
   
   // Delete thoughts post
   @Delete(':id')
