@@ -222,6 +222,26 @@ export class GroupChatController {
     }
   }
 
+  @Post('leaveGroup')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  async leaveGroup(@Body() leaveGroupDto: AddRemoveMemberDto) {
+    try {
+      return await this.groupChatService.leaveGroup(
+        leaveGroupDto.groupChatId,
+        leaveGroupDto.userId
+      );
+    } catch (error) {
+      console.error('❌ Error in leaveGroup:', error);
+      if (error.status === HttpStatus.BAD_REQUEST || error.status === HttpStatus.NOT_FOUND) {
+        throw error;
+      }
+      throw new HttpException(
+        `Failed to leave group: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   @Post(':groupChatId/upload-group-icon')
   @UseInterceptors(FileInterceptor('groupIcon'))
   async uploadGroupIcon(

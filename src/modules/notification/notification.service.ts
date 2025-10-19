@@ -13,14 +13,19 @@ export class NotificationService {
 
   // Get all notifications for a user
   async getUserNotifications(userId: string, page = 1, limit = 20) {
+    console.log(`🔍 getUserNotifications called with userId: ${userId}`);
+
     if (!Types.ObjectId.isValid(userId)) {
       throw new BadRequestException('Invalid user ID format');
     }
 
     const skip = (page - 1) * limit;
+    const userObjectId = new Types.ObjectId(userId);
+
+    console.log(`🔍 Searching for notifications with recipientId: ${userObjectId}`);
 
     const notifications = await this.notificationModel
-      .find({ recipientId: userId })
+      .find({ recipientId: userObjectId })
       .populate('senderId', 'username profileImage')
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -28,9 +33,22 @@ export class NotificationService {
       .lean()
       .exec();
 
-    const total = await this.notificationModel.countDocuments({ recipientId: userId });
+    console.log(`🔍 Found ${notifications.length} notifications for user ${userId}`);
+
+    // Debug: Let's also check what notifications exist in the database
+    const allNotifications = await this.notificationModel.find({}).lean().exec();
+    console.log(`🔍 Total notifications in database: ${allNotifications.length}`);
+    if (allNotifications.length > 0) {
+      console.log(`🔍 Sample notification recipientId types:`, allNotifications.slice(0, 3).map(n => ({
+        recipientId: n.recipientId,
+        recipientIdType: typeof n.recipientId,
+        recipientIdString: n.recipientId?.toString()
+      })));
+    }
+
+    const total = await this.notificationModel.countDocuments({ recipientId: userObjectId });
     const unreadCount = await this.notificationModel.countDocuments({
-      recipientId: userId,
+      recipientId: userObjectId,
       isRead: false
     });
 
@@ -70,7 +88,7 @@ export class NotificationService {
     }
 
     const notification = await this.notificationModel.findOneAndUpdate(
-      { _id: notificationId, recipientId: userId },
+      { _id: new Types.ObjectId(notificationId), recipientId: new Types.ObjectId(userId) },
       { isRead: true, updatedAt: new Date() },
       { new: true }
     );
@@ -97,7 +115,7 @@ export class NotificationService {
     }
 
     const result = await this.notificationModel.updateMany(
-      { recipientId: userId, isRead: false },
+      { recipientId: new Types.ObjectId(userId), isRead: false },
       { isRead: true, updatedAt: new Date() }
     );
 
@@ -117,8 +135,8 @@ export class NotificationService {
     }
 
     const notification = await this.notificationModel.findOneAndDelete({
-      _id: notificationId,
-      recipientId: userId
+      _id: new Types.ObjectId(notificationId),
+      recipientId: new Types.ObjectId(userId)
     });
 
     if (!notification) {
@@ -141,7 +159,7 @@ export class NotificationService {
     }
 
     const count = await this.notificationModel.countDocuments({
-      recipientId: userId,
+      recipientId: new Types.ObjectId(userId),
       isRead: false
     });
 
