@@ -59,7 +59,8 @@ export class ProfileController {
       // Upload to Cloudinary
       const imageUrl = await this.cloudinaryService.uploadImage(
         file,
-        'profile_pictures',
+        undefined, // folder not needed when using preset
+        'profile_picture_preset',
       );
 
       // Update profile with new image URL
@@ -98,7 +99,8 @@ export class ProfileController {
       // Upload to Cloudinary
       const imageUrl = await this.cloudinaryService.uploadImageFromBase64(
         body.imageData,
-        'profile_pictures',
+        undefined, // folder not needed when using preset
+        'profile_picture_preset',
       );
 
       // Update profile with new image URL

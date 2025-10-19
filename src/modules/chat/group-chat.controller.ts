@@ -1,5 +1,19 @@
 // src/modules/group-chat/group-chat.controller.ts
-import { Controller, Get, Post, Put, Delete, Param, Body, HttpException, HttpStatus, UsePipes, ValidationPipe, UseInterceptors, UploadedFile } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+  HttpException,
+  HttpStatus,
+  UsePipes,
+  ValidationPipe,
+  UseInterceptors,
+  UploadedFile,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { GroupChatService } from './group-chat.service';
 import { CreateGroupChatDto } from './dto/create-group-chat.dto';
@@ -19,44 +33,54 @@ export class GroupChatController {
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async createGroupChat(@Body() createGroupChatDto: CreateGroupChatDto) {
     try {
-      console.log('🔥 Received group chat creation request:', createGroupChatDto);
-      
+      console.log(
+        '🔥 Received group chat creation request:',
+        createGroupChatDto,
+      );
+
       // Basic validation
-      if (!createGroupChatDto.name || !createGroupChatDto.createdBy || !createGroupChatDto.memberIds) {
+      if (
+        !createGroupChatDto.name ||
+        !createGroupChatDto.createdBy ||
+        !createGroupChatDto.memberIds
+      ) {
         console.log('❌ Missing required fields');
         throw new HttpException(
           'Name, createdBy, and memberIds are required',
-          HttpStatus.BAD_REQUEST
+          HttpStatus.BAD_REQUEST,
         );
       }
 
-      if (!Array.isArray(createGroupChatDto.memberIds) || createGroupChatDto.memberIds.length < 2) {
+      if (
+        !Array.isArray(createGroupChatDto.memberIds) ||
+        createGroupChatDto.memberIds.length < 2
+      ) {
         console.log('❌ Insufficient members');
         throw new HttpException(
           'At least 2 members are required besides the creator',
-          HttpStatus.BAD_REQUEST
+          HttpStatus.BAD_REQUEST,
         );
       }
 
-      const result = await this.groupChatService.createGroupChat(createGroupChatDto);
+      const result =
+        await this.groupChatService.createGroupChat(createGroupChatDto);
       console.log('✅ Group chat creation successful');
       return result;
-      
     } catch (error) {
       console.error('❌ Group chat creation error:', error);
       console.error('Error details:', {
         message: error.message,
         status: error.status,
-        stack: error.stack?.substring(0, 500)
+        stack: error.stack?.substring(0, 500),
       });
-      
+
       if (error.status === HttpStatus.BAD_REQUEST) {
         throw error;
       }
-      
+
       throw new HttpException(
         `Failed to create group chat: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -69,7 +93,7 @@ export class GroupChatController {
       console.error('❌ Error in getUserGroupChats:', error);
       throw new HttpException(
         `Failed to fetch user group chats: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -85,7 +109,7 @@ export class GroupChatController {
       }
       throw new HttpException(
         `Failed to fetch group chat messages: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -101,7 +125,7 @@ export class GroupChatController {
       }
       throw new HttpException(
         `Failed to fetch group chat details: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -113,12 +137,15 @@ export class GroupChatController {
       return await this.groupChatService.sendGroupMessage(sendGroupMessageDto);
     } catch (error) {
       console.error('❌ Error in sendGroupMessage:', error);
-      if (error.status === HttpStatus.BAD_REQUEST || error.status === HttpStatus.NOT_FOUND) {
+      if (
+        error.status === HttpStatus.BAD_REQUEST ||
+        error.status === HttpStatus.NOT_FOUND
+      ) {
         throw error;
       }
       throw new HttpException(
         `Failed to send group message: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -127,18 +154,24 @@ export class GroupChatController {
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async updateGroupChat(
     @Param('groupChatId') groupChatId: string,
-    @Body() updateGroupChatDto: UpdateGroupChatDto
+    @Body() updateGroupChatDto: UpdateGroupChatDto,
   ) {
     try {
-      return await this.groupChatService.updateGroupChat(groupChatId, updateGroupChatDto);
+      return await this.groupChatService.updateGroupChat(
+        groupChatId,
+        updateGroupChatDto,
+      );
     } catch (error) {
       console.error('❌ Error in updateGroupChat:', error);
-      if (error.status === HttpStatus.BAD_REQUEST || error.status === HttpStatus.NOT_FOUND) {
+      if (
+        error.status === HttpStatus.BAD_REQUEST ||
+        error.status === HttpStatus.NOT_FOUND
+      ) {
         throw error;
       }
       throw new HttpException(
         `Failed to update group chat: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -149,16 +182,19 @@ export class GroupChatController {
     try {
       return await this.groupChatService.addMemberToGroup(
         addMemberDto.groupChatId,
-        addMemberDto.userId
+        addMemberDto.userId,
       );
     } catch (error) {
       console.error('❌ Error in addMemberToGroup:', error);
-      if (error.status === HttpStatus.BAD_REQUEST || error.status === HttpStatus.NOT_FOUND) {
+      if (
+        error.status === HttpStatus.BAD_REQUEST ||
+        error.status === HttpStatus.NOT_FOUND
+      ) {
         throw error;
       }
       throw new HttpException(
         `Failed to add member to group: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -169,16 +205,19 @@ export class GroupChatController {
     try {
       return await this.groupChatService.removeMemberFromGroup(
         removeMemberDto.groupChatId,
-        removeMemberDto.userId
+        removeMemberDto.userId,
       );
     } catch (error) {
       console.error('❌ Error in removeMemberFromGroup:', error);
-      if (error.status === HttpStatus.BAD_REQUEST || error.status === HttpStatus.NOT_FOUND) {
+      if (
+        error.status === HttpStatus.BAD_REQUEST ||
+        error.status === HttpStatus.NOT_FOUND
+      ) {
         throw error;
       }
       throw new HttpException(
         `Failed to remove member from group: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -200,7 +239,8 @@ export class GroupChatController {
       // Upload to Cloudinary
       const imageUrl = await this.cloudinaryService.uploadImage(
         file,
-        'group_icons',
+        undefined, // folder not needed when using preset
+        'group_icon_preset',
       );
 
       // Update group chat with new icon URL
@@ -239,7 +279,8 @@ export class GroupChatController {
       // Upload to Cloudinary
       const imageUrl = await this.cloudinaryService.uploadImageFromBase64(
         body.imageData,
-        'group_icons',
+        undefined, // folder not needed when using preset
+        'group_icon_preset',
       );
 
       // Update group chat with new icon URL
@@ -265,19 +306,22 @@ export class GroupChatController {
   @Delete(':groupChatId')
   async deleteGroupChat(
     @Param('groupChatId') groupChatId: string,
-    @Body('userId') userId: string
+    @Body('userId') userId: string,
   ) {
     try {
       await this.groupChatService.deleteGroupChat(groupChatId, userId);
       return { message: 'Group chat deleted successfully' };
     } catch (error) {
       console.error('❌ Error in deleteGroupChat:', error);
-      if (error.status === HttpStatus.BAD_REQUEST || error.status === HttpStatus.NOT_FOUND) {
+      if (
+        error.status === HttpStatus.BAD_REQUEST ||
+        error.status === HttpStatus.NOT_FOUND
+      ) {
         throw error;
       }
       throw new HttpException(
         `Failed to delete group chat: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
