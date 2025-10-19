@@ -36,6 +36,31 @@ export class Advertisement {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   userId: Types.ObjectId;
 
+  @Prop({ default: 0 })
+  status: number;
+
+  @Prop({ default: 0 })
+  likesCount: number;
+
+  @Prop({ default: 0 })
+  commentsCount: number;
+
+  // Paid/remaining/requested views for advertisement boosting
+  @Prop({ default: 0 })
+  payedViewsCount: number;
+
+  @Prop({ default: 0 })
+  remainViews: number;
+
+  @Prop({ default: 0 })
+  reqViews: number;
+
+  @Prop({ type: [Types.ObjectId], ref: 'User', default: [] })
+  likedBy: Types.ObjectId[];
+
+  @Prop({ type: [Types.ObjectId], ref: 'Comment', default: [] })
+  comments: Types.ObjectId[];
+
   @Prop({ default: Date.now })
   createdAt: Date;
 

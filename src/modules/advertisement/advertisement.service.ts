@@ -9,7 +9,8 @@ export class AdvertisementService {
   constructor(@InjectModel(Advertisement.name) private advertisementModel: Model<AdvertisementDocument>) {}
 
   async create(createAdvertisementDto: CreateAdvertisementDTO): Promise<Advertisement> {
-    const createdAdvertisement = new this.advertisementModel(createAdvertisementDto);
+    const advertisementData = { ...createAdvertisementDto, status: 0 };
+    const createdAdvertisement = new this.advertisementModel(advertisementData);
     return await createdAdvertisement.save();
   }
 
@@ -27,5 +28,9 @@ export class AdvertisementService {
 
   async delete(id: string): Promise<Advertisement | null> {
     return await this.advertisementModel.findByIdAndDelete(id).exec();
+  }
+
+  async updateById(id: string, updateData: Partial<Advertisement>): Promise<Advertisement | null> {
+    return await this.advertisementModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
   }
 }
