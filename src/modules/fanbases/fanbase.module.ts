@@ -4,6 +4,7 @@ import { FanbaseService } from './fanbase.service';
 import { FanbaseController } from './fanbase.controller';
 import { Fanbase, FanbaseSchema } from './fanbase.model';
 import { User, UserSchema } from '../user/user.model'; 
+import { CloudinaryService } from '../../common/services/cloudinary.service';
 
 @Module({
   imports: [
@@ -13,7 +14,7 @@ import { User, UserSchema } from '../user/user.model';
     ])
   ],
   controllers: [FanbaseController], 
-  providers: [FanbaseService],
+  providers: [FanbaseService, CloudinaryService],
   exports: [FanbaseService],
 })
 export class FanbaseModule {}

@@ -22,11 +22,13 @@ import { RolesGuard } from '../../common/guards/role.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
 import { JwtUser, JwtUserData } from '../../common/decorators/jwt-user.decorator';
+import { CloudinaryService } from '../../common/services/cloudinary.service';
 
 @Controller('fanbase')
 export class FanbaseController {
   constructor(
-    private readonly fanbaseService: FanbaseService
+    private readonly fanbaseService: FanbaseService,
+    private readonly cloudinaryService: CloudinaryService
   ) {}
 
   @Post()
@@ -46,11 +48,18 @@ export class FanbaseController {
       // Extract user ID from JWT user data
       const userId = user.userId;
       
-      // If a file was uploaded, you might want to process it here
-      // For now, we'll just use the fanbasePhotoUrl from the DTO
+      let fanbasePhotoUrl = createFanbaseDto.fanbasePhotoUrl;
+      
+      // If a file was uploaded, upload to Cloudinary
+      if (file) {
+        fanbasePhotoUrl = await this.cloudinaryService.uploadImage(file, 'fanbase_pictures');
+      }
+      
+      // Update DTO with uploaded URL
+      const updatedDto = { ...createFanbaseDto, fanbasePhotoUrl };
       
       // Pass userId separately to service
-      return await this.fanbaseService.create(createFanbaseDto, userId);
+      return await this.fanbaseService.create(updatedDto, userId);
     } catch (error) {
       console.error('Error creating fanbase:', error);
       if (error instanceof HttpException) {
