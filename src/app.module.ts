@@ -22,6 +22,7 @@ import { ChatModule } from './modules/chat/chat.module';
 import { FanbasePostModule } from './modules/fanbasePost/fanbasePost.module';
 import { PostReportModule } from './modules/post_report/post_report.module';
 import { AdvertisementModule } from './modules/advertisement/advertisement.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 
 // Add notification module import
 import { NotificationModule } from './modules/notification/notification.module';
@@ -51,6 +52,7 @@ const dbUrl: string = process.env.DB_CONN_STRING as string;
     FanbasePostModule,
     PostReportModule,
     AdvertisementModule,
+  PaymentsModule,
     NotificationModule // Add notification module here
   ]
 })

@@ -29,4 +29,8 @@ export class AdvertisementService {
   async delete(id: string): Promise<Advertisement | null> {
     return await this.advertisementModel.findByIdAndDelete(id).exec();
   }
+
+  async updateById(id: string, updateData: Partial<Advertisement>): Promise<Advertisement | null> {
+    return await this.advertisementModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
+  }
 }
