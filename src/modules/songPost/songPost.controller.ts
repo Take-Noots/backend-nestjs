@@ -152,42 +152,39 @@ export class SongPostController {
     return { success: true, data: post };
   }
 
-  @Get('testing/:userId')
-  async getSpotifyUserTopTracks(@Param('userId') userId: string) {
-    return await this.songPostService.getSpotifyUserTopTracks(userId);
-  }
-
-
   @Get('followers/:userId')
-  async getFollowerPosts(@Param('userId') userId: string) {
+  async getUserFeedPosts(@Param('userId') userId: string) {
     // Feed Algorithm here
     // 1. Get followers
-    const followers = await this.profileService.getFollowers(userId);
-    if (!followers || followers.length === 0) {
+    const followings = await this.profileService.getFollowing(userId);
+    if (!followings || followings.length === 0) {
       return { success: true, data: [] };
     }
 
     // 2. Sample up to 10 followers (random if more than 10)
-    let sampledFollowers: string[] = followers;
-    if (followers.length > 10) {
-      const shuffled = [...followers].sort(() => Math.random() - 0.5);
-      sampledFollowers = shuffled.slice(0, 10);
+    let sampledFollowings: string[] = followings;
+    if (followings.length > 10) {
+      const shuffled = [...followings].sort(() => Math.random() - 0.5);
+      sampledFollowings = shuffled.slice(0, 10);
     }
 
     // 3. Get recent posts by followers with per-user upper bound (20)
-    const recentFollowerPosts = await this.songPostService.getRecentPostsByUserIds(followers, 20);
+    const recentFollowerPosts = await this.songPostService.getRecentPostsByUserIds(followings, 20);
 
     // 4. For each sampled follower, fetch their recently liked post IDs
     const likedPostIdsNested = await Promise.all(
-      sampledFollowers.map((fid) => this.recentlyLikedUserService.getRecentlyLikedUsers(fid)),
+      sampledFollowings.map((fid) => this.recentlyLikedUserService.getRecentlyLikedUsers(fid)),
     );
     const likedPostIds = Array.from(new Set(likedPostIdsNested.flat())) as string[];
 
     // 5. Fetch details for liked post IDs
     const likedPosts = await this.songPostService.getPostsByIds(likedPostIds);
 
-    // 6. Merge and de-duplicate by _id
-    const merged = [...recentFollowerPosts, ...likedPosts];
+    // 6. Fetch posts from users top tracks (5 tracks, 1 post per track)
+    const topTrackPosts = await this.songPostService.getSpotifyUserTopTrackPosts(userId, 5, 2);
+
+    // 7. Merge and de-duplicate by _id
+    const merged = [...recentFollowerPosts, ...likedPosts, ...topTrackPosts];
     const seen = new Set<string>();
     const deduped = merged.filter((p: any) => {
       const id = (p._id || '').toString();
