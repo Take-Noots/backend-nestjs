@@ -207,7 +207,16 @@ export class FanbasePostService {
         throw new NotFoundException('Unauthorized to delete this post');
       }
 
+      // Delete the post
       await this.fanbasePostModel.deleteOne({ _id: postId }).exec();
+
+      // Update postIds in the associated fanbase (if exists)
+      const fanbase = await this.fanbaseModel.findById(post.fanbaseId).exec();
+      if (fanbase) {
+        fanbase.postIds = (fanbase.postIds || []).filter(id => id.toString() !== postId);
+        fanbase.numberOfPosts = fanbase.postIds.length;
+        await fanbase.save();
+      }
     } catch (error) {
       throw new Error(`Failed to delete post: ${error.message}`);
     }
