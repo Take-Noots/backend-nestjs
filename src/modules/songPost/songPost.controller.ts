@@ -6,7 +6,7 @@ import {
   Param,
   UsePipes,
   ValidationPipe,
-  Patch, //for hidden post
+  Patch,
   Put,
   UseGuards,
   Request,

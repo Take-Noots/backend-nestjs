@@ -16,13 +16,13 @@ export class ThoughtsController {
     console.log('Received create thoughts request:', dto);
     console.log('User from JWT:', user);
     
-    // Add the userId from JWT token to the DTO
+    
     dto.userId = user.userId;
     
     return this.thoughtsService.createThoughts(dto);
   }
 
-  // Get thoughts post by ID (for individual post viewing)
+ 
   @Get(':id')
   getThoughtsById(@Param('id') id: string) {
     return this.thoughtsService.findById(id);

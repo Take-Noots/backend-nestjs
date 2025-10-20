@@ -27,8 +27,8 @@ export class ThoughtsService {
   ): Promise<any> {
     console.log('Creating thoughts post:', dto);
 
-    // If fanbaseName is provided but not FanbaseID, look up the ID
-    if (dto.fanbaseName && !dto.FanbaseID) {
+
+    /*if (dto.fanbaseName && !dto.FanbaseID) {
       const fanbase = await this.fanbaseService.findByName(dto.fanbaseName);
       if (fanbase && fanbase._id) {
         dto.FanbaseID = fanbase._id;
@@ -37,7 +37,7 @@ export class ThoughtsService {
         // Optionally throw or just continue without fanbase
         console.warn('Fanbase not found for name:', dto.fanbaseName);
       }
-    }
+    }*/
 
     const thoughtsPost = new this.thoughtsModel({
       ...dto,
@@ -49,9 +49,8 @@ export class ThoughtsService {
       comments: [],
     });
     const savedPost = await thoughtsPost.save();
-    console.log('Thoughts post created successfully:', savedPost._id);
+    //console.log('Thoughts post created successfully:', savedPost._id);
 
-    // Return with username and postType
     const username = await this.userService.getUsernameById(savedPost.userId);
     return {
       ...savedPost.toObject(),

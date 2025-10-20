@@ -26,19 +26,19 @@ export class SongPostService {
   async create(createPostDto: CreatePostDto): Promise<SongPostDocument> {
     console.log('[DEBUG] Creating song post:', createPostDto);
 
-    // Use frontend-provided backgroundColor if available, otherwise extract from album image
+   
     let backgroundColor: string | undefined = createPostDto.backgroundColor;
     
     if (!backgroundColor && createPostDto.albumImage) {
       try {
-        //console.log('[DEBUG] No frontend color provided, extracting color from album image:', createPostDto.albumImage);
+       
         const extractedColor = await ColorExtractor.extractColor(createPostDto.albumImage);
         if (extractedColor) {
           backgroundColor = extractedColor.color;
-          //console.log('[DEBUG] Extracted color:', backgroundColor);
+          
         } else {
           backgroundColor = ColorExtractor.getDefaultColor();
-          //console.log('[DEBUG] Using default color:', backgroundColor);
+         
         }
       } catch (error) {
         console.error('[ERROR] Failed to extract color:', error);
@@ -46,9 +46,9 @@ export class SongPostService {
       }
     } else if (!backgroundColor) {
       backgroundColor = ColorExtractor.getDefaultColor();
-      console.log('[DEBUG] No album image, using default color:', backgroundColor);
+      //console.log('[DEBUG] No album image, using default color:', backgroundColor);
     } else {
-      console.log('[DEBUG] Using frontend-provided color:', backgroundColor);
+      //console.log('[DEBUG] Using frontend-provided color:', backgroundColor);
     }
     
     const createdPost = new this.songPostModel({
@@ -57,7 +57,7 @@ export class SongPostService {
     });
 
     const savedPost = await createdPost.save();
-    console.log('[DEBUG] Song post created successfully with color:', backgroundColor);
+    //console.log('[DEBUG] Song post created successfully with color:', backgroundColor);
     return savedPost;
   }
 

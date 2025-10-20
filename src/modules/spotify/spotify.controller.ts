@@ -325,7 +325,7 @@ export class SpotifyController {
     }
 
     try {
-      // Get Spotify access token using the user ID (refresh wenawa)
+      
       const spotifyToken = await this.sessionService.getAccessToken(
         user.userId,
       );
