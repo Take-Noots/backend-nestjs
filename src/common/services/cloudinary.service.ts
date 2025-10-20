@@ -36,7 +36,32 @@ export class CloudinaryService {
       cloudinary.uploader
         .upload_stream(uploadOptions, (error, result) => {
           if (error) {
-            reject(error);
+            // If the error mentions an upload preset, retry without preset
+            const msg = error && error.message ? error.message.toString() : '';
+            if (preset && msg.toLowerCase().includes('preset')) {
+              try {
+                const fallbackOptions: any = {
+                  folder: folder,
+                  resource_type: 'auto',
+                  transformation: uploadOptions.transformation,
+                };
+                cloudinary.uploader
+                  .upload_stream(fallbackOptions as any, (err2, res2) => {
+                    if (err2) return reject(err2);
+                    if (res2) return resolve(res2.secure_url);
+                    return reject(
+                      new Error(
+                        'Upload failed on fallback: No result returned',
+                      ),
+                    );
+                  })
+                  .end(file.buffer);
+              } catch (e) {
+                reject(error);
+              }
+            } else {
+              reject(error);
+            }
           } else if (result) {
             resolve(result.secure_url);
           } else {
@@ -69,11 +94,29 @@ export class CloudinaryService {
         ];
       }
 
-      const result = await cloudinary.uploader.upload(
-        base64Image,
-        uploadOptions,
-      );
-      return result.secure_url;
+      try {
+        const result = await cloudinary.uploader.upload(
+          base64Image,
+          uploadOptions,
+        );
+        return result.secure_url;
+      } catch (error) {
+        const msg = error && error.message ? error.message.toString() : '';
+        if (preset && msg.toLowerCase().includes('preset')) {
+          // Retry without preset
+          const fallbackOptions: any = {
+            folder: folder,
+            resource_type: 'auto',
+            transformation: uploadOptions.transformation,
+          };
+          const result = await cloudinary.uploader.upload(
+            base64Image,
+            fallbackOptions,
+          );
+          return result.secure_url;
+        }
+        throw error;
+      }
     } catch (error) {
       throw new Error(`Failed to upload image: ${error.message}`);
     }
