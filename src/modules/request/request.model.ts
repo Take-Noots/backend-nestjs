@@ -6,7 +6,8 @@ export type RequestDocument = Request & Document;
 export enum RequestRespondStatus {
   PENDING = 'pending',
   CONFIRM = 'confirm',
-  DELETE = 'delete',
+  REJECT = 'reject',
+  CANCEL = 'cancel',
 }
 
 @Schema({ timestamps: true })
@@ -26,7 +27,6 @@ export class Request {
 
   @Prop({ required: true })
   requestSendDate: Date;
-
 }
 
 export const RequestSchema = SchemaFactory.createForClass(Request);
