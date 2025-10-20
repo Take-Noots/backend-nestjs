@@ -120,17 +120,21 @@ export class SearchService {
 
 async ExploreAlgorithm() {
   console.log('🔍 ExploreAlgorithm called - using generic algorithm for all users');
-  
+
   // Fetch all non-deleted and non-hidden posts for explore
   const songPosts = await this.songPostModel
     .find({ isDeleted: { $ne: 1 }, isHidden: { $ne: 1 } })
     .sort({ createdAt: 1 })
     .exec();
   console.log('📊 Total song posts found in database:', songPosts.length);
-  
+
   if (songPosts.length === 0) {
     console.log('❌ No song posts found in database - this is likely the main issue');
   }
+
+  // Filter out posts without valid albumImage
+  const validSongPosts = songPosts.filter(post => post.albumImage && post.albumImage.trim() !== '');
+  console.log('📊 Total valid song posts (with albumImage):', validSongPosts.length);
 
   // Helper to assign base points - always use generic algorithm
   function getBasePoints(post: any): number {
@@ -159,7 +163,7 @@ async ExploreAlgorithm() {
   const now = new Date();
 
   // For each song post, fetch username/profile and calculate SugValue
-  const songPostsWithUser = await Promise.all(songPosts.map(async post => {
+  const songPostsWithUser = await Promise.all(validSongPosts.map(async post => {
     let username = '';
     let userImage = '';
     try {
