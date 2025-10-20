@@ -134,7 +134,7 @@ export class RequestService {
       })
       .lean();
 
-    // enrich with user info
+    // enrich with user info and include respond status
     const results = await Promise.all(
       requests.map(async (r: any) => {
         const username = await this.userService.getUsernameById(
@@ -145,11 +145,14 @@ export class RequestService {
         );
         return {
           _id: r._id,
+          requestSendUserId: r.requestSendUserId,
+          requestReceiveUserId: r.requestReceiveUserId,
           userId: r.requestSendUserId,
           username: username || null,
           profileImage: profile?.profileImage || '',
           fullName: profile?.fullName || '',
           requestSendDate: r.requestSendDate,
+          respond: r.respond,
         };
       }),
     );

@@ -6,6 +6,7 @@ import { Profile, ProfileSchema } from './profile.model';
 import { SongPost, SongPostSchema } from '../songPost/songPost.model';
 import { User, UserSchema } from '../user/user.model';
 import { Post, PostSchema } from '../posts/post.model';
+import { Request, RequestSchema } from '../request/request.model';
 import { CloudinaryService } from '../../common/services/cloudinary.service';
 
 @Module({
@@ -15,6 +16,7 @@ import { CloudinaryService } from '../../common/services/cloudinary.service';
       { name: SongPost.name, schema: SongPostSchema },
       { name: User.name, schema: UserSchema },
       { name: Post.name, schema: PostSchema },
+      { name: Request.name, schema: RequestSchema },
     ]),
   ],
   controllers: [ProfileController],
