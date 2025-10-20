@@ -163,6 +163,12 @@ export class ProfileService {
     return profile?.followers ?? [];
   }
 
+  async getFollowing(userId: string): Promise<string[]> {
+    const profile = await this.profileModel.findOne({ userId }).lean();
+    return profile?.following ?? [];
+  }
+
+
   /**
    * Get total number of likes, comments, and all comments for each post by userId
    * Returns an array of objects: { postId, type, likes, commentsCount, comments }
