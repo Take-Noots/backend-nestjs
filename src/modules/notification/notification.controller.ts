@@ -17,13 +17,18 @@ export class NotificationController {
     @Query('limit') limit?: string
   ) {
     try {
+      console.log('🔍 getMyNotifications called with user:', user);
+      console.log('🔍 JWT user ID:', user.userId);
+
       const pageNumber = page ? parseInt(page) : 1;
       const limitNumber = limit ? parseInt(limit) : 20;
 
       const result = await this.notificationService.getUserNotifications(user.userId, pageNumber, limitNumber);
+      console.log('🔍 NotificationService result:', result);
+
       return result;
     } catch (error) {
-      console.error('Error in getMyNotifications:', error);
+      console.error('❌ Error in getMyNotifications:', error);
       return {
         success: false,
         message: error.message || 'Failed to fetch notifications'
