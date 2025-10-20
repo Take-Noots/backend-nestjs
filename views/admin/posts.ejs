@@ -421,9 +421,9 @@
                     <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-l-4 border-green-500">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-sm font-medium text-gray-600">Total Posts</p>
+                                <p class="text-sm font-medium text-gray-600">Shown Posts</p>
                                 <p class="text-2xl font-bold text-green-600 mt-1">
-                                    <%= posts ? posts.length : 0 %>
+                                    <%= (posts && posts.length) ? posts.length : (hasFilters ? 0 : '-') %>
                                 </p>
                             </div>
                             <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -482,62 +482,59 @@
                         Content Filters
                     </h3>
                     <form method="GET" action="/admin/posts"
-                        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 items-end">
+                        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                        <!-- Song/Artist Search -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Search Posts</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-music mr-1"></i>
+                                Search by Song/Artist
+                            </label>
                             <input type="text" name="search"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                                placeholder="Song, artist, description..."
+                                placeholder="Song name or artist..."
                                 value="<%= (typeof searchQuery !== 'undefined' && searchQuery) ? searchQuery : '' %>">
                         </div>
 
+                        <!-- Category Filter -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Content Status</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-filter mr-1"></i>
+                                Post Type
+                            </label>
                             <select name="status"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-                                <option value="">All Posts</option>
-                                <option value="reported" <%=(typeof showReported !=='undefined' && showReported)
-                                    ? 'selected' : '' %>>Reported Posts</option>
-                                <option value="popular" <%=(typeof currentStatus !=='undefined' &&
-                                    currentStatus==='popular' ) ? 'selected' : '' %>>Popular Posts</option>
-                                <option value="recent" <%=(typeof currentStatus !=='undefined' &&
-                                    currentStatus==='recent' ) ? 'selected' : '' %>>Recent Posts</option>
+                                <option value="">Select post type...</option>
+                                <option value="recent" <%=(typeof currentStatus !=='undefined' && currentStatus==='recent' ) ? 'selected' : '' %>>Recent Posts (Today)</option>
+                                <option value="reported" <%=(typeof currentStatus !=='undefined' && currentStatus==='reported' ) ? 'selected' : '' %>>Reported Posts</option>
+                                <option value="deleted" <%=(typeof currentStatus !=='undefined' && currentStatus==='deleted' ) ? 'selected' : '' %>>Deleted Posts</option>
                             </select>
                         </div>
 
+                        <!-- User Search -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
-                            <select name="dateRange"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-                                <option value="">All Time</option>
-                                <option value="today" <%=(typeof currentDateRange !=='undefined' &&
-                                    currentDateRange==='today' ) ? 'selected' : '' %>>Today</option>
-                                <option value="week" <%=(typeof currentDateRange !=='undefined' &&
-                                    currentDateRange==='week' ) ? 'selected' : '' %>>This Week</option>
-                                <option value="month" <%=(typeof currentDateRange !=='undefined' &&
-                                    currentDateRange==='month' ) ? 'selected' : '' %>>This Month</option>
-                            </select>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-user mr-1"></i>
+                                Search by User
+                            </label>
+                            <div class="relative">
+                                <input type="text" id="userSearch"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                    placeholder="Start typing username..."
+                                    autocomplete="off">
+                                <input type="hidden" id="userId" name="userId" value="<%= (typeof searchUserId !== 'undefined' && searchUserId) ? searchUserId : '' %>">
+                                <div id="userSuggestions" class="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg hidden max-h-40 overflow-y-auto"></div>
+                            </div>
+                            <% if (typeof searchUserId !== 'undefined' && searchUserId) { %>
+                                <small class="text-gray-500 mt-1 block">Filtering by user ID: <%= searchUserId %></small>
+                            <% } %>
                         </div>
 
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Engagement</label>
-                            <select name="engagement"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-                                <option value="">All Engagement</option>
-                                <option value="high" <%=(typeof currentEngagement !=='undefined' &&
-                                    currentEngagement==='high' ) ? 'selected' : '' %>>High (10+ likes)</option>
-                                <option value="medium" <%=(typeof currentEngagement !=='undefined' &&
-                                    currentEngagement==='medium' ) ? 'selected' : '' %>>Medium (5-10 likes)</option>
-                                <option value="low" <%=(typeof currentEngagement !=='undefined' &&
-                                    currentEngagement==='low' ) ? 'selected' : '' %>>Low (< 5 likes)</option>
-                            </select>
-                        </div>
-
+                        <!-- Action Buttons -->
                         <div class="flex space-x-2">
                             <button type="submit"
                                 class="flex-1 bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center">
                                 <i class="fas fa-search mr-2"></i>
-                                Filter
+                                Search
                             </button>
                             <a href="/admin/posts"
                                 class="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-300 flex items-center justify-center">
@@ -567,7 +564,15 @@
                     </div>
 
                     <div class="p-6">
-                        <% if (posts && posts.length> 0) { %>
+                        <% if (typeof hasFilters !== 'undefined' && !hasFilters) { %>
+                            <!-- Show message when no filter is applied -->
+                            <div class="text-center py-12">
+                                <i class="fas fa-filter text-gray-300 text-6xl mb-4"></i>
+                                <h3 class="text-lg font-medium text-gray-900 mb-2">No Filter Selected</h3>
+                                <p class="text-gray-500 mb-4">Please select a post type (Recent, Reported, or Deleted) to view posts.</p>
+                                <p class="text-sm text-gray-400">This helps improve performance by not loading all posts at once.</p>
+                            </div>
+                        <% } else if (posts && posts.length> 0) { %>
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <% posts.forEach(function(post, index) { %>
                                     <div class="bg-gray-50 rounded-lg p-4 card-hover transition-all duration-300 relative"
@@ -1464,6 +1469,147 @@
                 console.error('Failed to update post card:', error);
             }
         }
+
+        // ==================== USER SEARCH FUNCTIONALITY ====================
+        let searchTimeout;
+        let currentSearchController;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const userSearchInput = document.getElementById('userSearch');
+            const userSuggestions = document.getElementById('userSuggestions');
+            const userIdInput = document.getElementById('userId');
+
+            if (userSearchInput) {
+                // Set initial value if userId is present
+                if (userIdInput.value) {
+                    // Try to get username for existing userId (optional enhancement)
+                    userSearchInput.placeholder = 'User selected - clear to change';
+                }
+
+                userSearchInput.addEventListener('input', async function(e) {
+                    const query = e.target.value.trim();
+
+                    // Cancel previous request
+                    if (currentSearchController) {
+                        currentSearchController.abort();
+                    }
+
+                    // Clear previous timeout
+                    if (searchTimeout) {
+                        clearTimeout(searchTimeout);
+                    }
+
+                    // Hide suggestions if query is too short
+                    if (query.length < 2) {
+                        userSuggestions.innerHTML = '';
+                        userSuggestions.classList.add('hidden');
+                        return;
+                    }
+
+                    // Show loading
+                    userSuggestions.innerHTML = `
+                        <div class="p-3 text-center text-gray-500">
+                            <i class="fas fa-spinner fa-spin mr-2"></i>
+                            Searching users...
+                        </div>
+                    `;
+                    userSuggestions.classList.remove('hidden');
+
+                    // Debounce search
+                    searchTimeout = setTimeout(async () => {
+                        try {
+                            // Create new controller for this request
+                            currentSearchController = new AbortController();
+
+                            const response = await axios.get(`/admin/api/users/search?q=${encodeURIComponent(query)}`, {
+                                signal: currentSearchController.signal
+                            });
+
+                            if (response.data && response.data.success) {
+                                const users = response.data.users;
+                                displayUserSuggestions(users);
+                            } else {
+                                showNoResults();
+                            }
+                        } catch (error) {
+                            if (error.name !== 'CanceledError') {
+                                console.error('User search error:', error);
+                                userSuggestions.innerHTML = `
+                                    <div class="p-3 text-center text-red-500">
+                                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                                        Search failed
+                                    </div>
+                                `;
+                            }
+                        }
+                    }, 300);
+                });
+
+                // Hide suggestions when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!userSearchInput.contains(e.target) && !userSuggestions.contains(e.target)) {
+                        userSuggestions.classList.add('hidden');
+                    }
+                });
+            }
+
+            function displayUserSuggestions(users) {
+                if (users.length === 0) {
+                    showNoResults();
+                    return;
+                }
+
+                const suggestionsHTML = users.map(user => `
+                    <div class="user-suggestion p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                         data-user-id="${user.id}"
+                         data-username="${user.username}">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm">
+                                ${user.username.charAt(0).toUpperCase()}
+                            </div>
+                            <div class="flex-1">
+                                <div class="font-medium text-gray-900">${user.username}</div>
+                                <div class="text-sm text-gray-500">${user.email}</div>
+                            </div>
+                            <div class="text-xs text-gray-400">
+                                ${user.isOnline ?
+                                    '<span class="text-green-500"><i class="fas fa-circle mr-1"></i>Online</span>' :
+                                    'Last seen: ' + (user.lastSeen ? new Date(user.lastSeen).toLocaleDateString() : 'Never')
+                                }
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                userSuggestions.innerHTML = suggestionsHTML;
+                userSuggestions.classList.remove('hidden');
+
+                // Add click handlers to suggestions
+                userSuggestions.querySelectorAll('.user-suggestion').forEach(suggestion => {
+                    suggestion.addEventListener('click', function() {
+                        const userId = this.dataset.userId;
+                        const username = this.dataset.username;
+
+                        // Set the values
+                        userSearchInput.value = username;
+                        userIdInput.value = userId;
+
+                        // Hide suggestions
+                        userSuggestions.classList.add('hidden');
+                    });
+                });
+            }
+
+            function showNoResults() {
+                userSuggestions.innerHTML = `
+                    <div class="p-3 text-center text-gray-500">
+                        <i class="fas fa-user-slash mr-2"></i>
+                        No users found
+                    </div>
+                `;
+                userSuggestions.classList.remove('hidden');
+            }
+        });
 
 
     </script>

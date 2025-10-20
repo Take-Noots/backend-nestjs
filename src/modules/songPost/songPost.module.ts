@@ -7,6 +7,7 @@ import { UserModule } from '../user/user.module';
 import { ProfileModule } from '../profile/profile.module';
 import { RecentlyLikedUserModule } from '../interaction/interaction.module';
 import { SpotifyModule } from '../spotify/spotify.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { SpotifyModule } from '../spotify/spotify.module';
     ProfileModule,
     RecentlyLikedUserModule,
     SpotifyModule,
+    NotificationModule,
   ],
   controllers: [SongPostController],
   providers: [SongPostService],

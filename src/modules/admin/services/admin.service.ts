@@ -244,7 +244,7 @@ export class AdminService {
     try {
       console.log('📊 AdminService.getAllPosts called');
       const skip = (page - 1) * limit;
-      
+
       // Get all posts from SongPostService - but don't use findAllWithUsernames to avoid the error
       console.log('🔄 Getting posts without usernames first...');
       const allPosts = await this.songPostService.findAll();
@@ -266,23 +266,109 @@ export class AdminService {
         console.log(`📊 Filtered to ${filteredPosts.length} posts after search`);
       }
 
-      // Status filter
+      // Only filter out deleted posts if we're not specifically looking for deleted posts
+      if (filters?.status !== 'deleted') {
+        filteredPosts = filteredPosts.filter(post => !post.isDeleted || post.isDeleted === 0);
+        console.log(`📈 After filtering deleted posts: ${filteredPosts.length}`);
+      }
+
+      // NEW: Apply user ID filter
+      if (filters?.userId && filters.userId.trim()) {
+        console.log(`🔍 Applying user ID filter for: "${filters.userId}"`);
+        filteredPosts = filteredPosts.filter(post => post.userId === filters.userId.trim());
+        console.log(`📊 Filtered to ${filteredPosts.length} posts after user filter`);
+      }
+
+      // Status filter - Updated for new filter options
       if (filters?.status) {
         console.log(`📊 Applying status filter: "${filters.status}"`);
         if (filters.status === 'reported') {
-          // Since songPost model doesn't have isReported field, return empty array for now
-          console.log('⚠️ Reported posts filter applied - no reported posts field in songPost model');
-          filteredPosts = [];
-        } else if (filters.status === 'popular') {
-          const beforeCount = filteredPosts.length;
-          filteredPosts = filteredPosts.filter(post => (post.likes || 0) >= 10);
-          console.log(`🔥 Popular posts filter: ${beforeCount} -> ${filteredPosts.length} posts (10+ likes)`);
+          // Get reported posts but exclude deleted posts
+          console.log('⚠️ Reported posts filter applied');
+          try {
+            const reportedPostIds = await this.postReportService.getReportedPosts();
+            console.log(`🔍 Found ${reportedPostIds.length} reported post IDs from service`);
+            const reportedPostsSet = new Set(reportedPostIds.map(id => id.toString()));
+
+            const beforeFilterCount = filteredPosts.length;
+            filteredPosts = filteredPosts.filter(post => {
+              const isReported = reportedPostsSet.has(post._id.toString());
+              const isNotDeleted = !post.isDeleted || post.isDeleted === 0;
+              return isReported && isNotDeleted;
+            });
+            console.log(`📊 Reported posts filter: ${beforeFilterCount} -> ${filteredPosts.length} posts (excluding deleted)`);
+          } catch (error) {
+            console.error('❌ Error getting reported posts:', error);
+            filteredPosts = [];
+          }
         } else if (filters.status === 'recent') {
-          const beforeCount = filteredPosts.length;
-          const threeDaysAgo = new Date();
-          threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-          filteredPosts = filteredPosts.filter(post => new Date(post.createdAt) >= threeDaysAgo);
-          console.log(`⏰ Recent posts filter: ${beforeCount} -> ${filteredPosts.length} posts (last 3 days)`);
+          // Recent posts (today) but exclude deleted posts
+          console.log('📅 Applying recent posts filter (today)');
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+
+          filteredPosts = filteredPosts.filter(post => {
+            const postDate = new Date(post.createdAt);
+            const isToday = postDate >= today && postDate < tomorrow;
+            const isNotDeleted = !post.isDeleted || post.isDeleted === 0;
+            return isToday && isNotDeleted;
+          });
+          console.log(`📅 Recent posts (excluding deleted): ${filteredPosts.length} posts`);
+        } else if (filters.status === 'deleted') {
+          // Show only deleted posts - need to query directly since findAll() excludes them
+          console.log('🗑️ Applying deleted posts filter - querying database directly');
+          try {
+            // Get deleted posts directly from the database
+            const SongPostModel = this.songPostService['songPostModel']; // Access the model directly
+
+            // First, let's check what values exist for isDeleted field
+            console.log('🔍 Checking isDeleted field values in database...');
+            const allPostsForDebug = await SongPostModel.find({}).select('_id isDeleted').limit(10).exec();
+            console.log('🔍 Sample isDeleted values:', allPostsForDebug.map(p => ({
+              id: p._id.toString().substring(0, 8),
+              isDeleted: p.isDeleted,
+              type: typeof p.isDeleted
+            })));
+
+            // Try multiple possible values for deleted posts
+            const possibleDeletedQueries = [
+              { isDeleted: 1 },
+              { isDeleted: true },
+              { isDeleted: { $exists: true, $ne: null, $nin: [0, false] } },
+              { $or: [{ isDeleted: 1 }, { isDeleted: true }] }
+            ];
+
+            let deletedPosts: any[] = [];
+            for (const query of possibleDeletedQueries) {
+              console.log('🔍 Trying query:', JSON.stringify(query));
+              const result = await SongPostModel.find(query).sort({ createdAt: -1 }).exec();
+              console.log(`🔍 Found ${result.length} posts with query:`, JSON.stringify(query));
+
+              if (result.length > 0) {
+                deletedPosts = result;
+                break;
+              }
+            }
+
+            // Apply search filter if provided and we found deleted posts
+            if (deletedPosts.length > 0 && filters?.search && filters.search.trim()) {
+              const searchTerm = filters.search.trim().toLowerCase();
+              deletedPosts = deletedPosts.filter((post: any) => {
+                return post.songName?.toLowerCase().includes(searchTerm) ||
+                       post.artists?.toLowerCase().includes(searchTerm) ||
+                       post.caption?.toLowerCase().includes(searchTerm) ||
+                       post.trackId?.toLowerCase().includes(searchTerm);
+              });
+            }
+
+            filteredPosts = deletedPosts;
+            console.log(`🗑️ Final deleted posts count: ${filteredPosts.length} posts`);
+          } catch (error) {
+            console.error('❌ Error querying deleted posts:', error);
+            filteredPosts = [];
+          }
         }
       }
 
@@ -331,12 +417,8 @@ export class AdminService {
         }
       }
 
-      // Legacy reported filter
-      if (filters?.reported) {
-        console.log('⚠️ Legacy reported filter applied - no reported posts field in songPost model');
-        // Since songPost model doesn't have isReported field, return empty array for now
-        filteredPosts = [];
-      }
+      // Legacy reported filter - REMOVED to avoid conflicts with new status-based filtering
+      // The new status-based filtering handles reported posts correctly
 
       console.log(`✅ Final filter result: ${filteredPosts.length} posts after all filters applied`);
       

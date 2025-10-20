@@ -12,6 +12,7 @@ import { ProfileService } from '../profile/profile.service';
 import { SpotifySessionService } from '../spotify/services/spotify.session-service'
 import { SpotifyUserService } from '../spotify/services/spotify.user-service'
 import { ColorExtractor } from './utils/color-extractor';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class SongPostService {
@@ -21,6 +22,7 @@ export class SongPostService {
     private readonly profileService: ProfileService,
     private readonly spotifySessionService: SpotifySessionService,
     private readonly spotifyUserService: SpotifyUserService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async create(createPostDto: CreatePostDto): Promise<SongPostDocument> {
@@ -149,6 +151,29 @@ export class SongPostService {
       { new: true, runValidators: true },
     );
 
+    // Create notification when someone likes a post (only when liking, not unliking)
+    if (updatedPost && !isLiked) {
+      try {
+        // Get the username of the person who liked the post
+        const likerUsername = await this.userService.getUsernameById(userId);
+
+        // Only create notification if the liker is different from the post owner
+        if (updatedPost.userId !== userId && likerUsername) {
+          await this.notificationService.createPostLikeNotification(
+            updatedPost.userId, // recipient (post owner)
+            userId, // sender (person who liked)
+            likerUsername, // sender username
+            postId, // post ID
+            updatedPost.songName || 'Unknown Song', // song name
+            updatedPost.artists || 'Unknown Artist' // artist name
+          );
+        }
+      } catch (error) {
+        console.error('Error creating like notification:', error);
+        // Don't fail the like operation if notification fails
+      }
+    }
+
     return updatedPost;
   }
 
@@ -185,6 +210,27 @@ export class SongPostService {
       },
       { new: true, runValidators: true },
     );
+
+    // Create notification when someone comments on a post
+    if (updatedPost) {
+      try {
+        // Only create notification if the commenter is different from the post owner
+        if (updatedPost.userId !== addCommentDto.userId) {
+          await this.notificationService.createPostCommentNotification(
+            updatedPost.userId, // recipient (post owner)
+            addCommentDto.userId, // sender (commenter)
+            username, // sender username
+            postId, // post ID
+            updatedPost.songName || 'Unknown Song', // song name
+            updatedPost.artists || 'Unknown Artist', // artist name
+            addCommentDto.text || 'commented on your post' // comment text
+          );
+        }
+      } catch (error) {
+        console.error('Error creating comment notification:', error);
+        // Don't fail the comment operation if notification fails
+      }
+    }
 
     return updatedPost;
   }
