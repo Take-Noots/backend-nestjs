@@ -241,6 +241,47 @@ export class SongPostService {
     return updatedPost;
   }
 
+  async deleteComment(
+    postId: string,
+    commentId: string,
+    userId: string,
+  ): Promise<{ success: boolean; message?: string; post?: SongPostDocument }> {
+    const post = await this.songPostModel.findOne({
+      _id: postId,
+      isDeleted: { $ne: 1 },
+    });
+    
+    if (!post) {
+      return { success: false, message: 'Post not found' };
+    }
+
+    const comment = post.comments.find(
+      (c: any) => c._id?.toString() === commentId,
+    );
+    
+    if (!comment) {
+      return { success: false, message: 'Comment not found' };
+    }
+
+    // Check if the user is the comment owner
+    if (comment.userId !== userId) {
+      return { success: false, message: 'Unauthorized to delete this comment' };
+    }
+
+    // Remove the comment from the array
+    const updatedPost = await this.songPostModel.findOneAndUpdate(
+      { _id: postId, isDeleted: { $ne: 1 } },
+      { $pull: { comments: { _id: commentId } } },
+      { new: true, runValidators: true },
+    );
+
+    if (!updatedPost) {
+      return { success: false, message: 'Failed to delete comment' };
+    }
+
+    return { success: true, post: updatedPost };
+  }
+
   async getPostsByUserIds(userIds: string[]): Promise<any[]> {
     // Find posts where userId is in the userIds array and not hidden and not deleted
     const posts = await this.songPostModel
