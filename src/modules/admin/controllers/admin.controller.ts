@@ -58,9 +58,20 @@ export class AdminController {
   }
 
   @Post('users/:id/ban')
-  async banUser(@Param('id') id: string, @Body() banData: BanUserDto) {
+  async banUser(@Param('id') id: string, @Body() banData: BanUserDto, @Request() req: any) {
     try {
-      return await this.adminService.banUser(id, banData);
+      // Ensure bannedBy is set to the current admin user ID
+      const adminUserId = req.user?._id;
+      if (!adminUserId) {
+        throw new HttpException('Admin user ID not found', HttpStatus.UNAUTHORIZED);
+      }
+
+      const banDataWithAdmin = {
+        ...banData,
+        bannedBy: adminUserId.toString()
+      };
+
+      return await this.adminService.banUser(id, banDataWithAdmin);
     } catch (error) {
       throw new HttpException(
         `Failed to ban user: ${error.message}`,
@@ -300,7 +311,7 @@ export class AdminController {
   }
 
   @Get('metrics/growth')
-  async getGrowthMetrics(@Query('period') period: string = '7d') {
+  async getGrowthMetrics(@Query('period') period: string = '1y') {
     try {
       return await this.adminService.getGrowthMetrics(period);
     } catch (error) {
