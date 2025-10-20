@@ -37,7 +37,9 @@ export class SearchService {
           { artists: { $regex: query, $options: 'i' } },
           { caption: { $regex: query, $options: 'i' } },
         ],
+        // Exclude posts that are deleted or hidden
         isDeleted: { $ne: 1 },
+        isHidden: { $ne: 1 },
       }).exec();
     }
 
@@ -74,33 +76,65 @@ export class SearchService {
       };
     }));
 
+    // For each user, fetch profile image
+    const usersWithImage = await Promise.all(users.map(async user => {
+      let userImage = '';
+      try {
+        const profile = await this.profileModel.findOne({ userId: user._id }).lean();
+        userImage = profile?.profileImage || '';
+        console.log(`User ${user.username} (ID: ${user._id}): profileImage = "${userImage}"`);
+      } catch (e) {
+        userImage = '';
+        console.log(`Error fetching profile for user ${user.username}: ${e}`);
+      }
+      return {
+        id: user._id,
+        name: user.username,
+        type: 'user',
+        userImage,
+      };
+    }));
+
+    // Combine users and profiles into one list for People section
+    const combinedUsers = [
+      ...usersWithImage,
+      ...profiles.map(profile => {
+        console.log(`Profile ${profile.fullName} (userId: ${profile.userId}): profileImage = "${profile.profileImage}"`);
+        return {
+          id: profile.userId,
+          name: profile.fullName || 'Unknown',
+          type: 'profile',
+          userImage: profile.profileImage || '',
+        };
+      }),
+    ];
+
     return {
-      users: users.map(user => ({ id: user._id, name: user.username, type: 'user' })),
+      users: combinedUsers,
       fanbases: [],
       posts: [],
-      profiles: profiles.map(profile => ({ 
-        id: profile._id, 
-        name: profile.fullName || 'Unknown', 
-        type: 'profile',
-        userId: profile.userId,
-        profileImage: profile.profileImage || '',
-        profileUrl: `/profile/${profile.userId}`,
-        clickable: true
-      })),
+      profiles: [], // No longer needed separately
       songPosts: songPostsWithUser,
     };
   }
 
 async ExploreAlgorithm() {
   console.log('🔍 ExploreAlgorithm called - using generic algorithm for all users');
-  
-  // Fetch all posts (you may want filters here later)
-  const songPosts = await this.songPostModel.find({}).sort({ createdAt: 1 }).exec();
+
+  // Fetch all non-deleted and non-hidden posts for explore
+  const songPosts = await this.songPostModel
+    .find({ isDeleted: { $ne: 1 }, isHidden: { $ne: 1 } })
+    .sort({ createdAt: 1 })
+    .exec();
   console.log('📊 Total song posts found in database:', songPosts.length);
-  
+
   if (songPosts.length === 0) {
     console.log('❌ No song posts found in database - this is likely the main issue');
   }
+
+  // Filter out posts without valid albumImage
+  const validSongPosts = songPosts.filter(post => post.albumImage && post.albumImage.trim() !== '');
+  console.log('📊 Total valid song posts (with albumImage):', validSongPosts.length);
 
   // Helper to assign base points - always use generic algorithm
   function getBasePoints(post: any): number {
@@ -129,7 +163,7 @@ async ExploreAlgorithm() {
   const now = new Date();
 
   // For each song post, fetch username/profile and calculate SugValue
-  const songPostsWithUser = await Promise.all(songPosts.map(async post => {
+  const songPostsWithUser = await Promise.all(validSongPosts.map(async post => {
     let username = '';
     let userImage = '';
     try {

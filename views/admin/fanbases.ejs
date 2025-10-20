@@ -625,7 +625,7 @@
                                                 <div>Created: <%= new Date(fanbase.createdAt).toLocaleDateString() %>
                                                 </div>
                                             
-                                                <div>Creator: <%= (fanbase.createdUserId || '' ).substring(0, 8) %>...</div>
+                                                <div>Creator: <%= fanbase.createdBy ? fanbase.createdBy.username : 'Unknown' %></div>
                                             </div>
                                         </div>
 
@@ -1008,7 +1008,7 @@
                                 </div>
                                 <div class="flex justify-between">
                                     <span class="text-gray-600">Creator:</span>
-                                    <span class="font-mono text-gray-900 text-xs">${fanbase.createdUserId || 'Unknown'}</span>
+                                    <span class="text-gray-900">${fanbase.createdBy ? fanbase.createdBy.username : 'Unknown'}</span>
                                 </div>
                             </div>
                         </div>

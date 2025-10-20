@@ -947,8 +947,7 @@
                 showLoading();
                 const endpoint = block ? `/admin/users/${userId}/ban` : `/admin/users/${userId}/unban`;
                 const response = await axios.post(endpoint, {
-                    reason,
-                    bannedBy: '<%= user ? user.id : "" %>'
+                    reason
                 });
 
                 if (response.status === 200) {
