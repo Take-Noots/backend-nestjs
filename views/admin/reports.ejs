@@ -243,6 +243,10 @@
                     <%= (reports && reports.length) || 0 %>
                 </span>
             </a>
+            <a href="/admin/advertisements" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
+                <i class="fas fa-ad w-5 h-5 mr-3"></i>
+                Advertisements
+            </a>
             <a href="/admin/fanbases" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
                 <i class="fas fa-heart w-5 h-5 mr-3"></i>
                 Fanbases
@@ -553,6 +557,7 @@
                                         <% } %>
                                     </p>
                                 </div>
+
                                 
                                 <!-- Report Status -->
                                 <div class="flex items-center justify-center mb-4">
@@ -570,15 +575,6 @@
                                     </span>
                                 </div>
                                 
-                                <!-- Report Meta -->
-                                <div class="border-t pt-4 mb-4">
-                                    <div class="text-xs text-gray-500 space-y-1 text-center">
-                                        <div>Report ID: <%= report.id %></div>
-                                        <div>Content: <%= report.contentId %></div>
-                                        <div>Reporter: <%= (report.reportedBy || '').substring(0, 8) %>...</div>
-                                        <div><%= new Date(report.createdAt).toLocaleDateString() %></div>
-                                    </div>
-                                </div>
                                 
                                 <!-- Action Buttons -->
                                 <div class="space-y-2">
@@ -603,16 +599,6 @@
                                     </div>
                                     <% } %>
                                     
-                                    <div class="grid grid-cols-2 gap-2 text-xs">
-                                        <button onclick="viewContent('<%= report.contentId %>', '<%= report.contentType %>')" 
-                                                class="bg-gray-500 text-white px-2 py-1 rounded hover:bg-gray-600 transition-colors">
-                                            View Content
-                                        </button>
-                                        <button onclick="viewReporter('<%= report.reportedBy %>')" 
-                                                class="bg-gray-500 text-white px-2 py-1 rounded hover:bg-gray-600 transition-colors">
-                                            View Reporter
-                                        </button>
-                                    </div>
                                 </div>
                             </div>
                             <% }); %>
@@ -855,8 +841,8 @@
         async function viewReport(reportId) {
             try {
                 showLoading();
-                const response = await axios.get(`/admin/reports/${reportId}`);
-                
+                const response = await axios.get(`/admin/api/reports/${reportId}`);
+
                 if (response.status === 200) {
                     const report = response.data;
                     showReportModal(report);
@@ -900,36 +886,65 @@
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <h5 class="font-medium text-gray-900 mb-2">Content Information</h5>
-                            <div class="space-y-2 text-sm">
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Content Type:</span>
-                                    <span class="text-gray-900">${report.contentType || 'post'}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Content ID:</span>
-                                    <span class="font-mono text-gray-900 text-xs">${report.contentId}</span>
-                                </div>
+                    <!-- Report Information -->
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span class="font-medium text-gray-700">Reported Date:</span>
+                                <p class="text-gray-600">${new Date(report.createdAt).toLocaleString()}</p>
+                            </div>
+                            <div>
+                                <span class="font-medium text-gray-700">Reporter:</span>
+                                <p class="text-gray-600">${report.reporterName || 'Unknown'}</p>
+                            </div>
+                            <div>
+                                <span class="font-medium text-gray-700">Reported User:</span>
+                                <p class="text-gray-600">${report.reportedUserName || 'Unknown'}</p>
+                            </div>
+                            <div>
+                                <span class="font-medium text-gray-700">Content Type:</span>
+                                <p class="text-gray-600">Post</p>
                             </div>
                         </div>
-                        <div>
-                            <h5 class="font-medium text-gray-900 mb-2">Reporter Information</h5>
-                            <div class="space-y-2 text-sm">
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Reporter ID:</span>
-                                    <span class="font-mono text-gray-900 text-xs">${report.reportedBy}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Status:</span>
-                                    <span class="badge ${report.status === 'resolved' ? 'active' : report.status === 'dismissed' ? 'user' : 'pending'}">
-                                        ${report.status || 'pending'}
-                                    </span>
+                    </div>
+
+                    <!-- Post Content (if available) -->
+                    ${report.postInfo ? `
+                    <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+                        <h5 class="font-medium text-gray-900 mb-3">📱 Reported Post Content ${report.postInfo.isDeleted ? '(DELETED)' : report.postInfo.isHidden ? '(HIDDEN)' : ''}
+                            ${report.postInfo.postType ? `<span class="text-xs bg-gray-200 px-2 py-1 rounded ml-2">${report.postInfo.postType.toUpperCase()}</span>` : ''}
+                        </h5>
+                        <div class="flex items-start space-x-4">
+                            ${report.postInfo.albumArt ?
+                                `<img src="${report.postInfo.albumArt}" alt="Album Art" class="w-20 h-20 rounded-lg object-cover shadow-md">` :
+                                `<div class="w-20 h-20 gradient-bg rounded-lg flex items-center justify-center shadow-md">
+                                    <i class="fas fa-music text-white text-xl"></i>
+                                </div>`
+                            }
+                            <div class="flex-1">
+                                <h6 class="font-semibold text-gray-900 text-lg">${report.postInfo.songTitle || report.postInfo.songName || 'Unknown Song'}</h6>
+                                <p class="text-gray-600 mb-2">🎵 by ${report.postInfo.artistName || report.postInfo.artists || 'Unknown Artist'}</p>
+                                <p class="text-gray-600 text-sm mb-2">👤 Posted by: <strong>${report.postInfo.username || 'Unknown User'}</strong></p>
+                                ${report.postInfo.description ? `
+                                <div class="mt-3 p-3 bg-white rounded border-l-2 border-gray-300">
+                                    <p class="text-gray-800 font-medium text-sm">💬 User's Caption:</p>
+                                    <p class="text-gray-700 mt-1">"${report.postInfo.description}"</p>
+                                </div>` : ''}
+                                <div class="mt-3 flex items-center space-x-4 text-sm text-gray-500">
+                                    <span>❤️ ${report.postInfo.likesCount || 0} likes</span>
+                                    <span>💬 ${report.postInfo.commentsCount || 0} comments</span>
+                                    <span>📅 ${new Date(report.postInfo.createdAt).toLocaleDateString()}</span>
                                 </div>
                             </div>
                         </div>
                     </div>
+                    ` : `
+                    <div class="bg-red-50 p-4 rounded-lg border-l-4 border-red-500">
+                        <h5 class="font-medium text-red-800 mb-2">⚠️ Post Content Unavailable</h5>
+                        <p class="text-red-700 text-sm">The reported post may have been deleted or is no longer accessible.</p>
+                        <p class="text-red-600 text-xs mt-1">Post ID: ${report.reportedPostId}</p>
+                    </div>
+                    `}
                     
                     <div>
                         <h5 class="font-medium text-gray-900 mb-2">Timeline</h5>
@@ -947,39 +962,58 @@
                         </div>
                     </div>
                     
-                    ${report.resolution ? `
-                        <div>
-                            <h5 class="font-medium text-gray-900 mb-2">Resolution</h5>
-                            <div class="bg-green-50 p-4 rounded-lg border-l-4 border-green-500">
-                                <div class="mb-2">
-                                    <strong>Action:</strong> ${report.actionTaken}
-                                </div>
-                                <div>
-                                    <strong>Notes:</strong> ${report.resolution}
-                                </div>
-                            </div>
+                    <!-- Admin Notes (if any) -->
+                    ${report.adminNotes ? `
+                    <div>
+                        <h5 class="font-medium text-gray-900 mb-2">Admin Notes</h5>
+                        <div class="bg-yellow-50 p-4 rounded-lg">
+                            <p class="text-gray-700">${report.adminNotes}</p>
+                            ${report.reviewedAt ? `<p class="text-gray-500 text-sm mt-2">Reviewed: ${new Date(report.reviewedAt).toLocaleString()}</p>` : ''}
                         </div>
+                    </div>
                     ` : ''}
                     
-                    <div class="flex space-x-4 pt-4 border-t">
+                    <div class="space-y-4 pt-4 border-t">
                         ${(report.status === 'pending' || report.status === 'reviewing') ? `
-                            <button onclick="resolveReport('${report.id}')" class="flex-1 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
-                                <i class="fas fa-check mr-2"></i>
-                                Resolve
-                            </button>
-                            <button onclick="dismissReport('${report.id}')" class="flex-1 bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h5 class="font-medium text-gray-900 mb-3">🔧 Admin Actions</h5>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <button onclick="deletePostAndWarnUser('${report.id}', '${report.reportedPostId}', '${report.reportedUserId}')"
+                                        class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors">
+                                    <i class="fas fa-trash mr-2"></i>
+                                    Delete Post & Warn User
+                                </button>
+                                <button onclick="deletePostOnly('${report.id}', '${report.reportedPostId}')"
+                                        class="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors">
+                                    <i class="fas fa-trash mr-2"></i>
+                                    Delete Post Only
+                                </button>
+                                <button onclick="warnUserOnly('${report.id}', '${report.reportedUserId}')"
+                                        class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors">
+                                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                                    Warn User Only
+                                </button>
+                                <button onclick="dismissReport('${report.id}')"
+                                        class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+                                    <i class="fas fa-times mr-2"></i>
+                                    Dismiss Report
+                                </button>
+                            </div>
+                        </div>
+                        ` : `
+                        <div class="bg-green-50 p-4 rounded-lg border-l-4 border-green-500">
+                            <h5 class="font-medium text-green-800">✅ Report Already Processed</h5>
+                            <p class="text-green-700 text-sm mt-1">This report has been ${report.status} and no further action is needed.</p>
+                        </div>
+                        `}
+
+                        <div class="flex justify-center">
+                            <button onclick="closeReportModal()"
+                                    class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors">
                                 <i class="fas fa-times mr-2"></i>
-                                Dismiss
+                                Close
                             </button>
-                        ` : ''}
-                        <button onclick="viewContent('${report.contentId}', '${report.contentType}')" class="flex-1 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
-                            <i class="fas fa-external-link-alt mr-2"></i>
-                            View Content
-                        </button>
-                        <button onclick="closeReportModal()" class="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
-                            <i class="fas fa-times mr-2"></i>
-                            Close
-                        </button>
+                        </div>
                     </div>
                 </div>
             `;
@@ -991,25 +1025,358 @@
             document.getElementById('reportModal').classList.add('hidden');
         }
 
-        function viewContent(contentId, contentType) {
-            // Navigate to content view based on type
-            switch(contentType) {
-                case 'post':
-                    window.open(`/admin/posts?search=${contentId}`, '_blank');
-                    break;
-                case 'user':
-                    window.open(`/admin/users?search=${contentId}`, '_blank');
-                    break;
-                case 'fanbase':
-                    window.open(`/admin/fanbases?search=${contentId}`, '_blank');
-                    break;
-                default:
-                    showToast('Content type not supported', 'warning');
+        async function refreshModalContent(reportId) {
+            try {
+                const response = await axios.get(`/admin/api/reports/${reportId}`);
+                if (response.status === 200) {
+                    const report = response.data;
+                    const content = document.getElementById('reportModalContent');
+                    const priorityColor = report.priority >= 4 ? '#ef4444' : report.priority >= 3 ? '#f59e0b' : report.priority >= 2 ? '#3b82f6' : '#10b981';
+
+                    content.innerHTML = `
+                        <div class="space-y-6">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <h5 class="font-medium text-gray-900 mb-2">Report Category</h5>
+                                    <span class="badge ${report.category === 'harassment' ? 'banned' : 'warning'}">
+                                        ${report.category || 'other'}
+                                    </span>
+                                </div>
+                                <div>
+                                    <h5 class="font-medium text-gray-900 mb-2">Priority Level</h5>
+                                    <span class="badge" style="background-color: ${priorityColor}20; color: ${priorityColor};">
+                                        Priority ${report.priority || 1}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h5 class="font-medium text-gray-900 mb-2">Report Reason</h5>
+                                <div class="bg-gray-50 p-4 rounded-lg">
+                                    <p class="text-gray-700 leading-relaxed">
+                                        ${report.reportReason || report.reason || 'No reason provided'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h5 class="font-medium text-gray-900 mb-2">Report Status</h5>
+                                <span class="status-badge ${report.status}">
+                                    ${report.status.charAt(0).toUpperCase() + report.status.slice(1)}
+                                </span>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <span class="font-medium text-gray-700">Reporter:</span>
+                                    <p class="text-gray-600">${report.reporterUsername || report.reporterId}</p>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-700">Content Type:</span>
+                                    <p class="text-gray-600">Post</p>
+                                </div>
+                            </div>
+
+                            <!-- Post Content (if available) -->
+                            ${report.postInfo ? `
+                            <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+                                <h5 class="font-medium text-gray-900 mb-3">📱 Reported Post Content ${report.postInfo.isDeleted ? '(DELETED)' : report.postInfo.isHidden ? '(HIDDEN)' : ''}
+                                    ${report.postInfo.postType ? `<span class="text-xs bg-gray-200 px-2 py-1 rounded ml-2">${report.postInfo.postType.toUpperCase()}</span>` : ''}
+                                </h5>
+                                <div class="flex items-start space-x-4">
+                                    ${report.postInfo.albumArt ?
+                                        `<img src="${report.postInfo.albumArt}" alt="Album Art" class="w-20 h-20 rounded-lg object-cover shadow-md">` :
+                                        `<div class="w-20 h-20 gradient-bg rounded-lg flex items-center justify-center shadow-md">
+                                            <i class="fas fa-music text-white text-xl"></i>
+                                        </div>`
+                                    }
+                                    <div class="flex-1">
+                                        <h6 class="font-semibold text-gray-900 text-lg">${report.postInfo.songTitle || report.postInfo.songName || 'Unknown Song'}</h6>
+                                        <p class="text-gray-600 mb-2">🎵 by ${report.postInfo.artistName || report.postInfo.artists || 'Unknown Artist'}</p>
+                                        <p class="text-gray-600 text-sm mb-2">👤 Posted by: <strong>${report.postInfo.username || 'Unknown User'}</strong></p>
+                                        ${report.postInfo.description ? `
+                                        <div class="mt-3 p-3 bg-white rounded border-l-2 border-gray-300">
+                                            <p class="text-gray-800 font-medium text-sm">💬 User's Caption:</p>
+                                            <p class="text-gray-700 mt-1">"${report.postInfo.description}"</p>
+                                        </div>` : ''}
+                                        <div class="mt-3 flex items-center space-x-4 text-sm text-gray-500">
+                                            <span>❤️ ${report.postInfo.likesCount || 0} likes</span>
+                                            <span>💬 ${report.postInfo.commentsCount || 0} comments</span>
+                                            <span>📅 ${new Date(report.postInfo.createdAt).toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            ` : `
+                            <div class="bg-red-50 p-4 rounded-lg border-l-4 border-red-500">
+                                <h5 class="font-medium text-red-800 mb-2">⚠️ Post Content Unavailable</h5>
+                                <p class="text-red-700 text-sm">The reported post may have been deleted or is no longer accessible.</p>
+                                <p class="text-red-600 text-xs mt-1">Post ID: ${report.reportedPostId}</p>
+                            </div>
+                            `}
+
+                            <div>
+                                <h5 class="font-medium text-gray-900 mb-2">Timeline</h5>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Reported On:</span>
+                                        <span class="text-gray-900">${new Date(report.createdAt).toLocaleString()}</span>
+                                    </div>
+                                    ${report.updatedAt ? `
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">Last Updated:</span>
+                                        <span class="text-gray-900">${new Date(report.updatedAt).toLocaleString()}</span>
+                                    </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+
+                            <!-- Admin Notes (if any) -->
+                            ${report.adminNotes ? `
+                            <div>
+                                <h5 class="font-medium text-gray-900 mb-2">Admin Notes</h5>
+                                <div class="bg-yellow-50 p-4 rounded-lg">
+                                    <p class="text-gray-700">${report.adminNotes}</p>
+                                    ${report.reviewedAt ? `<p class="text-gray-500 text-sm mt-2">Reviewed: ${new Date(report.reviewedAt).toLocaleString()}</p>` : ''}
+                                </div>
+                            </div>
+                            ` : ''}
+
+                            <div class="space-y-4 pt-4 border-t">
+                                ${(report.status === 'pending' || report.status === 'reviewing') ? `
+                                <div class="bg-gray-50 p-4 rounded-lg">
+                                    <h5 class="font-medium text-gray-900 mb-3">🔧 Admin Actions</h5>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <button onclick="deletePostAndWarnUser('${report.id}', '${report.reportedPostId}', '${report.reportedUserId}')"
+                                                class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors">
+                                            <i class="fas fa-trash mr-2"></i>
+                                            Delete Post & Warn User
+                                        </button>
+                                        <button onclick="deletePostOnly('${report.id}', '${report.reportedPostId}')"
+                                                class="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors">
+                                            <i class="fas fa-trash mr-2"></i>
+                                            Delete Post Only
+                                        </button>
+                                        <button onclick="warnUserOnly('${report.id}', '${report.reportedUserId}')"
+                                                class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors">
+                                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                                            Warn User Only
+                                        </button>
+                                        <button onclick="dismissReport('${report.id}')"
+                                                class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+                                            <i class="fas fa-times mr-2"></i>
+                                            Dismiss Report
+                                        </button>
+                                    </div>
+                                </div>
+                                ` : `
+                                <div class="bg-green-50 p-4 rounded-lg border-l-4 border-green-500">
+                                    <h5 class="font-medium text-green-800 mb-2">✅ Report Resolved</h5>
+                                    <p class="text-green-700 text-sm">This report has been processed and resolved.</p>
+                                    ${report.resolution ? `<p class="text-green-600 text-sm mt-1">Resolution: ${report.resolution}</p>` : ''}
+                                </div>
+                                `}
+
+                                <div class="flex space-x-4 pt-4 border-t">
+                                    <button onclick="closeReportModal()" class="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                                        <i class="fas fa-times mr-2"></i>
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Failed to refresh modal content:', error);
+                showToast('Failed to refresh modal content', 'error');
             }
+        }
+
+        async function viewContent(contentId, contentType) {
+            try {
+                if (contentType === 'post') {
+                    showLoading();
+                    // Try to fetch the actual post details
+                    try {
+                        const response = await axios.get(`/admin/posts/${contentId}`);
+                        if (response.status === 200) {
+                            const post = response.data;
+                            showContentModal(post, contentType);
+                            return;
+                        }
+                    } catch (error) {
+                        console.log('Could not fetch post details, opening posts page instead');
+                    }
+
+                    // Fallback to opening posts page
+                    window.open(`/admin/posts?search=${contentId}`, '_blank');
+                } else if (contentType === 'user') {
+                    window.open(`/admin/users?search=${contentId}`, '_blank');
+                } else if (contentType === 'fanbase') {
+                    window.open(`/admin/fanbases?search=${contentId}`, '_blank');
+                } else {
+                    showToast('Content type not supported', 'warning');
+                }
+            } catch (error) {
+                showToast('Failed to view content: ' + error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function showContentModal(post, contentType) {
+            const modal = document.getElementById('reportModal');
+            const content = document.getElementById('reportModalContent');
+
+            content.innerHTML = `
+                <div class="space-y-6">
+                    <h4 class="text-lg font-semibold text-gray-900">Reported ${contentType.toUpperCase()}</h4>
+
+                    <div class="flex items-center space-x-4">
+                        ${post.albumArt ?
+                            `<img src="${post.albumArt}" alt="Album Art" class="w-20 h-20 rounded-lg object-cover shadow-md">` :
+                            `<div class="w-20 h-20 gradient-bg rounded-lg flex items-center justify-center shadow-md">
+                                <i class="fas fa-music text-white text-2xl"></i>
+                            </div>`
+                        }
+                        <div class="flex-1">
+                            <h4 class="text-xl font-semibold text-gray-900">${post.songTitle || post.songName || 'Unknown Song'}</h4>
+                            <p class="text-gray-600 mb-2">by ${post.artistName || post.artists || 'Unknown Artist'}</p>
+                            <p class="text-sm text-gray-500 mb-2">Posted by: ${post.username || 'Anonymous'}</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h5 class="font-medium text-gray-900 mb-2">Description</h5>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-700 leading-relaxed">
+                                ${post.description || post.caption || 'No description provided'}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex space-x-4 pt-4 border-t">
+                        <button onclick="closeReportModal()" class="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
+                            <i class="fas fa-times mr-2"></i>
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            modal.classList.remove('hidden');
         }
 
         function viewReporter(reporterId) {
             window.open(`/admin/users?search=${reporterId}`, '_blank');
+        }
+
+        async function deletePostAndWarnUser(reportId, postId, userId) {
+            const reason = prompt('Enter warning message for the user (required):');
+            if (!reason || reason.trim() === '') {
+                showToast('Warning message is required', 'warning');
+                return;
+            }
+
+            if (confirm('Are you sure you want to DELETE the post AND send a warning to the user?\\n\\nThis action cannot be undone.')) {
+                try {
+                    showLoading();
+                    const response = await axios.post(`/admin/api/reports/${reportId}/delete-and-warn`, {
+                        postId: postId,
+                        userId: userId,
+                        warningMessage: reason.trim(),
+                        adminNotes: 'Post deleted and user warned due to report violation'
+                    });
+
+                    if (response.status === 200) {
+                        showToast('Post deleted and user warned successfully', 'success');
+
+                        // Update the modal to show new status instantly
+                        await refreshModalContent(reportId);
+                    }
+                } catch (error) {
+                    showToast('Failed to delete post and warn user: ' + (error.response?.data?.message || error.message), 'error');
+                } finally {
+                    hideLoading();
+                }
+            }
+        }
+
+        async function deletePostOnly(reportId, postId) {
+            const adminNotes = prompt('Enter admin notes for this deletion (optional):');
+
+            if (confirm('Are you sure you want to DELETE this post?\\n\\nThis action cannot be undone.')) {
+                try {
+                    showLoading();
+                    const response = await axios.post(`/admin/api/reports/${reportId}/delete-post`, {
+                        postId: postId,
+                        adminNotes: adminNotes || 'Post deleted due to report violation'
+                    });
+
+                    if (response.status === 200) {
+                        showToast('Post deleted successfully', 'success');
+                        // Update the modal to show new status instantly
+                        await refreshModalContent(reportId);
+                    }
+                } catch (error) {
+                    showToast('Failed to delete post: ' + (error.response?.data?.message || error.message), 'error');
+                } finally {
+                    hideLoading();
+                }
+            }
+        }
+
+        async function warnUserOnly(reportId, userId) {
+            const warningMessage = prompt('Enter warning message for the user (required):');
+            if (!warningMessage || warningMessage.trim() === '') {
+                showToast('Warning message is required', 'warning');
+                return;
+            }
+
+            if (confirm('Are you sure you want to send a warning to this user?')) {
+                try {
+                    showLoading();
+                    const response = await axios.post(`/admin/api/reports/${reportId}/warn-user`, {
+                        userId: userId,
+                        warningMessage: warningMessage.trim(),
+                        adminNotes: 'User warned based on report review'
+                    });
+
+                    if (response.status === 200) {
+                        showToast('User warned successfully', 'success');
+                        // Update the modal to show new status instantly
+                        await refreshModalContent(reportId);
+                    }
+                } catch (error) {
+                    showToast('Failed to warn user: ' + (error.response?.data?.message || error.message), 'error');
+                } finally {
+                    hideLoading();
+                }
+            }
+        }
+
+        async function dismissReport(reportId) {
+            const adminNotes = prompt('Enter reason for dismissing this report (optional):');
+
+            if (confirm('Are you sure you want to dismiss this report?\\n\\nThis means the report is invalid and no action will be taken.')) {
+                try {
+                    showLoading();
+                    const response = await axios.post(`/admin/api/reports/${reportId}/dismiss`, {
+                        adminNotes: adminNotes || 'Report dismissed - no violation found'
+                    });
+
+                    if (response.status === 200) {
+                        showToast('Report dismissed successfully', 'success');
+                        // Update the modal to show new status instantly
+                        await refreshModalContent(reportId);
+                    }
+                } catch (error) {
+                    showToast('Failed to dismiss report: ' + (error.response?.data?.message || error.message), 'error');
+                } finally {
+                    hideLoading();
+                }
+            }
         }
 
         async function bulkResolve() {

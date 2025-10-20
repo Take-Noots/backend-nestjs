@@ -4,6 +4,7 @@ import { DesSongPostController } from './desSongPost.controller';
 import { DesSongPostService } from './desSongPost.service';
 import { DesSongPost, DesSongPostSchema } from './desSongPost.model';
 import { UserModule } from '../user/user.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { UserModule } from '../user/user.module';
       { name: DesSongPost.name, schema: DesSongPostSchema },
     ]),
     UserModule,
+    NotificationModule,
   ],
   controllers: [DesSongPostController],
   providers: [DesSongPostService],

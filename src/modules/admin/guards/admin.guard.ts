@@ -58,11 +58,23 @@ export class AdminGuard implements CanActivate {
 
       console.log('🔍 Verifying token with secret length:', secret.length);
       const decoded = jwt.verify(token, secret) as any;
-      console.log('✅ Token decoded successfully:', { 
-        sub: decoded.sub, 
-        exp: decoded.exp, 
-        role: decoded.role 
+
+      // Check if token is close to expiring (within 5 minutes)
+      const currentTime = Math.floor(Date.now() / 1000);
+      const timeUntilExpiry = decoded.exp - currentTime;
+
+      console.log('✅ Token decoded successfully:', {
+        sub: decoded.sub,
+        exp: decoded.exp,
+        expiresAt: new Date(decoded.exp * 1000).toISOString(),
+        timeUntilExpiry: `${Math.floor(timeUntilExpiry / 60)} minutes`,
+        role: decoded.role
       });
+
+      // Log warning if token expires soon
+      if (timeUntilExpiry < 300) { // Less than 5 minutes
+        console.log('⚠️  Token expires soon! Time left:', Math.floor(timeUntilExpiry / 60), 'minutes');
+      }
 
       // More detailed user lookup
       console.log('👤 Looking up user with ID:', decoded.sub);
@@ -161,12 +173,28 @@ export class AdminGuard implements CanActivate {
   }
 
   private handleUnauthorized(request: Request, response: Response): void {
+    console.log('🚫 Unauthorized access attempt:', {
+      url: request.url,
+      method: request.method,
+      userAgent: request.headers['user-agent'],
+      cookies: Object.keys(request.cookies || {}),
+      ip: request.ip
+    });
+
     if (this.isWebRequest(request)) {
       console.log('🔄 Redirecting to login page');
-      // Clear invalid cookies
-      response.clearCookie('access_token');
-      response.clearCookie('admin_refresh_token');
-      
+      // Clear invalid cookies with proper options
+      response.clearCookie('access_token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
+      });
+      response.clearCookie('admin_refresh_token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
+      });
+
       // Redirect to login page
       response.redirect('/admin/login');
     } else {

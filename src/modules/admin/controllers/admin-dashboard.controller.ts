@@ -22,6 +22,9 @@ import { AuthService } from '../../auth/auth.service';
 import { FanbaseService } from '../../fanbases/fanbase.service';
 import { SongPostService } from '../../songPost/songPost.service';
 import { PostReportService } from '../../post_report/post_report.service';
+import { UserService } from '../../user/user.service';
+import { NotificationService } from '../../notification/notification.service';
+import { AdvertisementService } from '../../advertisement/advertisement.service';
 
 @Controller('admin')
 export class AdminDashboardController {
@@ -30,7 +33,10 @@ export class AdminDashboardController {
     private readonly authService: AuthService,
     private readonly fanbaseService: FanbaseService,
     private readonly songPostService: SongPostService,
-    private readonly postReportService: PostReportService
+    private readonly postReportService: PostReportService,
+    private readonly userService: UserService,
+    private readonly notificationService: NotificationService,
+    private readonly advertisementService: AdvertisementService
   ) {}
 
   // ==================== PUBLIC ROUTES (NO GUARD) ====================
@@ -116,19 +122,19 @@ export class AdminDashboardController {
       console.log('✅ Admin login successful for:', user.email);
       console.log('🔑 Setting cookies with tokens');
 
-      // Set secure cookies for admin session
+      // Set secure cookies for admin session with extended duration for admins
       res.cookie('access_token', accessToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production', 
-        sameSite: 'strict',
-        maxAge: 15 * 60 * 1000 // 15 minutes
-      });
-
-      res.cookie('admin_refresh_token', refreshToken, { 
-        httpOnly: true, 
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        maxAge: 4 * 60 * 60 * 1000 // 4 hours for admin sessions (longer than normal users)
+      });
+
+      res.cookie('admin_refresh_token', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days for admin refresh tokens
       });
 
       console.log('🏠 Redirecting to dashboard...');
@@ -171,6 +177,78 @@ export class AdminDashboardController {
     } catch (error) {
       console.error('❌ Logout error:', error.message);
       res.redirect('/admin/login');
+    }
+  }
+
+  // Token Refresh Endpoint (PUBLIC - No Guard for refresh)
+  @Post('refresh-token')
+  async refreshToken(@Req() req: Request, @Res() res: Response) {
+    try {
+      console.log('🔄 Token refresh attempt');
+
+      const refreshToken = req.cookies?.admin_refresh_token;
+      if (!refreshToken) {
+        console.log('❌ No refresh token found');
+        return res.status(401).json({ success: false, message: 'No refresh token' });
+      }
+
+      // Verify refresh token
+      const secret = process.env.ACCESS_TOKEN_SECRET || process.env.JWT_SECRET;
+      const decoded = require('jsonwebtoken').verify(refreshToken, secret) as any;
+
+      console.log('👤 Refresh token valid for user:', decoded.sub);
+
+      // Get user and check permissions
+      const user = await this.userService.findById(decoded.sub);
+      if (!user || (user.role !== 'admin' && user.role !== 'moderator') || user.isBlocked) {
+        console.log('❌ User not valid for refresh');
+        return res.status(401).json({ success: false, message: 'Invalid user' });
+      }
+
+      // Generate new tokens directly
+      const jwt = require('jsonwebtoken');
+      const newAccessToken = jwt.sign(
+        {
+          sub: user._id,
+          email: user.email,
+          role: user.role
+        },
+        secret,
+        { expiresIn: '4h' }
+      );
+
+      const newRefreshToken = jwt.sign(
+        {
+          sub: user._id,
+          email: user.email,
+          role: user.role,
+          type: 'refresh'
+        },
+        secret,
+        { expiresIn: '30d' }
+      );
+
+      // Set new cookies
+      res.cookie('access_token', newAccessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 4 * 60 * 60 * 1000 // 4 hours
+      });
+
+      res.cookie('admin_refresh_token', newRefreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+      });
+
+      console.log('✅ Tokens refreshed successfully for:', user.email);
+      return res.json({ success: true, message: 'Tokens refreshed' });
+
+    } catch (error) {
+      console.error('❌ Token refresh failed:', error.message);
+      return res.status(401).json({ success: false, message: 'Token refresh failed' });
     }
   }
 
@@ -314,10 +392,126 @@ export class AdminDashboardController {
       return {
         title: 'Reports Management',
         user: req['user'],
-        error: 'Failed to load reports',
+        error: 'Failed to load reports: ' + error.message,
         reports: [],
-        pagination: null
+        pagination: null,
+        currentStatus: status,
+        currentCategory: category
       };
+    }
+  }
+
+  // Advertisements Management Page
+  @Get('advertisements')
+  @UseGuards(AdminGuard)
+  @Render('admin/advertisements')
+  async advertisementsPage(@Req() req: Request) {
+    try {
+      const advertisements = await this.advertisementService.findAll();
+      return {
+        title: 'Advertisements Management',
+        user: req['user'],
+        advertisements: advertisements
+      };
+    } catch (error) {
+      return {
+        title: 'Advertisements Management',
+        user: req['user'],
+        error: 'Failed to load advertisements: ' + error.message,
+        advertisements: []
+      };
+    }
+  }
+
+  // Get single advertisement details (API)
+  @Get('api/advertisements/:id')
+  @UseGuards(AdminGuard)
+  async getAdvertisement(@Param('id') id: string) {
+    try {
+      const advertisement = await this.advertisementService.findById(id);
+      if (!advertisement) {
+        return { success: false, message: 'Advertisement not found' };
+      }
+      return { success: true, advertisement };
+    } catch (error) {
+      return { success: false, message: 'Error fetching advertisement' };
+    }
+  }
+
+  // Approve advertisement (API)
+  @Post('api/advertisements/:id/approve')
+  @UseGuards(AdminGuard)
+  async approveAdvertisement(@Param('id') id: string) {
+    try {
+      console.log(`📋 Attempting to approve advertisement with ID: ${id}`);
+
+      // First check if advertisement exists
+      const existingAd = await this.advertisementService.findById(id);
+      if (!existingAd) {
+        console.log(`❌ Advertisement not found: ${id}`);
+        return { success: false, message: 'Advertisement not found' };
+      }
+
+      console.log(`📝 Current status: ${existingAd.status}, updating to: 1`);
+
+      // Update the status
+      const advertisement = await this.advertisementService.updateById(id, { status: 1 });
+      if (!advertisement) {
+        console.log(`❌ Failed to update advertisement: ${id}`);
+        return { success: false, message: 'Failed to update advertisement' };
+      }
+
+      console.log(`✅ Advertisement approved successfully: ${id}, new status: ${advertisement.status}`);
+      return { success: true, message: 'Advertisement approved successfully', advertisement };
+    } catch (error) {
+      console.error(`❌ Error approving advertisement ${id}:`, error);
+      return { success: false, message: 'Error approving advertisement: ' + error.message };
+    }
+  }
+
+  // Reject advertisement (API)
+  @Post('api/advertisements/:id/reject')
+  @UseGuards(AdminGuard)
+  async rejectAdvertisement(@Param('id') id: string) {
+    try {
+      console.log(`📋 Attempting to reject advertisement with ID: ${id}`);
+
+      // First check if advertisement exists
+      const existingAd = await this.advertisementService.findById(id);
+      if (!existingAd) {
+        console.log(`❌ Advertisement not found: ${id}`);
+        return { success: false, message: 'Advertisement not found' };
+      }
+
+      console.log(`📝 Current status: ${existingAd.status}, updating to: 2`);
+
+      // Update the status
+      const advertisement = await this.advertisementService.updateById(id, { status: 2 });
+      if (!advertisement) {
+        console.log(`❌ Failed to update advertisement: ${id}`);
+        return { success: false, message: 'Failed to update advertisement' };
+      }
+
+      console.log(`✅ Advertisement rejected successfully: ${id}, new status: ${advertisement.status}`);
+      return { success: true, message: 'Advertisement rejected successfully', advertisement };
+    } catch (error) {
+      console.error(`❌ Error rejecting advertisement ${id}:`, error);
+      return { success: false, message: 'Error rejecting advertisement: ' + error.message };
+    }
+  }
+
+  // Delete advertisement (API)
+  @Delete('api/advertisements/:id/delete')
+  @UseGuards(AdminGuard)
+  async deleteAdvertisement(@Param('id') id: string) {
+    try {
+      const advertisement = await this.advertisementService.delete(id);
+      if (!advertisement) {
+        return { success: false, message: 'Advertisement not found' };
+      }
+      return { success: true, message: 'Advertisement deleted successfully' };
+    } catch (error) {
+      return { success: false, message: 'Error deleting advertisement' };
     }
   }
 
@@ -691,7 +885,44 @@ export class AdminDashboardController {
   }
 
   // ==================== API ROUTES FOR AJAX CALLS ====================
-  
+
+  @Get('api/reports/:id')
+  @UseGuards(AdminGuard)
+  async getReportById(@Param('id') id: string) {
+    try {
+      const report = await this.postReportService.findReportById(id);
+      console.log(`🔍 REPORT DEBUG: Report ID: ${id}, reportedPostId: ${report.reportedPostId}`);
+
+      // Get additional information about the report
+      const [reporterInfo, reportedUserInfo, postInfo] = await Promise.all([
+        this.userService.getUsernameById(report.reporterId).catch(() => 'Unknown'),
+        this.userService.getUsernameById(report.reportedUserId).catch(() => 'Unknown'),
+        this.adminService.getPostById(report.reportedPostId).catch(() => null)
+      ]);
+
+      return {
+        id: (report as any)._id,
+        reporterId: report.reporterId,
+        reporterName: reporterInfo,
+        reportedUserId: report.reportedUserId,
+        reportedUserName: reportedUserInfo,
+        reportedPostId: report.reportedPostId,
+        postInfo: postInfo,
+        reason: report.reason,
+        status: report.status,
+        adminNotes: report.adminNotes,
+        reviewedBy: report.reviewedBy,
+        reviewedAt: report.reviewedAt,
+        createdAt: (report as any).createdAt || report.reportTime
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to fetch report: ${error.message}`,
+        HttpStatus.NOT_FOUND
+      );
+    }
+  }
+
   @Get('api/users')
   @UseGuards(AdminGuard)
   async getUsersApi(
@@ -819,6 +1050,135 @@ export class AdminDashboardController {
     }
   }
 
+
+  @Post('api/reports/:id/delete-and-warn')
+  @UseGuards(AdminGuard)
+  async deletePostAndWarnUser(@Param('id') reportId: string, @Body() body: { postId: string; userId: string; warningMessage: string; adminNotes: string }, @Req() req: Request) {
+    try {
+      if (!req['user']?._id) {
+        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+      }
+
+      // Delete the post
+      await this.adminService.deletePost(body.postId, `Report violation: ${body.warningMessage}`, req['user']._id);
+
+      // Send warning notification to user
+      await this.notificationService.createAdminWarningNotification(
+        body.userId,
+        body.warningMessage,
+        req['user']?.username || 'Admin'
+      );
+
+      // Update the report status
+      const report = await this.postReportService.reviewReport(
+        reportId,
+        { status: 'approved', adminNotes: body.adminNotes },
+        req['user']._id
+      );
+
+      return {
+        message: 'Post deleted and user warned successfully',
+        report: report
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to delete post and warn user: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post('api/reports/:id/delete-post')
+  @UseGuards(AdminGuard)
+  async deletePostOnly(@Param('id') reportId: string, @Body() body: { postId: string; adminNotes: string }, @Req() req: Request) {
+    try {
+      if (!req['user']?._id) {
+        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+      }
+
+      // Delete the post
+      await this.adminService.deletePost(body.postId, 'Content violation', req['user']._id);
+
+      // Update the report status
+      const report = await this.postReportService.reviewReport(
+        reportId,
+        { status: 'approved', adminNotes: body.adminNotes },
+        req['user']._id
+      );
+
+      return {
+        message: 'Post deleted successfully',
+        report: report
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to delete post: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post('api/reports/:id/warn-user')
+  @UseGuards(AdminGuard)
+  async warnUserOnly(@Param('id') reportId: string, @Body() body: { userId: string; warningMessage: string; adminNotes: string }, @Req() req: Request) {
+    try {
+      if (!req['user']?._id) {
+        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+      }
+
+      // Send warning notification to user
+      await this.notificationService.createAdminWarningNotification(
+        body.userId,
+        body.warningMessage,
+        req['user']?.username || 'Admin'
+      );
+
+      // Update the report status
+      const report = await this.postReportService.reviewReport(
+        reportId,
+        { status: 'approved', adminNotes: body.adminNotes },
+        req['user']._id
+      );
+
+      return {
+        message: 'User warned successfully',
+        report: report
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to warn user: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post('api/reports/:id/dismiss')
+  @UseGuards(AdminGuard)
+  async dismissReportNew(@Param('id') reportId: string, @Body() body: { adminNotes: string }, @Req() req: Request) {
+    try {
+      if (!req['user']?._id) {
+        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+      }
+
+      // Update the report status to rejected/dismissed
+      const report = await this.postReportService.reviewReport(
+        reportId,
+        { status: 'rejected', adminNotes: body.adminNotes },
+        req['user']._id
+      );
+
+      return {
+        message: 'Report dismissed successfully',
+        report: report
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to dismiss report: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   @Get('api/reports')
   @UseGuards(AdminGuard)
   async getAllReports() {
@@ -853,6 +1213,7 @@ export class AdminDashboardController {
     }
   }
 
+
   @Get('api/reports/post/:postId')
   @UseGuards(AdminGuard)
   async getReportsByPostId(@Param('postId') postId: string) {
@@ -865,6 +1226,90 @@ export class AdminDashboardController {
     } catch (error) {
       throw new HttpException(
         `Failed to fetch post reports: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post('reports/post/:postId/approve')
+  @UseGuards(AdminGuard)
+  async approvePostReports(@Param('postId') postId: string, @Body() body: { adminNotes?: string }, @Req() req: Request) {
+    try {
+      if (!req['user']?._id) {
+        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+      }
+
+      // Get all pending reports for this post
+      const reports = await this.postReportService.getReportsByPostId(postId);
+      const pendingReports = reports.filter(r => r.status === 'pending');
+
+      if (pendingReports.length === 0) {
+        return {
+          message: 'No pending reports found for this post',
+          approved: 0
+        };
+      }
+
+      // Approve all pending reports for the post
+      const approvalPromises = pendingReports.map(report =>
+        this.postReportService.reviewReport(
+          (report as any)._id.toString(),
+          { status: 'approved', adminNotes: body.adminNotes },
+          req['user']?._id || 'admin'
+        )
+      );
+
+      await Promise.all(approvalPromises);
+
+      return {
+        message: `${pendingReports.length} report(s) approved successfully`,
+        approved: pendingReports.length
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to approve post reports: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post('reports/post/:postId/dismiss')
+  @UseGuards(AdminGuard)
+  async dismissPostReports(@Param('postId') postId: string, @Body() body: { adminNotes?: string }, @Req() req: Request) {
+    try {
+      if (!req['user']?._id) {
+        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+      }
+
+      // Get all pending reports for this post
+      const reports = await this.postReportService.getReportsByPostId(postId);
+      const pendingReports = reports.filter(r => r.status === 'pending');
+
+      if (pendingReports.length === 0) {
+        return {
+          message: 'No pending reports found for this post',
+          dismissed: 0
+        };
+      }
+
+      // Dismiss all pending reports for the post
+      const dismissalPromises = pendingReports.map(report =>
+        this.postReportService.reviewReport(
+          (report as any)._id.toString(),
+          { status: 'rejected', adminNotes: body.adminNotes },
+          req['user']?._id || 'admin'
+        )
+      );
+
+      await Promise.all(dismissalPromises);
+
+      return {
+        message: `${pendingReports.length} report(s) dismissed successfully`,
+        dismissed: pendingReports.length
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to dismiss post reports: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }

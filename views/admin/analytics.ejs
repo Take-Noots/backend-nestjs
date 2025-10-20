@@ -9,7 +9,16 @@
     </title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script>
+        // Analytics data from server
+        window.analyticsData = {
+            userMetrics: <%- JSON.stringify(typeof userMetrics !== 'undefined' ? userMetrics : {}) %>,
+            contentMetrics: <%- JSON.stringify(typeof contentMetrics !== 'undefined' ? contentMetrics : {}) %>,
+            growthMetrics: <%- JSON.stringify(typeof growthMetrics !== 'undefined' ? growthMetrics : {}) %>,
+            currentPeriod: '<%- typeof currentPeriod !== "undefined" ? currentPeriod : "7d" %>'
+        };
+    </script>
     <script>
         tailwind.config = {
             theme: {
@@ -201,6 +210,10 @@
                 <i class="fas fa-flag w-5 h-5 mr-3"></i>
                 Reports
                 <!-- <span class="ml-auto bg-yellow-500 text-xs px-2 py-1 rounded-full animate-pulse-dot" id="reportsCount">0</span> -->
+            </a>
+            <a href="/admin/advertisements" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
+                <i class="fas fa-ad w-5 h-5 mr-3"></i>
+                Advertisements
             </a>
             <a href="/admin/fanbases" class="sidebar-item flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-white/10 transition-all relative">
                 <i class="fas fa-heart w-5 h-5 mr-3"></i>
@@ -727,15 +740,20 @@
 
             console.log('Current period:', period, 'Monthly view:', isMonthlyView);
 
-            // Destroy existing charts
-            if (window.userGrowthChart) {
-                window.userGrowthChart.destroy();
-            }
-            if (window.contentGrowthChart) {
-                window.contentGrowthChart.destroy();
-            }
-            if (window.contentPieChart) {
-                window.contentPieChart.destroy();
+           
+            // Destroy existing charts if they exist
+            try {
+                if (window.userGrowthChart && typeof window.userGrowthChart.destroy === 'function') {
+                    window.userGrowthChart.destroy();
+                }
+                if (window.contentGrowthChart && typeof window.contentGrowthChart.destroy === 'function') {
+                    window.contentGrowthChart.destroy();
+                }
+                if (window.contentPieChart && typeof window.contentPieChart.destroy === 'function') {
+                    window.contentPieChart.destroy();
+                }
+            } catch (error) {
+                console.log('Chart cleanup error:', error);
             }
 
             // Initialize User Growth Chart
@@ -877,8 +895,9 @@
             }
 
             const ctx = canvas.getContext('2d');
-            const totalPosts = <%= (typeof contentMetrics !== 'undefined' && contentMetrics && contentMetrics.totalPosts) ? contentMetrics.totalPosts : 0 %>;
-            const totalFanbases = <%= (typeof contentMetrics !== 'undefined' && contentMetrics && contentMetrics.totalFanbases) ? contentMetrics.totalFanbases : 0 %>;
+            const analyticsData = window.analyticsData || {};
+            const totalPosts = (analyticsData.contentMetrics && analyticsData.contentMetrics.totalPosts) || 0;
+            const totalFanbases = (analyticsData.contentMetrics && analyticsData.contentMetrics.totalFanbases) || 0;
             const estimatedComments = Math.floor(totalPosts * 0.3);
 
             console.log('Pie chart data:', { totalPosts, totalFanbases, estimatedComments });
@@ -920,10 +939,11 @@
             let data = [];
 
             // Use real backend data if available
-            const hasRealData = <%= (typeof growthMetrics !== 'undefined' && growthMetrics && growthMetrics.userGrowth) ? 'true' : 'false' %>;
+            const analyticsData = window.analyticsData || {};
+            const hasRealData = analyticsData.growthMetrics && analyticsData.growthMetrics.userGrowth;
 
             if (hasRealData) {
-                const userGrowthData = <%= JSON.stringify(typeof growthMetrics !== 'undefined' && growthMetrics ? (growthMetrics.userGrowth || []) : []) %>;
+                const userGrowthData = analyticsData.growthMetrics.userGrowth;
                 console.log('Real user growth data:', userGrowthData);
 
                 if (Array.isArray(userGrowthData) && userGrowthData.length > 0) {
@@ -948,7 +968,7 @@
 
             // Generate sample data if no real data
             if (data.length === 0) {
-                const totalUsers = <%= (typeof userMetrics !== 'undefined' && userMetrics) ? (userMetrics.total || 0) : 50 %>;
+                const totalUsers = (analyticsData.userMetrics && analyticsData.userMetrics.total) || 50;
                 const baseDaily = Math.max(1, Math.floor(totalUsers / 30));
 
                 for (let i = 0; i < labels.length; i++) {
@@ -966,10 +986,11 @@
             let fanbasesData = [];
 
             // Use real backend data if available
-            const hasRealData = <%= (typeof growthMetrics !== 'undefined' && growthMetrics && growthMetrics.contentGrowth) ? 'true' : 'false' %>;
+            const analyticsData = window.analyticsData || {};
+            const hasRealData = analyticsData.growthMetrics && analyticsData.growthMetrics.contentGrowth;
 
             if (hasRealData) {
-                const contentGrowth = <%= JSON.stringify(typeof growthMetrics !== 'undefined' && growthMetrics ? (growthMetrics.contentGrowth || {}) : {}) %>;
+                const contentGrowth = analyticsData.growthMetrics.contentGrowth;
                 console.log('Real content growth data:', contentGrowth);
 
                 // Process posts data
@@ -1015,7 +1036,7 @@
 
             // Generate sample data if no real data
             if (postsData.length === 0) {
-                const totalPosts = <%= (typeof contentMetrics !== 'undefined' && contentMetrics) ? (contentMetrics.totalPosts || 0) : 100 %>;
+                const totalPosts = (analyticsData.contentMetrics && analyticsData.contentMetrics.totalPosts) || 100;
                 const baseDaily = Math.max(1, Math.floor(totalPosts / 30));
 
                 for (let i = 0; i < labels.length; i++) {
@@ -1025,7 +1046,7 @@
             }
 
             if (fanbasesData.length === 0) {
-                const totalFanbases = <%= (typeof contentMetrics !== 'undefined' && contentMetrics) ? (contentMetrics.totalFanbases || 0) : 10 %>;
+                const totalFanbases = (analyticsData.contentMetrics && analyticsData.contentMetrics.totalFanbases) || 10;
                 const baseDaily = Math.max(0, Math.floor(totalFanbases / 90));
 
                 for (let i = 0; i < labels.length; i++) {

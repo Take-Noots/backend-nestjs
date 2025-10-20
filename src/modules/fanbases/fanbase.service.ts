@@ -17,6 +17,17 @@ export class FanbaseService {
     try {
       console.log('FanbaseService.create called with:', { createFanbaseDto, userId });
       
+      // Check if a fanbase with the same name already exists
+      const existingFanbase = await this.fanbaseModel.findOne({ 
+        fanbaseName: createFanbaseDto.fanbaseName,
+        isDeleted: { $ne: true } // Only check non-deleted fanbases
+      }).exec();
+      
+      if (existingFanbase) {
+        console.log('Fanbase with this name already exists:', existingFanbase.fanbaseName);
+        throw new Error(`A fanbase with the name "${createFanbaseDto.fanbaseName}" already exists`);
+      }
+      
       // Get user details for additional context
       const user = await this.userModel.findById(userId).exec();
       console.log('User found:', user ? `${user.username} (${user._id})` : 'null');
