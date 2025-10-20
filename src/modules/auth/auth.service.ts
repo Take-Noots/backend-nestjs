@@ -12,7 +12,7 @@ const myAccessSecret = process.env.ACCESS_TOKEN_SECRET as string;
 const myRefreshSecret = process.env.REFRESH_TOKEN_SECRET as string;
 const myAccessTokenDuration = process.env.ACCESS_TOKEN_DURATION
   ? parseInt(process.env.ACCESS_TOKEN_DURATION)
-  : 900; // 15 minutes
+  : 172800; // 2 days (in seconds)
 const myRefreshTokenDuration = process.env.REFRESH_TOKEN_DURATION
   ? parseInt(process.env.REFRESH_TOKEN_DURATION)
   : 604800; // 7 days

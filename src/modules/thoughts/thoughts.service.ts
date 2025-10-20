@@ -2,7 +2,11 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ThoughtsPost, ThoughtsPostDocument } from './thoughts.model';
-import { CreateThoughtsDto, AddThoughtsCommentDto, LikeThoughtsDto } from './dto/create-thoughts.dto';
+import {
+  CreateThoughtsDto,
+  AddThoughtsCommentDto,
+  LikeThoughtsDto,
+} from './dto/create-thoughts.dto';
 import { UserService } from '../user/user.service';
 import { ProfileService } from '../profile/profile.service';
 import { FanbaseService } from '../fanbases/fanbase.service';
@@ -18,7 +22,9 @@ export class ThoughtsService {
   ) {}
 
   // Create a new thoughts post
-  async createThoughts(dto: CreateThoughtsDto & { fanbaseName?: string }): Promise<any> {
+  async createThoughts(
+    dto: CreateThoughtsDto & { fanbaseName?: string },
+  ): Promise<any> {
     console.log('Creating thoughts post:', dto);
 
     // If fanbaseName is provided but not FanbaseID, look up the ID
@@ -44,7 +50,7 @@ export class ThoughtsService {
     });
     const savedPost = await thoughtsPost.save();
     console.log('Thoughts post created successfully:', savedPost._id);
-    
+
     // Return with username and postType
     const username = await this.userService.getUsernameById(savedPost.userId);
     return {
@@ -58,19 +64,21 @@ export class ThoughtsService {
   async getPostsByUserIds(userIds: string[]): Promise<any[]> {
     // Find posts where userId is in the userIds array and not hidden and not deleted
     const posts = await this.thoughtsModel
-      .find({ 
-        userId: { $in: userIds }, 
-        isHidden: { $ne: 1 }, 
-        isDeleted: { $ne: 1 } 
+      .find({
+        userId: { $in: userIds },
+        isHidden: { $ne: 1 },
+        isDeleted: { $ne: 1 },
       })
       .sort({ createdAt: -1 })
       .lean();
-    
+
     // Attach username and profile image for each post
     const postsWithUserData = await Promise.all(
       posts.map(async (post) => {
         const username = await this.userService.getUsernameById(post.userId);
-        const profile = await this.profileService.getProfileByUserId(post.userId);
+        const profile = await this.profileService.getProfileByUserId(
+          post.userId,
+        );
         const profileImage = profile?.profileImage || '';
         return {
           ...post,
@@ -80,34 +88,37 @@ export class ThoughtsService {
         };
       }),
     );
-    
+
     return postsWithUserData;
   }
 
   // Get thoughts post by ID (for individual post viewing)
   async findById(id: string): Promise<any> {
-    const post = await this.thoughtsModel.findOne({ 
-      _id: id, 
-      isHidden: { $ne: 1 }, 
-      isDeleted: { $ne: 1 } 
-    }).lean();
+    const post = await this.thoughtsModel
+      .findOne({
+        _id: id,
+        isHidden: { $ne: 1 },
+        isDeleted: { $ne: 1 },
+      })
+      .lean();
     if (!post) return null;
-    
+
     const username = await this.userService.getUsernameById(post.userId);
     const profile = await this.profileService.getProfileByUserId(post.userId);
     const profileImage = profile?.profileImage || '';
-    
+
     // Ensure comments have usernames - optimized with batch lookup
-    const userIds = [...new Set(post.comments.map(c => c.userId))]; // Get unique user IDs
+    const userIds = [...new Set(post.comments.map((c) => c.userId))]; // Get unique user IDs
     const usernamesMap = await this.userService.getUsernamesByIds(userIds);
-    
+
     const commentsWithUsernames = post.comments.map((comment) => {
       return {
         ...comment,
-        username: usernamesMap.get(comment.userId) || comment.username || 'Unknown',
+        username:
+          usernamesMap.get(comment.userId) || comment.username || 'Unknown',
       };
     });
-    
+
     return {
       ...post,
       username: username || '',
@@ -119,25 +130,33 @@ export class ThoughtsService {
 
   // Get thoughts posts by user ID (for user profile)
   async findByUserId(userId: string, currentUserId?: string): Promise<any[]> {
-    const posts = await this.thoughtsModel.find({ 
-      userId, 
-      isHidden: { $ne: 1 }, 
-      isDeleted: { $ne: 1 } 
-    }).sort({ createdAt: -1 }).lean();
-    
+    const posts = await this.thoughtsModel
+      .find({
+        userId,
+        isHidden: { $ne: 1 },
+        isDeleted: { $ne: 1 },
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
     // Attach username, profile image, and saved status for each post
     const postsWithUserData = await Promise.all(
       posts.map(async (post) => {
         const username = await this.userService.getUsernameById(post.userId);
-        const profile = await this.profileService.getProfileByUserId(post.userId);
+        const profile = await this.profileService.getProfileByUserId(
+          post.userId,
+        );
         const profileImage = profile?.profileImage || '';
-        
+
         // Check if the current user has saved this post
         let isSaved = false;
         if (currentUserId) {
-          isSaved = await this.profileService.isThoughtsPostSaved(currentUserId, post._id.toString());
+          isSaved = await this.profileService.isThoughtsPostSaved(
+            currentUserId,
+            post._id.toString(),
+          );
         }
-        
+
         return {
           ...post,
           username: username || '',
@@ -147,16 +166,16 @@ export class ThoughtsService {
         };
       }),
     );
-    
+
     return postsWithUserData;
   }
 
   // Like a thoughts post
   async likePost(postId: string, userId: string): Promise<any> {
-    const post = await this.thoughtsModel.findOne({ 
-      _id: postId, 
-      isHidden: { $ne: 1 }, 
-      isDeleted: { $ne: 1 } 
+    const post = await this.thoughtsModel.findOne({
+      _id: postId,
+      isHidden: { $ne: 1 },
+      isDeleted: { $ne: 1 },
     });
     if (!post) return null;
 
@@ -168,7 +187,7 @@ export class ThoughtsService {
     }
     post.likes = post.likedBy.length;
     await post.save();
-    
+
     // Return with username and postType
     const username = await this.userService.getUsernameById(post.userId);
     return {
@@ -180,18 +199,26 @@ export class ThoughtsService {
 
   // Add comment to thoughts post
   async addComment(postId: string, dto: AddThoughtsCommentDto): Promise<any> {
-    console.log('[DEBUG] ThoughtsService.addComment: postId:', postId, 'dto:', dto);
-    
-    const post = await this.thoughtsModel.findOne({ 
-      _id: postId, 
-      isHidden: { $ne: 1 }, 
-      isDeleted: { $ne: 1 } 
+    console.log(
+      '[DEBUG] ThoughtsService.addComment: postId:',
+      postId,
+      'dto:',
+      dto,
+    );
+
+    const post = await this.thoughtsModel.findOne({
+      _id: postId,
+      isHidden: { $ne: 1 },
+      isDeleted: { $ne: 1 },
     });
     if (!post) {
-      console.log('[DEBUG] ThoughtsService.addComment: Post not found for ID:', postId);
+      console.log(
+        '[DEBUG] ThoughtsService.addComment: Post not found for ID:',
+        postId,
+      );
       throw new NotFoundException('Thoughts post not found');
     }
-    
+
     console.log('[DEBUG] ThoughtsService.addComment: Found post:', post._id);
 
     // Get username for the comment
@@ -211,18 +238,19 @@ export class ThoughtsService {
     post.comments.push(comment);
     await post.save();
     console.log('Comment added to thoughts post:', comment);
-    
+
     // Get usernames for all comments in parallel for better performance
-    const userIds = [...new Set(post.comments.map(c => c.userId))]; // Get unique user IDs
+    const userIds = [...new Set(post.comments.map((c) => c.userId))]; // Get unique user IDs
     const usernamesMap = await this.userService.getUsernamesByIds(userIds);
-    
+
     const commentsWithUsernames = post.comments.map((comment) => {
       return {
         ...comment.toObject(),
-        username: usernamesMap.get(comment.userId) || comment.username || 'Unknown',
+        username:
+          usernamesMap.get(comment.userId) || comment.username || 'Unknown',
       };
     });
-    
+
     // Return the updated post with username and postType
     const username_post = await this.userService.getUsernameById(post.userId);
     return {
@@ -234,15 +262,19 @@ export class ThoughtsService {
   }
 
   // Like/unlike a thoughts comment
-  async likeComment(postId: string, commentId: string, userId: string): Promise<any> {
-    const post = await this.thoughtsModel.findOne({ 
-      _id: postId, 
-      isHidden: { $ne: 1 }, 
-      isDeleted: { $ne: 1 } 
+  async likeComment(
+    postId: string,
+    commentId: string,
+    userId: string,
+  ): Promise<any> {
+    const post = await this.thoughtsModel.findOne({
+      _id: postId,
+      isHidden: { $ne: 1 },
+      isDeleted: { $ne: 1 },
     });
     if (!post) return null;
 
-    const comment = post.comments.find(c => c.id.toString() === commentId);
+    const comment = post.comments.find((c) => c.id.toString() === commentId);
     if (!comment) return null;
 
     const index = comment.likedBy.indexOf(userId);
@@ -253,21 +285,22 @@ export class ThoughtsService {
     }
     comment.likes = comment.likedBy.length;
     comment.updatedAt = new Date();
-    
+
     await post.save();
     console.log('Comment like updated:', comment);
-    
+
     // Get usernames for all comments - optimized with batch lookup
-    const userIds = [...new Set(post.comments.map(c => c.userId))]; // Get unique user IDs
+    const userIds = [...new Set(post.comments.map((c) => c.userId))]; // Get unique user IDs
     const usernamesMap = await this.userService.getUsernamesByIds(userIds);
-    
+
     const commentsWithUsernames = post.comments.map((comment) => {
       return {
         ...comment.toObject(),
-        username: usernamesMap.get(comment.userId) || comment.username || 'Unknown',
+        username:
+          usernamesMap.get(comment.userId) || comment.username || 'Unknown',
       };
     });
-    
+
     // Return the updated post with username and postType
     const username = await this.userService.getUsernameById(post.userId);
     return {
@@ -278,19 +311,23 @@ export class ThoughtsService {
     };
   }
 
-  async deleteComment(postId: string, commentId: string, userId: string): Promise<{ success: boolean; message?: string; post?: any }> {
-    const post = await this.thoughtsModel.findOne({ 
-      _id: postId, 
-      isHidden: { $ne: 1 }, 
-      isDeleted: { $ne: 1 } 
+  async deleteComment(
+    postId: string,
+    commentId: string,
+    userId: string,
+  ): Promise<{ success: boolean; message?: string; post?: any }> {
+    const post = await this.thoughtsModel.findOne({
+      _id: postId,
+      isHidden: { $ne: 1 },
+      isDeleted: { $ne: 1 },
     });
-    
+
     if (!post) {
       return { success: false, message: 'Post not found' };
     }
 
-    const comment = post.comments.find(c => c.id.toString() === commentId);
-    
+    const comment = post.comments.find((c) => c.id.toString() === commentId);
+
     if (!comment) {
       return { success: false, message: 'Comment not found' };
     }
@@ -301,17 +338,18 @@ export class ThoughtsService {
     }
 
     // Remove the comment from the array
-    post.comments = post.comments.filter(c => c.id.toString() !== commentId);
+    post.comments = post.comments.filter((c) => c.id.toString() !== commentId);
     await post.save();
 
     // Get usernames for remaining comments
-    const userIds = [...new Set(post.comments.map(c => c.userId))];
+    const userIds = [...new Set(post.comments.map((c) => c.userId))];
     const usernamesMap = await this.userService.getUsernamesByIds(userIds);
-    
+
     const commentsWithUsernames = post.comments.map((comment) => {
       return {
         ...comment.toObject(),
-        username: usernamesMap.get(comment.userId) || comment.username || 'Unknown',
+        username:
+          usernamesMap.get(comment.userId) || comment.username || 'Unknown',
       };
     });
 
@@ -323,15 +361,15 @@ export class ThoughtsService {
         username: username || '',
         postType: 'thoughts',
         comments: commentsWithUsernames,
-      }
+      },
     };
   }
 
   // Delete thoughts post (soft delete)
   async deletePost(postId: string, userId: string): Promise<boolean> {
-    const post = await this.thoughtsModel.findOne({ 
-      _id: postId, 
-      isDeleted: { $ne: 1 } 
+    const post = await this.thoughtsModel.findOne({
+      _id: postId,
+      isDeleted: { $ne: 1 },
     });
     if (!post || post.userId !== userId) return false;
 
@@ -358,10 +396,10 @@ export class ThoughtsService {
 
     if (post) {
       //console.log(`[DEBUG] Thoughts post updated successfully:`, post);
-      
+
       // Get username for the response
       const username = await this.userService.getUsernameById(post.userId);
-      
+
       return {
         ...post.toObject(),
         username: username || '',
@@ -375,36 +413,46 @@ export class ThoughtsService {
   // Hide thoughts post
   async hidePost(postId: string): Promise<any> {
     console.log(`[DEBUG] Hiding thoughts post with ID: ${postId}`);
-    
-    const post = await this.thoughtsModel.findOneAndUpdate(
-      { _id: postId, isDeleted: { $ne: 1 } },
-      { isHidden: 1 }, 
-      { new: true }
-    ).exec();
-    
+
+    const post = await this.thoughtsModel
+      .findOneAndUpdate(
+        { _id: postId, isDeleted: { $ne: 1 } },
+        { isHidden: 1 },
+        { new: true },
+      )
+      .exec();
+
     if (post) {
-      console.log(`[DEBUG] Thoughts post hidden successfully. isHidden: ${post.isHidden}`);
+      console.log(
+        `[DEBUG] Thoughts post hidden successfully. isHidden: ${post.isHidden}`,
+      );
     } else {
       console.log(`[DEBUG] Thoughts post not found with ID: ${postId}`);
     }
-    
+
     return post;
   }
 
   // Get thoughts posts from followers
-  async getFollowerPosts(userId: string, currentUserId?: string): Promise<any[]> {
+  async getFollowerPosts(
+    userId: string,
+    currentUserId?: string,
+  ): Promise<any[]> {
     // Get followers
-    const followers = await this.profileService.getFollowers(userId);
-    
+    const followers = await this.profileService.getFollowing(userId);
+
     // Get thoughts posts by followers
     const thoughtsPosts = await this.getPostsByUserIds(followers);
-    
+
     // Add saved status for each post
     const postsWithSavedStatus = await Promise.all(
       thoughtsPosts.map(async (post) => {
         let isSaved = false;
         if (currentUserId) {
-          isSaved = await this.profileService.isThoughtsPostSaved(currentUserId, post._id.toString());
+          isSaved = await this.profileService.isThoughtsPostSaved(
+            currentUserId,
+            post._id.toString(),
+          );
         }
         return {
           ...post,
@@ -412,14 +460,14 @@ export class ThoughtsService {
         };
       }),
     );
-    
+
     // Sort by creation date (newest first)
     const sortedPosts = postsWithSavedStatus.sort((a, b) => {
       const dateA = new Date(a.createdAt).getTime();
       const dateB = new Date(b.createdAt).getTime();
       return dateB - dateA;
     });
-    
+
     console.log('Follower thoughts posts:', sortedPosts.length);
     return sortedPosts;
   }
@@ -427,22 +475,27 @@ export class ThoughtsService {
   // Get hidden thoughts posts by user ID
   async getHiddenPostsByUserId(userId: string): Promise<any[]> {
     console.log(`[DEBUG] Getting hidden thoughts posts for user: ${userId}`);
-    
-    const posts = await this.thoughtsModel.find({ 
-      userId, 
-      isHidden: 1, 
-      isDeleted: { $ne: 1 } 
-    }).sort({ createdAt: -1 }).lean();
-    
+
+    const posts = await this.thoughtsModel
+      .find({
+        userId,
+        isHidden: 1,
+        isDeleted: { $ne: 1 },
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
     console.log(`[DEBUG] Found ${posts.length} hidden thoughts posts`);
-    
+
     // Attach username and profile image for each post
     const postsWithUserData = await Promise.all(
       posts.map(async (post) => {
         const username = await this.userService.getUsernameById(post.userId);
-        const profile = await this.profileService.getProfileByUserId(post.userId);
+        const profile = await this.profileService.getProfileByUserId(
+          post.userId,
+        );
         const profileImage = profile?.profileImage || '';
-        
+
         return {
           ...post,
           username: username || '',
@@ -451,26 +504,30 @@ export class ThoughtsService {
         };
       }),
     );
-    
+
     return postsWithUserData;
   }
 
   // Unhide thoughts post
   async unhidePost(postId: string): Promise<any> {
     console.log(`[DEBUG] Unhiding thoughts post with ID: ${postId}`);
-    
-    const post = await this.thoughtsModel.findOneAndUpdate(
-      { _id: postId, isDeleted: { $ne: 1 } },
-      { isHidden: 0 }, 
-      { new: true }
-    ).exec();
-    
+
+    const post = await this.thoughtsModel
+      .findOneAndUpdate(
+        { _id: postId, isDeleted: { $ne: 1 } },
+        { isHidden: 0 },
+        { new: true },
+      )
+      .exec();
+
     if (post) {
-      console.log(`[DEBUG] Thoughts post unhidden successfully. isHidden: ${post.isHidden}`);
+      console.log(
+        `[DEBUG] Thoughts post unhidden successfully. isHidden: ${post.isHidden}`,
+      );
     } else {
       console.log(`[DEBUG] Thoughts post not found with ID: ${postId}`);
     }
-    
+
     return post;
   }
 
@@ -484,12 +541,16 @@ export class ThoughtsService {
           isDeleted: { $ne: 1 },
         })
         .lean();
-      
+
       return Promise.all(
         posts.map(async (post) => {
           try {
-            const username = await this.userService.getUsernameById(post.userId);
-            const profile = await this.profileService.getProfileByUserId(post.userId);
+            const username = await this.userService.getUsernameById(
+              post.userId,
+            );
+            const profile = await this.profileService.getProfileByUserId(
+              post.userId,
+            );
             const profileImage = profile?.profileImage || '';
             return {
               ...post,
@@ -498,7 +559,10 @@ export class ThoughtsService {
               postType: 'thoughts',
             };
           } catch (error) {
-            console.error(`Error fetching user data for post ${post._id}:`, error);
+            console.error(
+              `Error fetching user data for post ${post._id}:`,
+              error,
+            );
             return {
               ...post,
               username: '',

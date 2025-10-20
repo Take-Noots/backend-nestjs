@@ -13,7 +13,7 @@ import {
   Query,
   UseGuards,
   HttpException,
-  HttpStatus
+  HttpStatus,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AdminGuard } from '../guards/admin.guard';
@@ -36,27 +36,31 @@ export class AdminDashboardController {
     private readonly postReportService: PostReportService,
     private readonly userService: UserService,
     private readonly notificationService: NotificationService,
-    private readonly advertisementService: AdvertisementService
+    private readonly advertisementService: AdvertisementService,
   ) {}
 
   // ==================== PUBLIC ROUTES (NO GUARD) ====================
-  
+
   // Login Page (PUBLIC - No Guard)
   @Get('login')
   @Render('admin/login')
   async loginPage(@Req() req: Request, @Res() res: Response) {
     try {
       // Check if user is already authenticated
-      const token = req.cookies?.access_token || req.cookies?.admin_refresh_token;
-      
+      const token =
+        req.cookies?.access_token || req.cookies?.admin_refresh_token;
+
       if (token) {
         try {
-          const secret = process.env.ACCESS_TOKEN_SECRET || process.env.JWT_SECRET;
+          const secret =
+            process.env.ACCESS_TOKEN_SECRET || process.env.JWT_SECRET;
           const jwt = require('jsonwebtoken');
           const decoded = jwt.verify(token, secret) as any;
-          
+
           if (decoded.sub) {
-            console.log('👤 User already authenticated, redirecting to dashboard');
+            console.log(
+              '👤 User already authenticated, redirecting to dashboard',
+            );
             return res.redirect('/admin');
           }
         } catch (error) {
@@ -66,15 +70,15 @@ export class AdminDashboardController {
           res.clearCookie('admin_refresh_token');
         }
       }
-      
+
       return {
-        title: 'Admin Login'
+        title: 'Admin Login',
       };
     } catch (error) {
       console.error('❌ Login page error:', error);
       return {
         title: 'Admin Login',
-        error: 'Login system error'
+        error: 'Login system error',
       };
     }
   }
@@ -83,39 +87,44 @@ export class AdminDashboardController {
   @Post('login')
   async handleLogin(
     @Body() loginData: { email: string; password: string },
-    @Res() res: Response
+    @Res() res: Response,
   ) {
     try {
       console.log('🔐 Admin login attempt for:', loginData.email);
-      
+
       // Validate input
       if (!loginData.email || !loginData.password) {
-        return res.render('admin/login', { 
+        return res.render('admin/login', {
           title: 'Admin Login',
-          error: 'Email and password are required'
+          error: 'Email and password are required',
         });
       }
 
       // Use AuthService to authenticate
-      const [user, accessToken, refreshToken] = await this.authService.login(loginData);
+      const [user, accessToken, refreshToken] =
+        await this.authService.login(loginData);
 
-      console.log('👤 User authenticated:', { id: user._id, email: user.email, role: user.role });
+      console.log('👤 User authenticated:', {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+      });
 
       // Check if user has admin/moderator privileges
       if (user.role !== 'admin' && user.role !== 'moderator') {
         console.log('❌ Access denied - insufficient privileges:', user.role);
-        return res.render('admin/login', { 
+        return res.render('admin/login', {
           title: 'Admin Login',
-          error: 'Access denied. Admin or Moderator privileges required.'
+          error: 'Access denied. Admin or Moderator privileges required.',
         });
       }
 
       // Check if user is banned
       if (user.isBlocked) {
         console.log('❌ Account blocked:', user.email);
-        return res.render('admin/login', { 
+        return res.render('admin/login', {
           title: 'Admin Login',
-          error: 'Account is blocked. Contact administrator.'
+          error: 'Account is blocked. Contact administrator.',
         });
       }
 
@@ -127,26 +136,25 @@ export class AdminDashboardController {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 4 * 60 * 60 * 1000 // 4 hours for admin sessions (longer than normal users)
+        maxAge: 4 * 60 * 60 * 1000, // 4 hours for admin sessions (longer than normal users)
       });
 
       res.cookie('admin_refresh_token', refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days for admin refresh tokens
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days for admin refresh tokens
       });
 
       console.log('🏠 Redirecting to dashboard...');
       // Redirect to admin dashboard
       res.redirect('/admin');
-      
     } catch (error) {
       console.error('❌ Admin login failed:', error.message);
-      
+
       // Handle specific error types
       let errorMessage = 'Invalid email or password';
-      
+
       if (error.message.includes('User not found')) {
         errorMessage = 'Invalid email or password';
       } else if (error.message.includes('Invalid password')) {
@@ -154,10 +162,10 @@ export class AdminDashboardController {
       } else if (error.message.includes('blocked')) {
         errorMessage = 'Account is blocked';
       }
-      
-      res.render('admin/login', { 
+
+      res.render('admin/login', {
         title: 'Admin Login',
-        error: errorMessage
+        error: errorMessage,
       });
     }
   }
@@ -167,11 +175,11 @@ export class AdminDashboardController {
   async logout(@Res() res: Response) {
     try {
       console.log('🚪 Admin logout');
-      
+
       // Clear all admin cookies
       res.clearCookie('access_token');
       res.clearCookie('admin_refresh_token');
-      
+
       // Redirect to login page
       res.redirect('/admin/login');
     } catch (error) {
@@ -189,20 +197,31 @@ export class AdminDashboardController {
       const refreshToken = req.cookies?.admin_refresh_token;
       if (!refreshToken) {
         console.log('❌ No refresh token found');
-        return res.status(401).json({ success: false, message: 'No refresh token' });
+        return res
+          .status(401)
+          .json({ success: false, message: 'No refresh token' });
       }
 
       // Verify refresh token
       const secret = process.env.ACCESS_TOKEN_SECRET || process.env.JWT_SECRET;
-      const decoded = require('jsonwebtoken').verify(refreshToken, secret) as any;
+      const decoded = require('jsonwebtoken').verify(
+        refreshToken,
+        secret,
+      ) as any;
 
       console.log('👤 Refresh token valid for user:', decoded.sub);
 
       // Get user and check permissions
       const user = await this.userService.findById(decoded.sub);
-      if (!user || (user.role !== 'admin' && user.role !== 'moderator') || user.isBlocked) {
+      if (
+        !user ||
+        (user.role !== 'admin' && user.role !== 'moderator') ||
+        user.isBlocked
+      ) {
         console.log('❌ User not valid for refresh');
-        return res.status(401).json({ success: false, message: 'Invalid user' });
+        return res
+          .status(401)
+          .json({ success: false, message: 'Invalid user' });
       }
 
       // Generate new tokens directly
@@ -211,10 +230,10 @@ export class AdminDashboardController {
         {
           sub: user._id,
           email: user.email,
-          role: user.role
+          role: user.role,
         },
         secret,
-        { expiresIn: '4h' }
+        { expiresIn: '2d' },
       );
 
       const newRefreshToken = jwt.sign(
@@ -222,10 +241,10 @@ export class AdminDashboardController {
           sub: user._id,
           email: user.email,
           role: user.role,
-          type: 'refresh'
+          type: 'refresh',
         },
         secret,
-        { expiresIn: '30d' }
+        { expiresIn: '30d' },
       );
 
       // Set new cookies
@@ -233,22 +252,23 @@ export class AdminDashboardController {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 4 * 60 * 60 * 1000 // 4 hours
+        maxAge: 2 * 24 * 60 * 60 * 1000, // 2 days
       });
 
       res.cookie('admin_refresh_token', newRefreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       });
 
       console.log('✅ Tokens refreshed successfully for:', user.email);
       return res.json({ success: true, message: 'Tokens refreshed' });
-
     } catch (error) {
       console.error('❌ Token refresh failed:', error.message);
-      return res.status(401).json({ success: false, message: 'Token refresh failed' });
+      return res
+        .status(401)
+        .json({ success: false, message: 'Token refresh failed' });
     }
   }
 
@@ -265,7 +285,7 @@ export class AdminDashboardController {
       return {
         title: 'Admin Dashboard',
         user: req['user'],
-        data: dashboardData
+        data: dashboardData,
       };
     } catch (error) {
       console.error('❌ Dashboard error:', error);
@@ -273,7 +293,7 @@ export class AdminDashboardController {
         title: 'Admin Dashboard',
         user: req['user'],
         error: 'Failed to load dashboard data',
-        data: null
+        data: null,
       };
     }
   }
@@ -288,10 +308,17 @@ export class AdminDashboardController {
     @Query('role') role?: string,
     @Query('search') search?: string,
     @Query('status') status?: string,
-    @Query('dateRange') dateRange?: string
+    @Query('dateRange') dateRange?: string,
   ) {
     try {
-      const usersData = await this.adminService.getAllUsers(page, 20, role, search, status, dateRange);
+      const usersData = await this.adminService.getAllUsers(
+        page,
+        20,
+        role,
+        search,
+        status,
+        dateRange,
+      );
       return {
         title: 'User Management',
         user: req['user'],
@@ -300,7 +327,7 @@ export class AdminDashboardController {
         currentRole: role,
         searchQuery: search,
         currentStatus: status,
-        currentDateRange: dateRange
+        currentDateRange: dateRange,
       };
     } catch (error) {
       return {
@@ -312,7 +339,7 @@ export class AdminDashboardController {
         currentRole: role,
         searchQuery: search,
         currentStatus: status,
-        currentDateRange: dateRange
+        currentDateRange: dateRange,
       };
     }
   }
@@ -328,7 +355,7 @@ export class AdminDashboardController {
     @Query('status') status?: string,
     @Query('dateRange') dateRange?: string,
     @Query('engagement') engagement?: string,
-    @Query('reported') reported?: boolean
+    @Query('reported') reported?: boolean,
   ) {
     try {
       console.log('📊 Loading posts page...');
@@ -337,7 +364,7 @@ export class AdminDashboardController {
         status,
         dateRange,
         engagement,
-        reported: reported || (status === 'reported')
+        reported: reported || status === 'reported',
       });
       console.log('📈 Posts found:', postsData.posts.length);
 
@@ -346,11 +373,11 @@ export class AdminDashboardController {
         user: req['user'],
         posts: postsData.posts,
         pagination: postsData.pagination,
-        showReported: reported || (status === 'reported'),
+        showReported: reported || status === 'reported',
         searchQuery: search,
         currentStatus: status,
         currentDateRange: dateRange,
-        currentEngagement: engagement
+        currentEngagement: engagement,
       };
     } catch (error) {
       console.error('❌ Failed to load posts:', error);
@@ -363,7 +390,7 @@ export class AdminDashboardController {
         searchQuery: search,
         currentStatus: status,
         currentDateRange: dateRange,
-        currentEngagement: engagement
+        currentEngagement: engagement,
       };
     }
   }
@@ -376,17 +403,22 @@ export class AdminDashboardController {
     @Req() req: Request,
     @Query('page') page: number = 1,
     @Query('status') status?: string,
-    @Query('category') category?: string
+    @Query('category') category?: string,
   ) {
     try {
-      const reportsData = await this.adminService.getReports(page, 20, status, category);
+      const reportsData = await this.adminService.getReports(
+        page,
+        20,
+        status,
+        category,
+      );
       return {
         title: 'Reports Management',
         user: req['user'],
         reports: reportsData.reports,
         pagination: reportsData.pagination,
         currentStatus: status,
-        currentCategory: category
+        currentCategory: category,
       };
     } catch (error) {
       return {
@@ -396,7 +428,7 @@ export class AdminDashboardController {
         reports: [],
         pagination: null,
         currentStatus: status,
-        currentCategory: category
+        currentCategory: category,
       };
     }
   }
@@ -411,14 +443,14 @@ export class AdminDashboardController {
       return {
         title: 'Advertisements Management',
         user: req['user'],
-        advertisements: advertisements
+        advertisements: advertisements,
       };
     } catch (error) {
       return {
         title: 'Advertisements Management',
         user: req['user'],
         error: 'Failed to load advertisements: ' + error.message,
-        advertisements: []
+        advertisements: [],
       };
     }
   }
@@ -455,17 +487,28 @@ export class AdminDashboardController {
       console.log(`📝 Current status: ${existingAd.status}, updating to: 1`);
 
       // Update the status
-      const advertisement = await this.advertisementService.updateById(id, { status: 1 });
+      const advertisement = await this.advertisementService.updateById(id, {
+        status: 1,
+      });
       if (!advertisement) {
         console.log(`❌ Failed to update advertisement: ${id}`);
         return { success: false, message: 'Failed to update advertisement' };
       }
 
-      console.log(`✅ Advertisement approved successfully: ${id}, new status: ${advertisement.status}`);
-      return { success: true, message: 'Advertisement approved successfully', advertisement };
+      console.log(
+        `✅ Advertisement approved successfully: ${id}, new status: ${advertisement.status}`,
+      );
+      return {
+        success: true,
+        message: 'Advertisement approved successfully',
+        advertisement,
+      };
     } catch (error) {
       console.error(`❌ Error approving advertisement ${id}:`, error);
-      return { success: false, message: 'Error approving advertisement: ' + error.message };
+      return {
+        success: false,
+        message: 'Error approving advertisement: ' + error.message,
+      };
     }
   }
 
@@ -486,17 +529,28 @@ export class AdminDashboardController {
       console.log(`📝 Current status: ${existingAd.status}, updating to: 2`);
 
       // Update the status
-      const advertisement = await this.advertisementService.updateById(id, { status: 2 });
+      const advertisement = await this.advertisementService.updateById(id, {
+        status: 2,
+      });
       if (!advertisement) {
         console.log(`❌ Failed to update advertisement: ${id}`);
         return { success: false, message: 'Failed to update advertisement' };
       }
 
-      console.log(`✅ Advertisement rejected successfully: ${id}, new status: ${advertisement.status}`);
-      return { success: true, message: 'Advertisement rejected successfully', advertisement };
+      console.log(
+        `✅ Advertisement rejected successfully: ${id}, new status: ${advertisement.status}`,
+      );
+      return {
+        success: true,
+        message: 'Advertisement rejected successfully',
+        advertisement,
+      };
     } catch (error) {
       console.error(`❌ Error rejecting advertisement ${id}:`, error);
-      return { success: false, message: 'Error rejecting advertisement: ' + error.message };
+      return {
+        success: false,
+        message: 'Error rejecting advertisement: ' + error.message,
+      };
     }
   }
 
@@ -522,19 +576,23 @@ export class AdminDashboardController {
   async fanbasesPage(
     @Req() req: Request,
     @Query('page') page: number = 1,
-    @Query('status') status?: string
+    @Query('status') status?: string,
   ) {
     try {
       console.log('📊 Loading fanbases page...');
-      
+
       // Use FanbaseService directly instead of AdminService
       const skip = (page - 1) * 20;
-      const fanbases = await this.fanbaseService.findAllWithPagination({}, skip, 20);
+      const fanbases = await this.fanbaseService.findAllWithPagination(
+        {},
+        skip,
+        20,
+      );
       const total = await this.fanbaseService.countFanbases({});
-      
+
       console.log('📈 Fanbases found:', fanbases.length);
       console.log('📊 Total fanbases:', total);
-      
+
       return {
         title: 'Fanbases Management',
         user: req['user'],
@@ -543,9 +601,9 @@ export class AdminDashboardController {
           current: page,
           total: Math.ceil(total / 20),
           totalFanbases: total,
-          limit: 20
+          limit: 20,
         },
-        currentStatus: status
+        currentStatus: status,
       };
     } catch (error) {
       console.error('❌ Failed to load fanbases:', error);
@@ -554,7 +612,7 @@ export class AdminDashboardController {
         user: req['user'],
         error: 'Failed to load fanbases: ' + error.message,
         fanbases: [],
-        pagination: null
+        pagination: null,
       };
     }
   }
@@ -565,7 +623,7 @@ export class AdminDashboardController {
   @Render('admin/analytics')
   async analyticsPage(
     @Req() req: Request,
-    @Query('period') period: string = '7d'
+    @Query('period') period: string = '7d',
   ) {
     try {
       const userMetrics = await this.adminService.getUserMetrics();
@@ -580,7 +638,7 @@ export class AdminDashboardController {
         contentMetrics,
         reportMetrics,
         growthMetrics,
-        currentPeriod: period
+        currentPeriod: period,
       };
     } catch (error) {
       return {
@@ -590,7 +648,7 @@ export class AdminDashboardController {
         userMetrics: null,
         contentMetrics: null,
         reportMetrics: null,
-        growthMetrics: null
+        growthMetrics: null,
       };
     }
   }
@@ -602,7 +660,7 @@ export class AdminDashboardController {
   async settingsPage(@Req() req: Request) {
     return {
       title: 'Admin Settings',
-      user: req['user']
+      user: req['user'],
     };
   }
 
@@ -614,19 +672,33 @@ export class AdminDashboardController {
     @Query('search') search?: string,
     @Query('status') status?: string,
     @Query('dateRange') dateRange?: string,
-    @Res() res?: Response
+    @Res() res?: Response,
   ) {
     try {
       // Get all users with current filters (no pagination for export)
-      const usersData = await this.adminService.getAllUsers(1, 10000, role, search, status, dateRange);
+      const usersData = await this.adminService.getAllUsers(
+        1,
+        10000,
+        role,
+        search,
+        status,
+        dateRange,
+      );
 
       // Create CSV content
-      const csvHeader = 'ID,Username,Email,Role,Status,Created At,Last Active\n';
-      const csvData = usersData.users.map(user => {
-        const lastActiveStr = user.lastActive ? new Date(user.lastActive).toISOString() : 'Never';
-        const createdAtStr = user.createdAt ? new Date(user.createdAt).toISOString() : 'Unknown';
-        return `"${user.id}","${user.username || ''}","${user.email}","${user.role}","${user.isBlocked ? 'Blocked' : 'Active'}","${createdAtStr}","${lastActiveStr}"`;
-      }).join('\n');
+      const csvHeader =
+        'ID,Username,Email,Role,Status,Created At,Last Active\n';
+      const csvData = usersData.users
+        .map((user) => {
+          const lastActiveStr = user.lastActive
+            ? new Date(user.lastActive).toISOString()
+            : 'Never';
+          const createdAtStr = user.createdAt
+            ? new Date(user.createdAt).toISOString()
+            : 'Unknown';
+          return `"${user.id}","${user.username || ''}","${user.email}","${user.role}","${user.isBlocked ? 'Blocked' : 'Active'}","${createdAtStr}","${lastActiveStr}"`;
+        })
+        .join('\n');
 
       const csvContent = csvHeader + csvData;
 
@@ -634,7 +706,7 @@ export class AdminDashboardController {
         // Set headers for file download
         res.set({
           'Content-Type': 'text/csv',
-          'Content-Disposition': `attachment; filename="users-export-${new Date().toISOString().split('T')[0]}.csv"`
+          'Content-Disposition': `attachment; filename="users-export-${new Date().toISOString().split('T')[0]}.csv"`,
         });
 
         return res.send(csvContent);
@@ -644,7 +716,7 @@ export class AdminDashboardController {
     } catch (error) {
       throw new HttpException(
         `Failed to export users: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -652,20 +724,24 @@ export class AdminDashboardController {
   // User Detail API - Returns JSON only (used by user modal)
   @Get('users/:id')
   @UseGuards(AdminGuard)
-  async getUserDetails(@Req() req: Request, @Res() res: Response, @Param('id') userId: string) {
+  async getUserDetails(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Param('id') userId: string,
+  ) {
     try {
       const user = await this.adminService.getUserById(userId);
       return res.json(user);
     } catch (error) {
       return res.status(404).json({
         error: 'User not found',
-        message: error.message
+        message: error.message,
       });
     }
   }
 
   // ==================== API ROUTES FOR ADMIN OPERATIONS ====================
-  
+
   // User Management API
   @Post('users')
   @UseGuards(AdminGuard)
@@ -675,7 +751,7 @@ export class AdminDashboardController {
         email: userData.email,
         username: userData.username,
         password: userData.password,
-        role: userData.role || 'user'
+        role: userData.role || 'user',
       });
 
       return {
@@ -684,13 +760,13 @@ export class AdminDashboardController {
           id: createdUser._id,
           email: createdUser.email,
           username: createdUser.username,
-          role: createdUser.role
-        }
+          role: createdUser.role,
+        },
       };
     } catch (error) {
       throw new HttpException(
         `Failed to create user: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -709,12 +785,12 @@ export class AdminDashboardController {
 
       return {
         message: 'User updated successfully',
-        user: updatedUser
+        user: updatedUser,
       };
     } catch (error) {
       throw new HttpException(
         `Failed to update user: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -729,15 +805,19 @@ export class AdminDashboardController {
       }
 
       // Delete user
-      await this.adminService.deleteUser(id, deleteData.reason, deleteData.deletedBy);
+      await this.adminService.deleteUser(
+        id,
+        deleteData.reason,
+        deleteData.deletedBy,
+      );
 
       return {
-        message: 'User deleted successfully'
+        message: 'User deleted successfully',
       };
     } catch (error) {
       throw new HttpException(
         `Failed to delete user: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -750,7 +830,7 @@ export class AdminDashboardController {
     } catch (error) {
       throw new HttpException(
         `Failed to ban user: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -763,7 +843,7 @@ export class AdminDashboardController {
     } catch (error) {
       throw new HttpException(
         `Failed to unban user: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -776,7 +856,7 @@ export class AdminDashboardController {
     } catch (error) {
       throw new HttpException(
         `Failed to promote user: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -789,7 +869,7 @@ export class AdminDashboardController {
     } catch (error) {
       throw new HttpException(
         `Failed to demote user: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -799,11 +879,15 @@ export class AdminDashboardController {
   @UseGuards(AdminGuard)
   async deletePost(@Param('id') id: string, @Body() deleteData: any) {
     try {
-      return await this.adminService.deletePost(id, deleteData.reason, deleteData.deletedBy);
+      return await this.adminService.deletePost(
+        id,
+        deleteData.reason,
+        deleteData.deletedBy,
+      );
     } catch (error) {
       throw new HttpException(
         `Failed to delete post: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -816,7 +900,7 @@ export class AdminDashboardController {
     } catch (error) {
       throw new HttpException(
         `Failed to fetch post: ${error.message}`,
-        HttpStatus.NOT_FOUND
+        HttpStatus.NOT_FOUND,
       );
     }
   }
@@ -830,20 +914,27 @@ export class AdminDashboardController {
     } catch (error) {
       throw new HttpException(
         `Failed to resolve report: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   @Post('reports/:id/dismiss')
   @UseGuards(AdminGuard)
-  async dismissReport(@Param('id') id: string, @Body() dismissData: { reason: string; reviewedBy: string }) {
+  async dismissReport(
+    @Param('id') id: string,
+    @Body() dismissData: { reason: string; reviewedBy: string },
+  ) {
     try {
-      return await this.adminService.dismissReport(id, dismissData.reviewedBy, dismissData.reason);
+      return await this.adminService.dismissReport(
+        id,
+        dismissData.reviewedBy,
+        dismissData.reason,
+      );
     } catch (error) {
       throw new HttpException(
         `Failed to dismiss report: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -856,13 +947,13 @@ export class AdminDashboardController {
       // Admin creates fanbase - use a default admin user ID or extract from request
       // You'll need to modify this based on how you want to handle admin-created fanbases
       const adminUserId = fanbaseData.createdUserId || 'admin-user-id'; // Replace with actual admin user ID
-      
+
       // Use FanbaseService with required userId parameter
       return await this.fanbaseService.create(fanbaseData, adminUserId);
     } catch (error) {
       throw new HttpException(
         `Failed to create fanbase: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -879,7 +970,7 @@ export class AdminDashboardController {
     } catch (error) {
       throw new HttpException(
         `Failed to fetch fanbase: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -891,13 +982,19 @@ export class AdminDashboardController {
   async getReportById(@Param('id') id: string) {
     try {
       const report = await this.postReportService.findReportById(id);
-      console.log(`🔍 REPORT DEBUG: Report ID: ${id}, reportedPostId: ${report.reportedPostId}`);
+      console.log(
+        `🔍 REPORT DEBUG: Report ID: ${id}, reportedPostId: ${report.reportedPostId}`,
+      );
 
       // Get additional information about the report
       const [reporterInfo, reportedUserInfo, postInfo] = await Promise.all([
-        this.userService.getUsernameById(report.reporterId).catch(() => 'Unknown'),
-        this.userService.getUsernameById(report.reportedUserId).catch(() => 'Unknown'),
-        this.adminService.getPostById(report.reportedPostId).catch(() => null)
+        this.userService
+          .getUsernameById(report.reporterId)
+          .catch(() => 'Unknown'),
+        this.userService
+          .getUsernameById(report.reportedUserId)
+          .catch(() => 'Unknown'),
+        this.adminService.getPostById(report.reportedPostId).catch(() => null),
       ]);
 
       return {
@@ -913,12 +1010,12 @@ export class AdminDashboardController {
         adminNotes: report.adminNotes,
         reviewedBy: report.reviewedBy,
         reviewedAt: report.reviewedAt,
-        createdAt: (report as any).createdAt || report.reportTime
+        createdAt: (report as any).createdAt || report.reportTime,
       };
     } catch (error) {
       throw new HttpException(
         `Failed to fetch report: ${error.message}`,
-        HttpStatus.NOT_FOUND
+        HttpStatus.NOT_FOUND,
       );
     }
   }
@@ -931,9 +1028,16 @@ export class AdminDashboardController {
     @Query('role') role?: string,
     @Query('search') search?: string,
     @Query('status') status?: string,
-    @Query('dateRange') dateRange?: string
+    @Query('dateRange') dateRange?: string,
   ) {
-    return await this.adminService.getAllUsers(page, limit, role, search, status, dateRange);
+    return await this.adminService.getAllUsers(
+      page,
+      limit,
+      role,
+      search,
+      status,
+      dateRange,
+    );
   }
 
   @Get('api/dashboard')
@@ -965,13 +1069,13 @@ export class AdminDashboardController {
       return {
         total: allPosts.length,
         reported: 0, // Since songPost model doesn't have isReported field
-        popular: allPosts.filter(p => (p.likes || 0) > 10).length,
-        today: allPosts.filter(p => new Date(p.createdAt) >= today).length
+        popular: allPosts.filter((p) => (p.likes || 0) > 10).length,
+        today: allPosts.filter((p) => new Date(p.createdAt) >= today).length,
       };
     } catch (error) {
       throw new HttpException(
         `Failed to fetch post stats: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -986,12 +1090,12 @@ export class AdminDashboardController {
         total: userMetrics.total,
         active: userMetrics.total - userMetrics.banned, // Active users = total - banned
         moderators: userMetrics.moderators,
-        banned: userMetrics.banned
+        banned: userMetrics.banned,
       };
     } catch (error) {
       throw new HttpException(
         `Failed to fetch user stats: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -1000,181 +1104,237 @@ export class AdminDashboardController {
 
   @Post('reports/:id/approve')
   @UseGuards(AdminGuard)
-  async approveReport(@Param('id') reportId: string, @Body() body: { adminNotes?: string }, @Req() req: Request) {
+  async approveReport(
+    @Param('id') reportId: string,
+    @Body() body: { adminNotes?: string },
+    @Req() req: Request,
+  ) {
     try {
       if (!req['user']?._id) {
-        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+        throw new HttpException(
+          'User not authenticated',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
 
       const report = await this.postReportService.reviewReport(
         reportId,
         { status: 'approved', adminNotes: body.adminNotes },
-        req['user']._id
+        req['user']._id,
       );
 
       return {
         message: 'Report approved successfully',
-        report: report
+        report: report,
       };
     } catch (error) {
       throw new HttpException(
         `Failed to approve report: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   @Post('reports/:id/reject')
   @UseGuards(AdminGuard)
-  async rejectReport(@Param('id') reportId: string, @Body() body: { adminNotes?: string }, @Req() req: Request) {
+  async rejectReport(
+    @Param('id') reportId: string,
+    @Body() body: { adminNotes?: string },
+    @Req() req: Request,
+  ) {
     try {
       if (!req['user']?._id) {
-        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+        throw new HttpException(
+          'User not authenticated',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
 
       const report = await this.postReportService.reviewReport(
         reportId,
         { status: 'rejected', adminNotes: body.adminNotes },
-        req['user']._id
+        req['user']._id,
       );
 
       return {
         message: 'Report rejected successfully',
-        report: report
+        report: report,
       };
     } catch (error) {
       throw new HttpException(
         `Failed to reject report: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
-
   @Post('api/reports/:id/delete-and-warn')
   @UseGuards(AdminGuard)
-  async deletePostAndWarnUser(@Param('id') reportId: string, @Body() body: { postId: string; userId: string; warningMessage: string; adminNotes: string }, @Req() req: Request) {
+  async deletePostAndWarnUser(
+    @Param('id') reportId: string,
+    @Body()
+    body: {
+      postId: string;
+      userId: string;
+      warningMessage: string;
+      adminNotes: string;
+    },
+    @Req() req: Request,
+  ) {
     try {
       if (!req['user']?._id) {
-        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+        throw new HttpException(
+          'User not authenticated',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
 
       // Delete the post
-      await this.adminService.deletePost(body.postId, `Report violation: ${body.warningMessage}`, req['user']._id);
+      await this.adminService.deletePost(
+        body.postId,
+        `Report violation: ${body.warningMessage}`,
+        req['user']._id,
+      );
 
       // Send warning notification to user
       await this.notificationService.createAdminWarningNotification(
         body.userId,
         body.warningMessage,
-        req['user']?.username || 'Admin'
+        req['user']?.username || 'Admin',
       );
 
       // Update the report status
       const report = await this.postReportService.reviewReport(
         reportId,
         { status: 'approved', adminNotes: body.adminNotes },
-        req['user']._id
+        req['user']._id,
       );
 
       return {
         message: 'Post deleted and user warned successfully',
-        report: report
+        report: report,
       };
     } catch (error) {
       throw new HttpException(
         `Failed to delete post and warn user: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   @Post('api/reports/:id/delete-post')
   @UseGuards(AdminGuard)
-  async deletePostOnly(@Param('id') reportId: string, @Body() body: { postId: string; adminNotes: string }, @Req() req: Request) {
+  async deletePostOnly(
+    @Param('id') reportId: string,
+    @Body() body: { postId: string; adminNotes: string },
+    @Req() req: Request,
+  ) {
     try {
       if (!req['user']?._id) {
-        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+        throw new HttpException(
+          'User not authenticated',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
 
       // Delete the post
-      await this.adminService.deletePost(body.postId, 'Content violation', req['user']._id);
+      await this.adminService.deletePost(
+        body.postId,
+        'Content violation',
+        req['user']._id,
+      );
 
       // Update the report status
       const report = await this.postReportService.reviewReport(
         reportId,
         { status: 'approved', adminNotes: body.adminNotes },
-        req['user']._id
+        req['user']._id,
       );
 
       return {
         message: 'Post deleted successfully',
-        report: report
+        report: report,
       };
     } catch (error) {
       throw new HttpException(
         `Failed to delete post: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   @Post('api/reports/:id/warn-user')
   @UseGuards(AdminGuard)
-  async warnUserOnly(@Param('id') reportId: string, @Body() body: { userId: string; warningMessage: string; adminNotes: string }, @Req() req: Request) {
+  async warnUserOnly(
+    @Param('id') reportId: string,
+    @Body()
+    body: { userId: string; warningMessage: string; adminNotes: string },
+    @Req() req: Request,
+  ) {
     try {
       if (!req['user']?._id) {
-        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+        throw new HttpException(
+          'User not authenticated',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
 
       // Send warning notification to user
       await this.notificationService.createAdminWarningNotification(
         body.userId,
         body.warningMessage,
-        req['user']?.username || 'Admin'
+        req['user']?.username || 'Admin',
       );
 
       // Update the report status
       const report = await this.postReportService.reviewReport(
         reportId,
         { status: 'approved', adminNotes: body.adminNotes },
-        req['user']._id
+        req['user']._id,
       );
 
       return {
         message: 'User warned successfully',
-        report: report
+        report: report,
       };
     } catch (error) {
       throw new HttpException(
         `Failed to warn user: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   @Post('api/reports/:id/dismiss')
   @UseGuards(AdminGuard)
-  async dismissReportNew(@Param('id') reportId: string, @Body() body: { adminNotes: string }, @Req() req: Request) {
+  async dismissReportNew(
+    @Param('id') reportId: string,
+    @Body() body: { adminNotes: string },
+    @Req() req: Request,
+  ) {
     try {
       if (!req['user']?._id) {
-        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+        throw new HttpException(
+          'User not authenticated',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
 
       // Update the report status to rejected/dismissed
       const report = await this.postReportService.reviewReport(
         reportId,
         { status: 'rejected', adminNotes: body.adminNotes },
-        req['user']._id
+        req['user']._id,
       );
 
       return {
         message: 'Report dismissed successfully',
-        report: report
+        report: report,
       };
     } catch (error) {
       throw new HttpException(
         `Failed to dismiss report: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -1186,12 +1346,12 @@ export class AdminDashboardController {
       const reports = await this.postReportService.findAllReports();
       return {
         success: true,
-        data: reports
+        data: reports,
       };
     } catch (error) {
       throw new HttpException(
         `Failed to fetch reports: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -1203,16 +1363,15 @@ export class AdminDashboardController {
       const reports = await this.postReportService.getPendingReports();
       return {
         success: true,
-        data: reports
+        data: reports,
       };
     } catch (error) {
       throw new HttpException(
         `Failed to fetch pending reports: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
-
 
   @Get('api/reports/post/:postId')
   @UseGuards(AdminGuard)
@@ -1221,96 +1380,110 @@ export class AdminDashboardController {
       const reports = await this.postReportService.getReportsByPostId(postId);
       return {
         success: true,
-        data: reports
+        data: reports,
       };
     } catch (error) {
       throw new HttpException(
         `Failed to fetch post reports: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   @Post('reports/post/:postId/approve')
   @UseGuards(AdminGuard)
-  async approvePostReports(@Param('postId') postId: string, @Body() body: { adminNotes?: string }, @Req() req: Request) {
+  async approvePostReports(
+    @Param('postId') postId: string,
+    @Body() body: { adminNotes?: string },
+    @Req() req: Request,
+  ) {
     try {
       if (!req['user']?._id) {
-        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+        throw new HttpException(
+          'User not authenticated',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
 
       // Get all pending reports for this post
       const reports = await this.postReportService.getReportsByPostId(postId);
-      const pendingReports = reports.filter(r => r.status === 'pending');
+      const pendingReports = reports.filter((r) => r.status === 'pending');
 
       if (pendingReports.length === 0) {
         return {
           message: 'No pending reports found for this post',
-          approved: 0
+          approved: 0,
         };
       }
 
       // Approve all pending reports for the post
-      const approvalPromises = pendingReports.map(report =>
+      const approvalPromises = pendingReports.map((report) =>
         this.postReportService.reviewReport(
           (report as any)._id.toString(),
           { status: 'approved', adminNotes: body.adminNotes },
-          req['user']?._id || 'admin'
-        )
+          req['user']?._id || 'admin',
+        ),
       );
 
       await Promise.all(approvalPromises);
 
       return {
         message: `${pendingReports.length} report(s) approved successfully`,
-        approved: pendingReports.length
+        approved: pendingReports.length,
       };
     } catch (error) {
       throw new HttpException(
         `Failed to approve post reports: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   @Post('reports/post/:postId/dismiss')
   @UseGuards(AdminGuard)
-  async dismissPostReports(@Param('postId') postId: string, @Body() body: { adminNotes?: string }, @Req() req: Request) {
+  async dismissPostReports(
+    @Param('postId') postId: string,
+    @Body() body: { adminNotes?: string },
+    @Req() req: Request,
+  ) {
     try {
       if (!req['user']?._id) {
-        throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
+        throw new HttpException(
+          'User not authenticated',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
 
       // Get all pending reports for this post
       const reports = await this.postReportService.getReportsByPostId(postId);
-      const pendingReports = reports.filter(r => r.status === 'pending');
+      const pendingReports = reports.filter((r) => r.status === 'pending');
 
       if (pendingReports.length === 0) {
         return {
           message: 'No pending reports found for this post',
-          dismissed: 0
+          dismissed: 0,
         };
       }
 
       // Dismiss all pending reports for the post
-      const dismissalPromises = pendingReports.map(report =>
+      const dismissalPromises = pendingReports.map((report) =>
         this.postReportService.reviewReport(
           (report as any)._id.toString(),
           { status: 'rejected', adminNotes: body.adminNotes },
-          req['user']?._id || 'admin'
-        )
+          req['user']?._id || 'admin',
+        ),
       );
 
       await Promise.all(dismissalPromises);
 
       return {
         message: `${pendingReports.length} report(s) dismissed successfully`,
-        dismissed: pendingReports.length
+        dismissed: pendingReports.length,
       };
     } catch (error) {
       throw new HttpException(
         `Failed to dismiss post reports: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -1320,15 +1493,16 @@ export class AdminDashboardController {
   @UseGuards(AdminGuard)
   async exportAnalyticsReport(
     @Query('period') period: string = '30d',
-    @Res() res: Response
+    @Res() res: Response,
   ) {
     try {
-      const [userMetrics, contentMetrics, reportMetrics, growthMetrics] = await Promise.all([
-        this.adminService.getUserMetrics(),
-        this.adminService.getContentMetrics(),
-        this.adminService.getReportMetrics(),
-        this.adminService.getGrowthMetrics(period)
-      ]);
+      const [userMetrics, contentMetrics, reportMetrics, growthMetrics] =
+        await Promise.all([
+          this.adminService.getUserMetrics(),
+          this.adminService.getContentMetrics(),
+          this.adminService.getReportMetrics(),
+          this.adminService.getGrowthMetrics(period),
+        ]);
 
       // Generate CSV content
       const csvData: (string | number)[][] = [];
@@ -1336,41 +1510,75 @@ export class AdminDashboardController {
 
       // User Metrics
       csvData.push(['Users', 'Total Users', userMetrics.total || 0, period]);
-      csvData.push(['Users', 'Moderators', userMetrics.moderators || 0, period]);
+      csvData.push([
+        'Users',
+        'Moderators',
+        userMetrics.moderators || 0,
+        period,
+      ]);
       csvData.push(['Users', 'Banned Users', userMetrics.banned || 0, period]);
-      csvData.push(['Users', 'New This Week', userMetrics.newThisWeek || 0, period]);
+      csvData.push([
+        'Users',
+        'New This Week',
+        userMetrics.newThisWeek || 0,
+        period,
+      ]);
 
       // Content Metrics
-      csvData.push(['Content', 'Total Posts', contentMetrics.totalPosts || 0, period]);
-      csvData.push(['Content', 'Total Fanbases', contentMetrics.totalFanbases || 0, period]);
-      csvData.push(['Content', 'Posts Today', contentMetrics.postsToday || 0, period]);
+      csvData.push([
+        'Content',
+        'Total Posts',
+        contentMetrics.totalPosts || 0,
+        period,
+      ]);
+      csvData.push([
+        'Content',
+        'Total Fanbases',
+        contentMetrics.totalFanbases || 0,
+        period,
+      ]);
+      csvData.push([
+        'Content',
+        'Posts Today',
+        contentMetrics.postsToday || 0,
+        period,
+      ]);
 
       // Report Metrics
-      csvData.push(['Reports', 'Total Reports', reportMetrics.total || 0, period]);
+      csvData.push([
+        'Reports',
+        'Total Reports',
+        reportMetrics.total || 0,
+        period,
+      ]);
       if (reportMetrics.byStatus) {
         Object.entries(reportMetrics.byStatus).forEach(([status, count]) => {
-          csvData.push(['Reports', `${status} Reports`, count as number, period]);
+          csvData.push([
+            'Reports',
+            `${status} Reports`,
+            count as number,
+            period,
+          ]);
         });
       }
 
       // Convert to CSV string
       const csvContent = csvData
-        .map(row => row.map(field => `"${field}"`).join(','))
+        .map((row) => row.map((field) => `"${field}"`).join(','))
         .join('\n');
 
       // Set response headers
       res.set({
         'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename="analytics-report-${period}-${new Date().toISOString().split('T')[0]}.csv"`
+        'Content-Disposition': `attachment; filename="analytics-report-${period}-${new Date().toISOString().split('T')[0]}.csv"`,
       });
 
       return res.send(csvContent);
     } catch (error) {
       throw new HttpException(
         `Failed to export analytics: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
-
 }
