@@ -56,7 +56,7 @@ export class SongPostController {
     // set userId from JWT token to the DTO
     createPostDto.userId = user.userId;
 
-    // username will be fetched in the service
+   
     const createdPost = await this.songPostService.create(createPostDto);
 
     return createdPost;
@@ -150,6 +150,24 @@ export class SongPostController {
     }
     console.log('[DEBUG] Controller likeComment: Success');
     return { success: true, data: post };
+  }
+
+  @Delete(':postId/comment/:commentId')
+  @UseGuards(JwtAuthGuard)
+  async deleteComment(
+    @Param('postId') postId: string,
+    @Param('commentId') commentId: string,
+    @JwtUser() user: JwtUserData,
+  ) {
+    const result = await this.songPostService.deleteComment(
+      postId,
+      commentId,
+      user.userId,
+    );
+    if (!result.success) {
+      return { success: false, message: result.message };
+    }
+    return { success: true, data: result.post };
   }
 
   @Get('followers/:userId')

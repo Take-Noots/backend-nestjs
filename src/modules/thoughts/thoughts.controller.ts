@@ -28,6 +28,14 @@ export class ThoughtsController {
     return this.thoughtsService.findById(id);
   }
 
+  // Get thoughts posts by IDs
+  @Post('by-ids')
+  @UseGuards(JwtAuthGuard)
+  async getPostsByIds(@Body() body: { ids: string[] }) {
+    const posts = await this.thoughtsService.getPostsByIds(body.ids);
+    return { posts };
+  }
+
   // Get thoughts posts by user ID (for user profile)
   @Get('user/:userId')
   @UseGuards(JwtAuthGuard)
@@ -90,6 +98,16 @@ export class ThoughtsController {
     return { success: true, data: post };
   }
 
+  @Delete(':id/comments/:commentId')
+  @UseGuards(JwtAuthGuard)
+  async deleteComment(@Param('id') id: string, @Param('commentId') commentId: string, @JwtUser() user: JwtUserData) {
+    const result = await this.thoughtsService.deleteComment(id, commentId, user.userId);
+    if (!result.success) {
+      return { success: false, message: result.message };
+    }
+    return { success: true, data: result.post };
+  }
+
   // Update thoughts post
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
@@ -111,6 +129,23 @@ export class ThoughtsController {
   @Patch(':id/hide')
   hideThoughts(@Param('id') id: string) {
     return this.thoughtsService.hidePost(id);
+  }
+
+  // Unhide thoughts post
+  @Patch(':id/unhide')
+  async unhideThoughts(@Param('id') id: string) {
+    const post = await this.thoughtsService.unhidePost(id);
+    if (!post) {
+      return { success: false, message: 'Post not found' };
+    }
+    return { success: true, message: 'Post unhidden successfully', data: post };
+  }
+
+  // Get hidden thoughts posts by user ID
+  @Get('user/:userId/hidden')
+  async getHiddenThoughtsByUser(@Param('userId') userId: string) {
+    const posts = await this.thoughtsService.getHiddenPostsByUserId(userId);
+    return { success: true, data: posts };
   }
   
   // Delete thoughts post
