@@ -12,6 +12,7 @@ import {
   Request
 } from '@nestjs/common';
 import { AdminService } from '../services/admin.service';
+import { UserService } from '../../user/user.service';
 import { BanUserDto } from '../dto/ban-user.dto';
 import { ResolveReportDTO } from '../../reports/dto/resolve-report.dto';
 import { AdminGuard } from '../guards/admin.guard';
@@ -19,7 +20,10 @@ import { AdminGuard } from '../guards/admin.guard';
 @Controller('admin')
 @UseGuards(AdminGuard)
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly userService: UserService
+  ) {}
 
   // ===== USER MANAGEMENT =====
   @Get('users')
@@ -108,17 +112,13 @@ export class AdminController {
     @Query('limit') limit: number = 10,
     @Query('search') search?: string,
     @Query('status') status?: string,
-    @Query('dateRange') dateRange?: string,
-    @Query('engagement') engagement?: string,
-    @Query('reported') reported?: boolean
+    @Query('userId') userId?: string
   ) {
     try {
       return await this.adminService.getAllPosts(page, limit, {
         search,
         status,
-        dateRange,
-        engagement,
-        reported: reported || (status === 'reported')
+        userId
       });
     } catch (error) {
       throw new HttpException(
@@ -306,6 +306,38 @@ export class AdminController {
     } catch (error) {
       throw new HttpException(
         `Failed to fetch growth metrics: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  // ===== USER SEARCH API =====
+  @Get('api/users/search')
+  async searchUsers(@Query('q') query?: string) {
+    try {
+      if (!query || query.trim().length < 2) {
+        return {
+          success: false,
+          message: 'Query must be at least 2 characters long',
+          users: []
+        };
+      }
+
+      const users = await this.userService.searchUsers(query.trim());
+
+      return {
+        success: true,
+        users: users.map(user => ({
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          lastSeen: user.lastSeen,
+          isOnline: user.isOnline
+        }))
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to search users: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }

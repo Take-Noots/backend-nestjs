@@ -1,11 +1,37 @@
 // src/modules/notification/notification.controller.ts
-import { Controller, Get, Post, Delete, Param, Query, Body, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Query, Body, HttpException, HttpStatus, UseGuards } from '@nestjs/common';
 import { NotificationService } from './notification.service';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { JwtUser, JwtUserData } from '../../common/decorators/jwt-user.decorator';
 
 @Controller('notifications')
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
+  // New authenticated endpoint that gets current user's notifications using JWT
+  @Get('my-notifications')
+  @UseGuards(JwtAuthGuard)
+  async getMyNotifications(
+    @JwtUser() user: JwtUserData,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string
+  ) {
+    try {
+      const pageNumber = page ? parseInt(page) : 1;
+      const limitNumber = limit ? parseInt(limit) : 20;
+
+      const result = await this.notificationService.getUserNotifications(user.userId, pageNumber, limitNumber);
+      return result;
+    } catch (error) {
+      console.error('Error in getMyNotifications:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to fetch notifications'
+      };
+    }
+  }
+
+  // Keep the old endpoint for backward compatibility
   @Get(':userId')
   async getUserNotifications(
     @Param('userId') userId: string,
@@ -24,6 +50,21 @@ export class NotificationController {
         success: false,
         message: error.message || 'Failed to fetch notifications'
       };
+    }
+  }
+
+  // New authenticated endpoint for unread count
+  @Get('my-notifications/unread-count')
+  @UseGuards(JwtAuthGuard)
+  async getMyUnreadCount(@JwtUser() user: JwtUserData) {
+    try {
+      return await this.notificationService.getUnreadCount(user.userId);
+    } catch (error) {
+      console.error('Error in getMyUnreadCount:', error);
+      throw new HttpException(
+        `Failed to get unread count: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
     }
   }
 
@@ -54,6 +95,42 @@ export class NotificationController {
       }
       throw new HttpException(
         `Failed to mark notification as read: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  // New authenticated endpoint for mark as read
+  @Post('mark-as-read/:notificationId')
+  @UseGuards(JwtAuthGuard)
+  async markMyNotificationAsRead(
+    @Param('notificationId') notificationId: string,
+    @JwtUser() user: JwtUserData
+  ) {
+    try {
+      return await this.notificationService.markAsRead(notificationId, user.userId);
+    } catch (error) {
+      console.error('Error in markMyNotificationAsRead:', error);
+      if (error.status === HttpStatus.NOT_FOUND || error.status === HttpStatus.BAD_REQUEST) {
+        throw error;
+      }
+      throw new HttpException(
+        `Failed to mark notification as read: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  // New authenticated endpoint for mark all as read
+  @Post('mark-all-read')
+  @UseGuards(JwtAuthGuard)
+  async markAllMyNotificationsAsRead(@JwtUser() user: JwtUserData) {
+    try {
+      return await this.notificationService.markAllAsRead(user.userId);
+    } catch (error) {
+      console.error('Error in markAllMyNotificationsAsRead:', error);
+      throw new HttpException(
+        `Failed to mark all notifications as read: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
