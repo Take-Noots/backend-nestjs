@@ -24,6 +24,7 @@ import { SongPostService } from '../../songPost/songPost.service';
 import { PostReportService } from '../../post_report/post_report.service';
 import { UserService } from '../../user/user.service';
 import { NotificationService } from '../../notification/notification.service';
+import { AdvertisementService } from '../../advertisement/advertisement.service';
 
 @Controller('admin')
 export class AdminDashboardController {
@@ -34,7 +35,8 @@ export class AdminDashboardController {
     private readonly songPostService: SongPostService,
     private readonly postReportService: PostReportService,
     private readonly userService: UserService,
-    private readonly notificationService: NotificationService
+    private readonly notificationService: NotificationService,
+    private readonly advertisementService: AdvertisementService
   ) {}
 
   // ==================== PUBLIC ROUTES (NO GUARD) ====================
@@ -324,6 +326,88 @@ export class AdminDashboardController {
         currentStatus: status,
         currentCategory: category
       };
+    }
+  }
+
+  // Advertisements Management Page
+  @Get('advertisements')
+  @UseGuards(AdminGuard)
+  @Render('admin/advertisements')
+  async advertisementsPage(@Req() req: Request) {
+    try {
+      const advertisements = await this.advertisementService.findAll();
+      return {
+        title: 'Advertisements Management',
+        user: req['user'],
+        advertisements: advertisements
+      };
+    } catch (error) {
+      return {
+        title: 'Advertisements Management',
+        user: req['user'],
+        error: 'Failed to load advertisements: ' + error.message,
+        advertisements: []
+      };
+    }
+  }
+
+  // Get single advertisement details (API)
+  @Get('api/advertisements/:id')
+  @UseGuards(AdminGuard)
+  async getAdvertisement(@Param('id') id: string) {
+    try {
+      const advertisement = await this.advertisementService.findById(id);
+      if (!advertisement) {
+        return { success: false, message: 'Advertisement not found' };
+      }
+      return { success: true, advertisement };
+    } catch (error) {
+      return { success: false, message: 'Error fetching advertisement' };
+    }
+  }
+
+  // Approve advertisement (API)
+  @Post('api/advertisements/:id/approve')
+  @UseGuards(AdminGuard)
+  async approveAdvertisement(@Param('id') id: string) {
+    try {
+      const advertisement = await this.advertisementService.updateById(id, { status: 1 });
+      if (!advertisement) {
+        return { success: false, message: 'Advertisement not found' };
+      }
+      return { success: true, message: 'Advertisement approved successfully' };
+    } catch (error) {
+      return { success: false, message: 'Error approving advertisement' };
+    }
+  }
+
+  // Reject advertisement (API)
+  @Post('api/advertisements/:id/reject')
+  @UseGuards(AdminGuard)
+  async rejectAdvertisement(@Param('id') id: string) {
+    try {
+      const advertisement = await this.advertisementService.updateById(id, { status: 2 });
+      if (!advertisement) {
+        return { success: false, message: 'Advertisement not found' };
+      }
+      return { success: true, message: 'Advertisement rejected successfully' };
+    } catch (error) {
+      return { success: false, message: 'Error rejecting advertisement' };
+    }
+  }
+
+  // Delete advertisement (API)
+  @Delete('api/advertisements/:id/delete')
+  @UseGuards(AdminGuard)
+  async deleteAdvertisement(@Param('id') id: string) {
+    try {
+      const advertisement = await this.advertisementService.delete(id);
+      if (!advertisement) {
+        return { success: false, message: 'Advertisement not found' };
+      }
+      return { success: true, message: 'Advertisement deleted successfully' };
+    } catch (error) {
+      return { success: false, message: 'Error deleting advertisement' };
     }
   }
 
@@ -703,6 +787,7 @@ export class AdminDashboardController {
   async getReportById(@Param('id') id: string) {
     try {
       const report = await this.postReportService.findReportById(id);
+      console.log(`🔍 REPORT DEBUG: Report ID: ${id}, reportedPostId: ${report.reportedPostId}`);
 
       // Get additional information about the report
       const [reporterInfo, reportedUserInfo, postInfo] = await Promise.all([

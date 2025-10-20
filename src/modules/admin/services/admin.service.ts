@@ -452,6 +452,22 @@ export class AdminService {
         console.log(`🔍 DEBUG: Direct SongPost query error:`, directError.message);
       }
 
+      // Debug: Check what post IDs actually exist in reports
+      console.log(`🔍 DEBUG: Checking what reported posts actually exist...`);
+      try {
+        const reportedPostIds = await this.postReportService.getReportedPosts();
+        console.log(`🔍 DEBUG: Found ${reportedPostIds.length} total reported post IDs`);
+        console.log(`🔍 DEBUG: Looking for our target ID ${cleanPostId} in reported posts...`);
+        const isInReportedPosts = reportedPostIds.map(id => id.toString()).includes(cleanPostId);
+        console.log(`🔍 DEBUG: Target ID ${cleanPostId} is in reported posts: ${isInReportedPosts}`);
+
+        if (reportedPostIds.length > 0) {
+          console.log(`🔍 DEBUG: Sample reported post IDs:`, reportedPostIds.slice(0, 5).map(id => id.toString()));
+        }
+      } catch (debugError) {
+        console.log(`🔍 DEBUG: Error checking reported posts:`, debugError.message);
+      }
+
       // Try to find post in all collections
       const postSearchResults = await this.searchPostInAllCollections(cleanPostId);
 
