@@ -13,5 +13,6 @@ import { CloudinaryService } from '../../common/services/cloudinary.service';
   ],
   controllers: [AdvertisementController],
   providers: [AdvertisementService, CloudinaryService],
+  exports: [AdvertisementService],
 })
 export class AdvertisementModule {}
