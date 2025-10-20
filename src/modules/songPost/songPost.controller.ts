@@ -154,6 +154,7 @@ export class SongPostController {
 
   @Get('followers/:userId')
   async getUserFeedPosts(@Param('userId') userId: string) {
+    console.log('Get User Feed Posts called');
     // Feed Algorithm here
     // 1. Get followers
     const followings = await this.profileService.getFollowing(userId);
@@ -181,10 +182,31 @@ export class SongPostController {
     const likedPosts = await this.songPostService.getPostsByIds(likedPostIds);
 
     // 6. Fetch posts from users top tracks (5 tracks, 1 post per track)
-    const topTrackPosts = await this.songPostService.getSpotifyUserTopTrackPosts(userId, 5, 2);
+    let topTrackPosts: any[] = [];
+    try {
+      const startTime = Date.now();
+      
+      // Add a timeout promise to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Spotify top tracks request timeout after 10s')), 10000);
+      });
+      
+      const spotifyPromise = this.songPostService.getSpotifyUserTopTrackPosts(userId, 5, 2);
+      
+      topTrackPosts = await Promise.race([spotifyPromise, timeoutPromise]) as any[];
+      
+      const endTime = Date.now();
+      // console.log(`[DEBUG] getSpotifyUserTopTrackPosts completed in ${endTime - startTime}ms, returned ${topTrackPosts?.length || 0} posts`);
+    } catch (error) {
+      console.error('[ERROR] getSpotifyUserTopTrackPosts failed:', error.message);
+      // console.error('[ERROR] Full error:', error)i;
+      // Continue without Spotify top tracks - don't break the feed
+      topTrackPosts = [];
+    }
 
     // 7. Merge and de-duplicate by _id
     const merged = [...recentFollowerPosts, ...likedPosts, ...topTrackPosts];
+
     const seen = new Set<string>();
     const deduped = merged.filter((p: any) => {
       const id = (p._id || '').toString();
@@ -193,14 +215,56 @@ export class SongPostController {
       return true;
     });
 
-    // 7. Sort by createdAt desc (if present)
-    deduped.sort((a: any, b: any) => {
-      const aTime = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const bTime = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return bTime - aTime;
+    // 8. Phase 1: Calculate scores for each post
+    const postsWithScores = deduped.map((post: any) => {
+      // Determine post source for weighting
+      let sourceWeight = 0.5; // default
+      const postId = post._id.toString();
+      
+      if (recentFollowerPosts.some((p: any) => p._id.toString() === postId)) {
+        sourceWeight = 1.0; // Follower posts (highest priority)
+      } else if (likedPosts.some((p: any) => p._id.toString() === postId)) {
+        sourceWeight = 0.8; // Liked posts by followers
+      } else if (topTrackPosts.some((p: any) => p._id.toString() === postId)) {
+        sourceWeight = 0.7; // Spotify-based posts
+      }
+
+      // Calculate post age in hours
+      const postAgeMs = Date.now() - new Date(post.createdAt).getTime();
+      const postAgeHours = postAgeMs / (1000 * 60 * 60);
+
+      // Calculate recency score (exponential decay)
+      const recencyScore = Math.exp(-0.05 * postAgeHours);
+
+      // Calculate engagement score
+      const likesCount = post.likedBy?.length || 0;
+      const commentsCount = post.comments?.length || 0;
+      const engagementScore = Math.min((likesCount + commentsCount * 2) / 20, 1.0);
+
+      // Calculate affinity score (simple: is user following the post author?)
+      const affinityScore = followings.includes(post.userId) ? 1.0 : 0.3;
+
+      // Calculate final weighted score
+      const finalScore = (
+        recencyScore * 0.4 +
+        engagementScore * 0.3 +
+        sourceWeight * 0.2 +
+        affinityScore * 0.1
+      );
+
+      return {
+        ...post,
+        _score: finalScore
+      };
     });
 
-    return { success: true, data: deduped };
+    // 9. Sort by score (highest first)
+    postsWithScores.sort((a: any, b: any) => b._score - a._score);
+
+    // 10. Remove score from response (optional - keep it for debugging)
+    // const finalPosts = postsWithScores.map(({ _score, ...post }) => post);
+
+    return { success: true, data: postsWithScores };
   }
 
   @Get('notifications/:userId')

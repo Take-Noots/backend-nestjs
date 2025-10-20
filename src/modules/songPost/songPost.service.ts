@@ -291,12 +291,13 @@ export class SongPostService {
       return [];
     }
 
+    console.log('[DEBUG] Starting getSpotifyUserTopTrackPosts with token:', spotifyToken);
     // Fetch user's top tracks from Spotify
     const topTracksResponse = await this.spotifyUserService.getUsersTopTracks(spotifyToken);
     if (!topTracksResponse?.items || topTracksResponse.items.length === 0) {
       return [];
     }
-
+    
     // Extract track IDs and limit them
     const sanitizedTopTracksLimit = Math.max(1, Math.min(50, topTracksLimit));
     const sanitizedPostsPerTrack = Math.max(1, Math.min(20, postsPerTrack));
