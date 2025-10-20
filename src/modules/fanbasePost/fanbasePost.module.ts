@@ -5,6 +5,7 @@ import { FanbasePostService } from './fanbasePost.service';
 import { FanbasePost, FanbasePostSchema } from './fanbasePost.model';
 import { User, UserSchema } from '../user/user.model';
 import { Fanbase, FanbaseSchema } from '../fanbases/fanbase.model';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { Fanbase, FanbaseSchema } from '../fanbases/fanbase.model';
       { name: User.name, schema: UserSchema },
       { name: Fanbase.name, schema: FanbaseSchema },
     ]),
+    NotificationModule,
   ],
   controllers: [FanbasePostController],
   providers: [FanbasePostService],

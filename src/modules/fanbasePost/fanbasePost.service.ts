@@ -6,6 +6,7 @@ import { User, UserDocument } from '../user/user.model';
 import { Fanbase, FanbaseDocument } from '../fanbases/fanbase.model';
 import { CreateFanbasePostDto } from './dto/create-fanbasePost.dto';
 import { PostType } from '../../common/interfaces/fanbasepost.interface';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class FanbasePostService {
@@ -13,6 +14,7 @@ export class FanbasePostService {
     @InjectModel(FanbasePost.name) private fanbasePostModel: Model<FanbasePostDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(Fanbase.name) private fanbaseModel: Model<FanbaseDocument>,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async create(createPostDto: CreateFanbasePostDto, userId: string): Promise<PostType> {
@@ -101,6 +103,7 @@ export class FanbasePostService {
       }
 
       const userAlreadyLiked = post.likeUserIds.includes(userId);
+      const isLiking = !userAlreadyLiked;
 
       if (userAlreadyLiked) {
         // Unlike the post
@@ -114,6 +117,28 @@ export class FanbasePostService {
 
       post.updatedAt = new Date();
       const updatedPost = await post.save();
+
+      // Trigger notification only when liking and liker is not the post owner
+      if (isLiking && post.createdBy.userId !== userId) {
+        try {
+          // Get fanbase information
+          const fanbase = await this.fanbaseModel.findById(post.fanbaseId).exec();
+          if (fanbase) {
+            await this.notificationService.createFanbasePostLikeNotification(
+              post.createdBy.userId,        // post owner (recipient)
+              userId,                       // liker (sender)
+              user.username,                // liker username
+              postId,                       // fanbase post ID
+              post.fanbaseId,               // fanbase ID
+              fanbase.fanbaseName,          // fanbase name
+              post.description || post.songName || ''  // post topic
+            );
+            console.log(`✅ Fanbase like notification sent to user ${post.createdBy.userId} from ${user.username}`);
+          }
+        } catch (notificationError) {
+          console.error('❌ Failed to create fanbase like notification:', notificationError);
+        }
+      }
 
       return this.toPostType(updatedPost, userId);
     } catch (error) {
@@ -149,6 +174,30 @@ export class FanbasePostService {
       post.updatedAt = new Date();
 
       const updatedPost = await post.save();
+
+      // Trigger notification if commenter is not the post owner
+      if (post.createdBy.userId !== userId) {
+        try {
+          // Get fanbase information
+          const fanbase = await this.fanbaseModel.findById(post.fanbaseId).exec();
+          if (fanbase) {
+            await this.notificationService.createFanbasePostCommentNotification(
+              post.createdBy.userId,        // post owner (recipient)
+              userId,                       // commenter (sender)
+              user.username,                // commenter username
+              postId,                       // fanbase post ID
+              post.fanbaseId,               // fanbase ID
+              fanbase.fanbaseName,          // fanbase name
+              post.description || post.songName || '',  // post topic
+              comment.trim()                // comment text
+            );
+            console.log(`✅ Fanbase comment notification sent to user ${post.createdBy.userId} from ${user.username}`);
+          }
+        } catch (notificationError) {
+          console.error('❌ Failed to create fanbase comment notification:', notificationError);
+        }
+      }
+
       return this.toPostType(updatedPost, userId);
     } catch (error) {
       throw new Error(`Failed to add comment: ${error.message}`);

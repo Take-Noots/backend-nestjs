@@ -103,6 +103,12 @@ export class SongPostService {
       .exec();
   }
 
+  async findByIdIncludingDeleted(id: string): Promise<SongPostDocument | null> {
+    return this.songPostModel
+      .findOne({ _id: id })
+      .exec();
+  }
+
   async findByUserId(userId: string): Promise<SongPostDocument[]> {
     return this.songPostModel
       .find({ userId, isHidden: { $ne: 1 }, isDeleted: { $ne: 1 } })

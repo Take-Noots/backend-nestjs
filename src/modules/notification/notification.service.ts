@@ -400,4 +400,40 @@ export class NotificationService {
 
     return { deletedCount: result.deletedCount };
   }
+
+  async createAdminWarningNotification(
+    recipientId: string,
+    warningMessage: string,
+    adminUsername: string = 'Admin'
+  ) {
+    try {
+      // Create a dummy admin user ID for system notifications
+      const adminId = new Types.ObjectId('000000000000000000000000');
+
+      const newNotification = new this.notificationModel({
+        recipientId: new Types.ObjectId(recipientId),
+        senderId: adminId,
+        senderUsername: adminUsername,
+        type: NotificationType.ADMIN_WARNING,
+        title: 'Warning from Administration',
+        message: `⚠️ Warning: ${warningMessage}`,
+        data: {
+          senderUsername: adminUsername,
+          warningMessage: warningMessage,
+          type: 'admin_warning'
+        },
+        isRead: false,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      const savedNotification = await newNotification.save();
+
+      console.log(`⚠️ Admin warning notification created for user ${recipientId}`);
+      return savedNotification;
+    } catch (error) {
+      console.error('❌ Error creating admin warning notification:', error);
+      throw error;
+    }
+  }
 }
