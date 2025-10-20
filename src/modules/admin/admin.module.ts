@@ -14,6 +14,7 @@ import { SongPostModule } from '../songPost/songPost.module';
 import { DesSongPostModule } from '../desSongPost/desSongPost.module';
 import { FanbasePostModule } from '../fanbasePost/fanbasePost.module';
 import { NotificationModule } from '../notification/notification.module';
+import { AdvertisementModule } from '../advertisement/advertisement.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { NotificationModule } from '../notification/notification.module';
     PostReportModule,
     AuthModule, // This provides AuthService for login
     NotificationModule,
+    AdvertisementModule,
   ],
   controllers: [
     // REMOVE AdminController to avoid route conflicts
