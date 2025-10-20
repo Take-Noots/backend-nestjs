@@ -152,6 +152,24 @@ export class SongPostController {
     return { success: true, data: post };
   }
 
+  @Delete(':postId/comment/:commentId')
+  @UseGuards(JwtAuthGuard)
+  async deleteComment(
+    @Param('postId') postId: string,
+    @Param('commentId') commentId: string,
+    @JwtUser() user: JwtUserData,
+  ) {
+    const result = await this.songPostService.deleteComment(
+      postId,
+      commentId,
+      user.userId,
+    );
+    if (!result.success) {
+      return { success: false, message: result.message };
+    }
+    return { success: true, data: result.post };
+  }
+
   @Get('followers/:userId')
   async getUserFeedPosts(@Param('userId') userId: string) {
     console.log('Get User Feed Posts called');

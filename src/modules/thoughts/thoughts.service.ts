@@ -278,6 +278,55 @@ export class ThoughtsService {
     };
   }
 
+  async deleteComment(postId: string, commentId: string, userId: string): Promise<{ success: boolean; message?: string; post?: any }> {
+    const post = await this.thoughtsModel.findOne({ 
+      _id: postId, 
+      isHidden: { $ne: 1 }, 
+      isDeleted: { $ne: 1 } 
+    });
+    
+    if (!post) {
+      return { success: false, message: 'Post not found' };
+    }
+
+    const comment = post.comments.find(c => c.id.toString() === commentId);
+    
+    if (!comment) {
+      return { success: false, message: 'Comment not found' };
+    }
+
+    // Check if the user is the comment owner
+    if (comment.userId !== userId) {
+      return { success: false, message: 'Unauthorized to delete this comment' };
+    }
+
+    // Remove the comment from the array
+    post.comments = post.comments.filter(c => c.id.toString() !== commentId);
+    await post.save();
+
+    // Get usernames for remaining comments
+    const userIds = [...new Set(post.comments.map(c => c.userId))];
+    const usernamesMap = await this.userService.getUsernamesByIds(userIds);
+    
+    const commentsWithUsernames = post.comments.map((comment) => {
+      return {
+        ...comment.toObject(),
+        username: usernamesMap.get(comment.userId) || comment.username || 'Unknown',
+      };
+    });
+
+    const username = await this.userService.getUsernameById(post.userId);
+    return {
+      success: true,
+      post: {
+        ...post.toObject(),
+        username: username || '',
+        postType: 'thoughts',
+        comments: commentsWithUsernames,
+      }
+    };
+  }
+
   // Delete thoughts post (soft delete)
   async deletePost(postId: string, userId: string): Promise<boolean> {
     const post = await this.thoughtsModel.findOne({ 

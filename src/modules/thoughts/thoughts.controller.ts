@@ -98,6 +98,16 @@ export class ThoughtsController {
     return { success: true, data: post };
   }
 
+  @Delete(':id/comments/:commentId')
+  @UseGuards(JwtAuthGuard)
+  async deleteComment(@Param('id') id: string, @Param('commentId') commentId: string, @JwtUser() user: JwtUserData) {
+    const result = await this.thoughtsService.deleteComment(id, commentId, user.userId);
+    if (!result.success) {
+      return { success: false, message: result.message };
+    }
+    return { success: true, data: result.post };
+  }
+
   // Update thoughts post
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
