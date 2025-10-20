@@ -226,7 +226,7 @@ export class ProfileController {
     @Param('postId') postId: string,
     @JwtUser() user: JwtUserData,
   ) {
-    // Verify that the authenticated user matches the requested userId
+   
     if (user.userId !== userId) {
       return {
         success: false,

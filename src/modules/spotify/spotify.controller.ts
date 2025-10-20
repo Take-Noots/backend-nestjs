@@ -468,7 +468,6 @@ export class SpotifyController {
   @Roles(Role.User, Role.Admin)
   async pauseTrack(@JwtUser() user: JwtUserData) {
     try {
-      // Get Spotify access token using the user ID (which might trigger a refresh)
       const spotifyToken = await this.sessionService.getAccessToken(
         user.userId,
       );
@@ -480,7 +479,7 @@ export class SpotifyController {
         );
       }
 
-      // Pause the current playback
+      
       return await this.playerService.pauseTrack(spotifyToken);
     } catch (error) {
       if (error instanceof HttpException) {

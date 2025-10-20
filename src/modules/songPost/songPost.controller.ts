@@ -135,8 +135,7 @@ export class SongPostController {
     @Param('commentId') commentId: string,
     @JwtUser() user: JwtUserData,
   ) {
-    console.log(
-      `[DEBUG] Controller likeComment: postId=${postId}, commentId=${commentId}, userId=${user.userId}`,
+    console.log(`[DEBUG] Controller likeComment: postId=${postId}, commentId=${commentId}, userId=${user.userId}`,
     );
 
     const post = await this.songPostService.likeComment(
@@ -145,10 +144,10 @@ export class SongPostController {
       user.userId,
     );
     if (!post) {
-      console.log('[DEBUG] Controller likeComment: Post or comment not found');
+      //console.log('[DEBUG] Controller likeComment: Post or comment not found');
       return { success: false, message: 'Post or comment not found' };
     }
-    console.log('[DEBUG] Controller likeComment: Success');
+    //console.log('[DEBUG] Controller likeComment: Success');
     return { success: true, data: post };
   }
 

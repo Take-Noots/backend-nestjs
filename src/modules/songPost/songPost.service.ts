@@ -260,13 +260,13 @@ export class SongPostService {
 
     let updateOperation;
     if (isLiked) {
-      // Remove like from comment
+      
       updateOperation = {
         $pull: { 'comments.$[comment].likedBy': userId },
         $inc: { 'comments.$[comment].likes': -1 },
       };
     } else {
-      // Add like to comment
+     
       updateOperation = {
         $addToSet: { 'comments.$[comment].likedBy': userId },
         $inc: { 'comments.$[comment].likes': 1 },
@@ -623,8 +623,8 @@ export class SongPostService {
     postId: string,
     updateData: UpdatePostDto,
   ): Promise<SongPostDocument | null> {
-    console.log(`[DEBUG] Updating post with ID: ${postId}`);
-    console.log(`[DEBUG] Update data:`, updateData);
+    //console.log(`[DEBUG] Updating post with ID: ${postId}`);
+    //console.log(`[DEBUG] Update data:`, updateData);
 
     const post = await this.songPostModel
       .findOneAndUpdate({ _id: postId, isDeleted: { $ne: 1 } }, updateData, {
