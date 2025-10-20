@@ -31,6 +31,21 @@ export class AdvertisementService {
   }
 
   async updateById(id: string, updateData: Partial<Advertisement>): Promise<Advertisement | null> {
-    return await this.advertisementModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
+    console.log(`🔄 AdvertisementService.updateById - ID: ${id}, updateData:`, updateData);
+
+    const result = await this.advertisementModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
+
+    if (result) {
+      console.log(`✅ Advertisement updated successfully in database:`, {
+        id: result._id,
+        title: result.title,
+        status: result.status,
+        updatedAt: result.updatedAt
+      });
+    } else {
+      console.log(`❌ Advertisement update failed - document not found: ${id}`);
+    }
+
+    return result;
   }
 }

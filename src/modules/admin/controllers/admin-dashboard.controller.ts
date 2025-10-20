@@ -371,13 +371,29 @@ export class AdminDashboardController {
   @UseGuards(AdminGuard)
   async approveAdvertisement(@Param('id') id: string) {
     try {
-      const advertisement = await this.advertisementService.updateById(id, { status: 1 });
-      if (!advertisement) {
+      console.log(`📋 Attempting to approve advertisement with ID: ${id}`);
+
+      // First check if advertisement exists
+      const existingAd = await this.advertisementService.findById(id);
+      if (!existingAd) {
+        console.log(`❌ Advertisement not found: ${id}`);
         return { success: false, message: 'Advertisement not found' };
       }
-      return { success: true, message: 'Advertisement approved successfully' };
+
+      console.log(`📝 Current status: ${existingAd.status}, updating to: 1`);
+
+      // Update the status
+      const advertisement = await this.advertisementService.updateById(id, { status: 1 });
+      if (!advertisement) {
+        console.log(`❌ Failed to update advertisement: ${id}`);
+        return { success: false, message: 'Failed to update advertisement' };
+      }
+
+      console.log(`✅ Advertisement approved successfully: ${id}, new status: ${advertisement.status}`);
+      return { success: true, message: 'Advertisement approved successfully', advertisement };
     } catch (error) {
-      return { success: false, message: 'Error approving advertisement' };
+      console.error(`❌ Error approving advertisement ${id}:`, error);
+      return { success: false, message: 'Error approving advertisement: ' + error.message };
     }
   }
 
@@ -386,13 +402,29 @@ export class AdminDashboardController {
   @UseGuards(AdminGuard)
   async rejectAdvertisement(@Param('id') id: string) {
     try {
-      const advertisement = await this.advertisementService.updateById(id, { status: 2 });
-      if (!advertisement) {
+      console.log(`📋 Attempting to reject advertisement with ID: ${id}`);
+
+      // First check if advertisement exists
+      const existingAd = await this.advertisementService.findById(id);
+      if (!existingAd) {
+        console.log(`❌ Advertisement not found: ${id}`);
         return { success: false, message: 'Advertisement not found' };
       }
-      return { success: true, message: 'Advertisement rejected successfully' };
+
+      console.log(`📝 Current status: ${existingAd.status}, updating to: 2`);
+
+      // Update the status
+      const advertisement = await this.advertisementService.updateById(id, { status: 2 });
+      if (!advertisement) {
+        console.log(`❌ Failed to update advertisement: ${id}`);
+        return { success: false, message: 'Failed to update advertisement' };
+      }
+
+      console.log(`✅ Advertisement rejected successfully: ${id}, new status: ${advertisement.status}`);
+      return { success: true, message: 'Advertisement rejected successfully', advertisement };
     } catch (error) {
-      return { success: false, message: 'Error rejecting advertisement' };
+      console.error(`❌ Error rejecting advertisement ${id}:`, error);
+      return { success: false, message: 'Error rejecting advertisement: ' + error.message };
     }
   }
 
