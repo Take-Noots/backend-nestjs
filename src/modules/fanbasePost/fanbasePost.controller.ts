@@ -177,7 +177,8 @@ export class FanbasePostController {
     @JwtUser() user: JwtUserData,
   ) {
     try {
-      return await this.fanbasePostService.deleteSubComment(postId, commentId, user.userId, subCommentId);
+      // ✅ Fix parameter order: (postId, commentId, subCommentId, userId)
+      return await this.fanbasePostService.deleteSubComment(postId, commentId, subCommentId, user.userId);
     } catch (error) {
       throw new HttpException(
         `Failed to delete sub-comment: ${error.message}`,
