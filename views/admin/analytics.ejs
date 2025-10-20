@@ -16,7 +16,7 @@
             userMetrics: <%- JSON.stringify(typeof userMetrics !== 'undefined' ? userMetrics : {}) %>,
             contentMetrics: <%- JSON.stringify(typeof contentMetrics !== 'undefined' ? contentMetrics : {}) %>,
             growthMetrics: <%- JSON.stringify(typeof growthMetrics !== 'undefined' ? growthMetrics : {}) %>,
-            currentPeriod: '<%- typeof currentPeriod !== "undefined" ? currentPeriod : "7d" %>'
+            currentPeriod: '<%- typeof currentPeriod !== "undefined" ? currentPeriod : "1y" %>'
         };
     </script>
     <script>
@@ -315,7 +315,7 @@
                                     <option value="7d" <%= (typeof currentPeriod !== 'undefined' && currentPeriod === '7d') ? 'selected' : '' %>>Last 7 Days</option>
                                     <option value="30d" <%= (typeof currentPeriod !== 'undefined' && currentPeriod === '30d') ? 'selected' : '' %>>Last 30 Days</option>
                                     <option value="90d" <%= (typeof currentPeriod !== 'undefined' && currentPeriod === '90d') ? 'selected' : '' %>>Last 90 Days</option>
-                                    <option value="1y" <%= (typeof currentPeriod !== 'undefined' && currentPeriod === '1y') ? 'selected' : '' %>>This Year (Monthly)</option>
+                                    <option value="1y" <%= (typeof currentPeriod === 'undefined' || currentPeriod === '1y') ? 'selected' : '' %>>This Year (Monthly)</option>
                                 </select>
                             </div>
                             <button onclick="refreshData()" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors flex items-center">
@@ -735,7 +735,7 @@
 
             // Get current period
             const periodSelector = document.getElementById('periodSelector');
-            const period = periodSelector ? periodSelector.value : '7d';
+            const period = periodSelector ? periodSelector.value : '1y';
             const isMonthlyView = period === '1y';
 
             console.log('Current period:', period, 'Monthly view:', isMonthlyView);

@@ -1060,14 +1060,14 @@ export class AdminService {
     }
   }
 
-  async getGrowthMetrics(period: string = '7d') {
+  async getGrowthMetrics(period: string = '1y') {
     // For yearly view, get monthly data; for other periods, get daily data
     const isYearly = period === '1y' || period === '12m';
     const days = period === '30d' ? 30 : period === '90d' ? 90 : period === '1y' || period === '12m' ? 365 : 7;
 
     const userGrowth = isYearly ? await this.getUserGrowthDataByMonth() : await this.userService.getUserGrowthData(days);
     const postGrowth = isYearly ? await this.getPostGrowthDataByMonth() : await this.getPostGrowthData(days);
-    const fanbaseGrowth = isYearly ? await this.getFanbaseGrowthDataByMonth() : [];
+    const fanbaseGrowth = isYearly ? await this.getFanbaseGrowthDataByMonth() : await this.getFanbaseGrowthData(days);
     const reportGrowth = isYearly ? [] : await this.reportService.getReportGrowthData(days);
 
     return {
@@ -1208,6 +1208,33 @@ export class AdminService {
         });
       }
       return result;
+    }
+  }
+
+  async getFanbaseGrowthData(days: number): Promise<any[]> {
+    const dateFrom = new Date();
+    dateFrom.setDate(dateFrom.getDate() - days);
+
+    try {
+      const allFanbases = await this.fanbaseService.findAllWithPagination({}, 0, 10000);
+      const recentFanbases = allFanbases.filter(fanbase =>
+        fanbase.createdAt && new Date(fanbase.createdAt) >= dateFrom
+      );
+
+      // Group by date
+      const growthData: { [key: string]: number } = {};
+      recentFanbases.forEach(fanbase => {
+        const date = new Date(fanbase.createdAt).toISOString().split('T')[0];
+        growthData[date] = (growthData[date] || 0) + 1;
+      });
+
+      return Object.entries(growthData).map(([date, count]) => ({
+        _id: date,
+        count
+      })).sort((a, b) => a._id.localeCompare(b._id));
+    } catch (error) {
+      console.error('Error getting fanbase growth data:', error);
+      return [];
     }
   }
 

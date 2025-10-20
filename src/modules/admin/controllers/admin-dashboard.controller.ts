@@ -638,7 +638,7 @@ export class AdminDashboardController {
   @Render('admin/analytics')
   async analyticsPage(
     @Req() req: Request,
-    @Query('period') period: string = '7d',
+    @Query('period') period: string = '1y',
   ) {
     try {
       const userMetrics = await this.adminService.getUserMetrics();
@@ -839,9 +839,20 @@ export class AdminDashboardController {
 
   @Post('users/:id/ban')
   @UseGuards(AdminGuard)
-  async banUser(@Param('id') id: string, @Body() banData: any) {
+  async banUser(@Param('id') id: string, @Body() banData: any, @Req() req: Request) {
     try {
-      return await this.adminService.banUser(id, banData);
+      // Ensure bannedBy is set to the current admin user ID
+      const adminUserId = req['user']?._id;
+      if (!adminUserId) {
+        throw new HttpException('Admin user ID not found', HttpStatus.UNAUTHORIZED);
+      }
+
+      const banDataWithAdmin = {
+        ...banData,
+        bannedBy: adminUserId.toString()
+      };
+
+      return await this.adminService.banUser(id, banDataWithAdmin);
     } catch (error) {
       throw new HttpException(
         `Failed to ban user: ${error.message}`,
