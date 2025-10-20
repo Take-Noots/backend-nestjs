@@ -37,7 +37,9 @@ export class SearchService {
           { artists: { $regex: query, $options: 'i' } },
           { caption: { $regex: query, $options: 'i' } },
         ],
+        // Exclude posts that are deleted or hidden
         isDeleted: { $ne: 1 },
+        isHidden: { $ne: 1 },
       }).exec();
     }
 
@@ -94,8 +96,11 @@ export class SearchService {
 async ExploreAlgorithm() {
   console.log('🔍 ExploreAlgorithm called - using generic algorithm for all users');
   
-  // Fetch all posts (you may want filters here later)
-  const songPosts = await this.songPostModel.find({}).sort({ createdAt: 1 }).exec();
+  // Fetch all non-deleted and non-hidden posts for explore
+  const songPosts = await this.songPostModel
+    .find({ isDeleted: { $ne: 1 }, isHidden: { $ne: 1 } })
+    .sort({ createdAt: 1 })
+    .exec();
   console.log('📊 Total song posts found in database:', songPosts.length);
   
   if (songPosts.length === 0) {
