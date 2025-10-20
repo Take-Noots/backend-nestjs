@@ -122,19 +122,19 @@ export class AdminDashboardController {
       console.log('✅ Admin login successful for:', user.email);
       console.log('🔑 Setting cookies with tokens');
 
-      // Set secure cookies for admin session
+      // Set secure cookies for admin session with extended duration for admins
       res.cookie('access_token', accessToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production', 
-        sameSite: 'strict',
-        maxAge: 15 * 60 * 1000 // 15 minutes
-      });
-
-      res.cookie('admin_refresh_token', refreshToken, { 
-        httpOnly: true, 
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        maxAge: 4 * 60 * 60 * 1000 // 4 hours for admin sessions (longer than normal users)
+      });
+
+      res.cookie('admin_refresh_token', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days for admin refresh tokens
       });
 
       console.log('🏠 Redirecting to dashboard...');
@@ -177,6 +177,78 @@ export class AdminDashboardController {
     } catch (error) {
       console.error('❌ Logout error:', error.message);
       res.redirect('/admin/login');
+    }
+  }
+
+  // Token Refresh Endpoint (PUBLIC - No Guard for refresh)
+  @Post('refresh-token')
+  async refreshToken(@Req() req: Request, @Res() res: Response) {
+    try {
+      console.log('🔄 Token refresh attempt');
+
+      const refreshToken = req.cookies?.admin_refresh_token;
+      if (!refreshToken) {
+        console.log('❌ No refresh token found');
+        return res.status(401).json({ success: false, message: 'No refresh token' });
+      }
+
+      // Verify refresh token
+      const secret = process.env.ACCESS_TOKEN_SECRET || process.env.JWT_SECRET;
+      const decoded = require('jsonwebtoken').verify(refreshToken, secret) as any;
+
+      console.log('👤 Refresh token valid for user:', decoded.sub);
+
+      // Get user and check permissions
+      const user = await this.userService.findById(decoded.sub);
+      if (!user || (user.role !== 'admin' && user.role !== 'moderator') || user.isBlocked) {
+        console.log('❌ User not valid for refresh');
+        return res.status(401).json({ success: false, message: 'Invalid user' });
+      }
+
+      // Generate new tokens directly
+      const jwt = require('jsonwebtoken');
+      const newAccessToken = jwt.sign(
+        {
+          sub: user._id,
+          email: user.email,
+          role: user.role
+        },
+        secret,
+        { expiresIn: '4h' }
+      );
+
+      const newRefreshToken = jwt.sign(
+        {
+          sub: user._id,
+          email: user.email,
+          role: user.role,
+          type: 'refresh'
+        },
+        secret,
+        { expiresIn: '30d' }
+      );
+
+      // Set new cookies
+      res.cookie('access_token', newAccessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 4 * 60 * 60 * 1000 // 4 hours
+      });
+
+      res.cookie('admin_refresh_token', newRefreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+      });
+
+      console.log('✅ Tokens refreshed successfully for:', user.email);
+      return res.json({ success: true, message: 'Tokens refreshed' });
+
+    } catch (error) {
+      console.error('❌ Token refresh failed:', error.message);
+      return res.status(401).json({ success: false, message: 'Token refresh failed' });
     }
   }
 
