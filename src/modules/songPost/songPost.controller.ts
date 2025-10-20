@@ -56,7 +56,7 @@ export class SongPostController {
     // set userId from JWT token to the DTO
     createPostDto.userId = user.userId;
 
-    // username will be fetched in the service
+   
     const createdPost = await this.songPostService.create(createPostDto);
 
     return createdPost;
