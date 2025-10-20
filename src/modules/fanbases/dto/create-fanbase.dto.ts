@@ -1,4 +1,4 @@
-import { IsArray, ArrayMaxSize, IsString, MaxLength, ValidateNested } from 'class-validator';
+import { IsArray, ArrayMaxSize, IsString, MaxLength, ValidateNested, IsOptional } from 'class-validator';
 
 export class RuleDto {
   @IsString()
@@ -10,8 +10,10 @@ export class CreateFanbaseDTO {
   fanbaseName: string;
   topic: string;
   fanbasePhotoUrl?: string;
+
+  @IsOptional() // ✅ Make rules optional
   @IsArray()
   @ArrayMaxSize(15)
   @ValidateNested({ each: true })
-  rules: RuleDto[];
+  rules?: RuleDto[]; // ✅ Add ? to make it optional
 }
