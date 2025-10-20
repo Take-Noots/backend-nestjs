@@ -145,7 +145,7 @@ export class SpotifySessionService {
         }
 
         // Store new access token in memory
-        this.storeAccessToken(userId, access_token, 3600); // Default to 1 hour if expires_in is not provided
+        this.storeAccessToken(userId, access_token, 172800); // Default to 48 hours if expires_in is not provided
 
         return access_token;
       } catch (error) {
