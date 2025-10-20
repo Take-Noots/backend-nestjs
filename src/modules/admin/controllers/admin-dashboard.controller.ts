@@ -356,28 +356,41 @@ export class AdminDashboardController {
     @Query('dateRange') dateRange?: string,
     @Query('engagement') engagement?: string,
     @Query('reported') reported?: boolean,
+    @Query('userId') userId?: string,
   ) {
     try {
       console.log('📊 Loading posts page...');
-      const postsData = await this.adminService.getAllPosts(page, 20, {
-        search,
-        status,
-        dateRange,
-        engagement,
-        reported: reported || status === 'reported',
-      });
-      console.log('📈 Posts found:', postsData.posts.length);
+
+      // Only load posts if a filter is applied
+      const hasFilters = search || status || dateRange || engagement || reported || userId;
+      let postsData: any = null;
+
+      if (hasFilters) {
+        postsData = await this.adminService.getAllPosts(page, 20, {
+          search,
+          status,
+          dateRange,
+          engagement,
+          reported: reported || (status === 'reported'),
+          userId
+        });
+        console.log('📈 Posts found:', postsData?.posts?.length || 0);
+      } else {
+        console.log('📊 No filters applied - not loading posts');
+      }
 
       return {
         title: 'Content Management',
         user: req['user'],
-        posts: postsData.posts,
-        pagination: postsData.pagination,
+        posts: postsData ? postsData.posts : null,
+        pagination: postsData ? postsData.pagination : null,
         showReported: reported || status === 'reported',
         searchQuery: search,
         currentStatus: status,
         currentDateRange: dateRange,
         currentEngagement: engagement,
+        searchUserId: userId,
+        hasFilters: hasFilters,
       };
     } catch (error) {
       console.error('❌ Failed to load posts:', error);
@@ -385,12 +398,14 @@ export class AdminDashboardController {
         title: 'Content Management',
         user: req['user'],
         error: 'Failed to load posts: ' + error.message,
-        posts: [],
+        posts: null,
         pagination: null,
         searchQuery: search,
         currentStatus: status,
         currentDateRange: dateRange,
         currentEngagement: engagement,
+        searchUserId: userId,
+        hasFilters: false,
       };
     }
   }
@@ -1038,6 +1053,38 @@ export class AdminDashboardController {
       status,
       dateRange,
     );
+  }
+
+  @Get('api/users/search')
+  @UseGuards(AdminGuard)
+  async searchUsers(@Query('q') query?: string) {
+    try {
+      if (!query || query.trim().length < 2) {
+        return {
+          success: false,
+          message: 'Query must be at least 2 characters long',
+          users: []
+        };
+      }
+
+      const users = await this.userService.searchUsers(query.trim());
+
+      return {
+        success: true,
+        users: users.map(user => ({
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          lastSeen: user.lastSeen,
+          isOnline: user.isOnline
+        }))
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to search users: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Get('api/dashboard')
