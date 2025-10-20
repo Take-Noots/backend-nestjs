@@ -163,6 +163,12 @@ export class ProfileService {
     return profile?.followers ?? [];
   }
 
+  async getFollowing(userId: string): Promise<string[]> {
+    const profile = await this.profileModel.findOne({ userId }).lean();
+    return profile?.following ?? [];
+  }
+
+
   /**
    * Get total number of likes, comments, and all comments for each post by userId
    * Returns an array of objects: { postId, type, likes, commentsCount, comments }
@@ -179,7 +185,7 @@ export class ProfileService {
       type: 'SongPost',
       likes: post.likes || 0,
       commentsCount: post.comments ? post.comments.length : 0,
-      comments: post.comments || [],
+      // Don't send full comments array - only counts needed for album grid
     }));
 
     // Post posts
@@ -193,7 +199,7 @@ export class ProfileService {
       type: 'Post',
       likes: post.likesCount || 0,
       commentsCount: post.commentsCount || 0,
-      comments: [], // No comments array in Post model
+      // No comments array in Post model
     }));
 
     // Combine and return

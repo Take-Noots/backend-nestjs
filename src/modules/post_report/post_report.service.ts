@@ -27,10 +27,11 @@ export class PostReportService {
   }
 
   async findAllReports(): Promise<PostReport[]> {
-    return await this.postReportModel
+    const reports = await this.postReportModel
       .find()
       .sort({ createdAt: -1 })
       .exec();
+    return reports;
   }
 
 

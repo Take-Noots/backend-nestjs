@@ -103,6 +103,12 @@ export class SongPostService {
       .exec();
   }
 
+  async findByIdIncludingDeleted(id: string): Promise<SongPostDocument | null> {
+    return this.songPostModel
+      .findOne({ _id: id })
+      .exec();
+  }
+
   async findByUserId(userId: string): Promise<SongPostDocument[]> {
     return this.songPostModel
       .find({ userId, isHidden: { $ne: 1 }, isDeleted: { $ne: 1 } })
@@ -280,13 +286,86 @@ export class SongPostService {
   //   return postsWithUserData;
   // }
 
-  async getSpotifyUserTopTracks(userId: string): Promise<any> {
+  async getSpotifyUserTopTrackPosts(
+    userId: string,
+    topTracksLimit: number = 10,
+    postsPerTrack: number = 5
+  ): Promise<any[]> {
+    // Get Spotify access token
     const spotifyToken = await this.spotifySessionService.getAccessToken(userId);
     if (!spotifyToken) {
-      return { tracks: [] };
+      return [];
     }
-    const topTracks = await this.spotifyUserService.getUsersTopTracks(spotifyToken);
-    return topTracks;
+
+    console.log('[DEBUG] Starting getSpotifyUserTopTrackPosts with token:', spotifyToken);
+    // Fetch user's top tracks from Spotify
+    const topTracksResponse = await this.spotifyUserService.getUsersTopTracks(spotifyToken);
+    if (!topTracksResponse?.items || topTracksResponse.items.length === 0) {
+      return [];
+    }
+    
+    // Extract track IDs and limit them
+    const sanitizedTopTracksLimit = Math.max(1, Math.min(50, topTracksLimit));
+    const sanitizedPostsPerTrack = Math.max(1, Math.min(20, postsPerTrack));
+    
+    const trackIds = topTracksResponse.items
+      .slice(0, sanitizedTopTracksLimit)
+      .map((item: any) => item.id);
+
+    if (trackIds.length === 0) {
+      return [];
+    }
+
+    // Retrieve posts for each track ID using aggregation
+    const posts = await this.songPostModel
+      .aggregate([
+        {
+          $match: {
+            trackId: { $in: trackIds },
+            isHidden: { $ne: 1 },
+            isDeleted: { $ne: 1 },
+          },
+        },
+        { $sort: { createdAt: -1 } },
+        {
+          $group: {
+            _id: '$trackId',
+            posts: { $push: '$$ROOT' },
+          },
+        },
+        {
+          $project: {
+            posts: { $slice: ['$posts', sanitizedPostsPerTrack] },
+          },
+        },
+        { $unwind: '$posts' },
+        { $replaceRoot: { newRoot: '$posts' } },
+        { $sort: { createdAt: -1 } },
+      ])
+      .exec();
+
+    // Attach username and profile image for each post
+    const postsWithUserData = await Promise.all(
+      posts.map(async (post) => {
+        const username = await this.userService.getUsernameById(post.userId);
+        const profile = await this.profileService.getProfileByUserId(post.userId);
+        const profileImage = profile?.profileImage || '';
+        return {
+          ...post,
+          username: username || '',
+          userImage: profileImage,
+          comments: await Promise.all(
+            (post.comments || []).map(async (comment) => ({
+              ...comment,
+              username:
+                (await this.userService.getUsernameById(comment.userId)) || '',
+            })),
+          ),
+        };
+      }),
+    );
+
+    return postsWithUserData;
   }
 
   async getRecentPostsByUserIds(userIds: string[], perUserLimit: number): Promise<any[]> {

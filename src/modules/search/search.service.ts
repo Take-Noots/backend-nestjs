@@ -119,7 +119,7 @@ async ExploreAlgorithm() {
       reason = 'random fallback';
     }
     
-    console.log(`📈 Post ${post._id}: base points = ${basePoints} (${reason})`);
+    // console.log(`📈 Post ${post._id}: base points = ${basePoints} (${reason})`);
     return basePoints;
   }
 
@@ -162,10 +162,10 @@ async ExploreAlgorithm() {
     // Final SugValue
     const sugValue = (points * randomFactor * engagementFactor) * decay;
 
-    console.log(`   🎲 Random factor: ${randomFactor.toFixed(3)}`);
-    console.log(`   ❤️  Engagement factor: ${engagementFactor.toFixed(3)} (${likes} likes)`);
-    console.log(`   ⏰ Age: ${ageHours.toFixed(1)} hours, Decay: ${decay.toFixed(3)}`);
-    console.log(`   💯 Final sugValue: ${sugValue.toFixed(2)}`);
+    // console.log(`   🎲 Random factor: ${randomFactor.toFixed(3)}`);
+    // console.log(`   ❤️  Engagement factor: ${engagementFactor.toFixed(3)} (${likes} likes)`);
+    // console.log(`   ⏰ Age: ${ageHours.toFixed(1)} hours, Decay: ${decay.toFixed(3)}`);
+    // console.log(`   💯 Final sugValue: ${sugValue.toFixed(2)}`);
 
     return {
       id: post._id,

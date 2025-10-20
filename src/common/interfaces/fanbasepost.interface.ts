@@ -22,6 +22,7 @@ export interface PostType {
     comment: string;
     likeCount: number;
     likeUserIds: string[];
+    isLiked?: boolean;
     createdAt: Date;
     subComments: {
       commentId: string; // ✅ Changed from commentIndex
@@ -30,6 +31,7 @@ export interface PostType {
       comment: string;
       likeCount: number;
       likeUserIds: string[];
+      isLiked?: boolean;
       createdAt: Date;
     }[];
   }[];

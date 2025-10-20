@@ -11,6 +11,7 @@ export enum NotificationType {
   POST_COMMENT = 'post_comment',
   FANBASE_POST_LIKE = 'fanbase_post_like',
   FANBASE_POST_COMMENT = 'fanbase_post_comment',
+  ADMIN_WARNING = 'admin_warning',
 }
 
 @Schema({ timestamps: true })
