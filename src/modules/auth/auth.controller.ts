@@ -17,7 +17,8 @@ import { UserType } from '@interfaces/user.interface';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService,
+  constructor(
+    private authService: AuthService,
     // private readonly logger = new Logger(AuthController.name),
   ) {}
 
@@ -78,7 +79,9 @@ export class AuthController {
       const [accessToken, newRefreshToken, userId, role, isSpotifyLinked] =
         await this.authService.refresh(refreshToken);
 
-      console.log(`[Auth.Controller] New refresh token generated = ${newRefreshToken}`);
+      console.log(
+        `[Auth.Controller] New refresh token generated = ${newRefreshToken}`,
+      );
       // Set new refresh token in cookie
       res.cookie('refresh_token', newRefreshToken, { httpOnly: true });
 
