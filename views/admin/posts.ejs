@@ -803,10 +803,8 @@
                     <select name="action" required
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
                         <option value="">Select Action</option>
-                        <option value="approve">Approve (dismiss report)</option>
-                        <option value="warn">Warn user</option>
-                        <option value="delete">Delete post</option>
-                        <option value="ban">Ban user</option>
+                        <option value="approve">Approve (dismiss all reports for this post)</option>
+                        <option value="dismiss">Dismiss (keep post but mark reports as invalid)</option>
                     </select>
                 </div>
                 <div>
@@ -1103,17 +1101,34 @@
                 postId: formData.get('postId'),
                 action: formData.get('action'),
                 notes: formData.get('notes'),
-                reviewedBy: '<%= user ? user.id : "" %>'
+                reviewedBy: '<%= user ? user._id || user.id : "" %>'
             };
 
             try {
                 showLoading();
-                const response = await axios.post(`/admin/posts/${reviewData.postId}/review`, reviewData);
+                let endpoint;
+                let payload = {
+                    adminNotes: reviewData.notes
+                };
+
+                // Determine endpoint based on action
+                if (reviewData.action === 'approve') {
+                    endpoint = `/admin/reports/post/${reviewData.postId}/approve`;
+                } else if (reviewData.action === 'dismiss') {
+                    endpoint = `/admin/reports/post/${reviewData.postId}/dismiss`;
+                } else {
+                    throw new Error('Invalid action selected');
+                }
+
+                const response = await axios.post(endpoint, payload);
 
                 if (response.status === 200) {
-                    showToast('Post reviewed successfully', 'success');
+                    showToast(`Post ${reviewData.action}d successfully`, 'success');
                     closeReviewModal();
-                    setTimeout(() => window.location.reload(), 1000);
+
+                    // Update the post card immediately instead of reloading page
+                    updatePostCard(reviewData.postId);
+                    setTimeout(() => window.location.reload(), 2000);
                 }
             } catch (error) {
                 showToast('Failed to review post: ' + (error.response?.data?.message || error.message), 'error');
@@ -1356,7 +1371,9 @@
                 try {
                     showLoading();
 
-                    const response = await axios.post(`/admin/reports/${reportId}/${status}`, {
+                    // Fix the endpoint URL - use 'approve' instead of 'approved' and 'reject' instead of 'rejected'
+                    const endpoint = status === 'approved' ? 'approve' : status === 'rejected' ? 'reject' : status;
+                    const response = await axios.post(`/admin/reports/${reportId}/${endpoint}`, {
                         adminNotes: adminNotes || undefined
                     });
 
@@ -1392,6 +1409,56 @@
 
         function getCurrentPostId() {
             return currentPostId;
+        }
+
+        async function updatePostCard(postId) {
+            try {
+                const response = await axios.get(`/admin/posts/${postId}`);
+                if (response.status === 200) {
+                    const post = response.data;
+
+                    // Find the post card and update its status badges
+                    const postCard = document.querySelector(`[data-post-id="${postId}"]`);
+                    if (postCard) {
+                        // Update status badge
+                        const statusBadge = postCard.querySelector('.absolute.top-4.right-4.z-10');
+                        if (statusBadge) {
+                            const hasReports = post.isReported && post.pendingReportsCount > 0;
+                            if (hasReports) {
+                                statusBadge.innerHTML = `
+                                    <span class="badge banned">
+                                        <i class="fas fa-flag mr-1"></i>
+                                        ${post.reportCount} Report${post.reportCount > 1 ? 's' : ''}
+                                    </span>
+                                    ${post.pendingReportsCount > 0 ? `
+                                    <span class="badge warning text-xs">
+                                        ${post.pendingReportsCount} Pending
+                                    </span>` : ''}
+                                `;
+                            } else {
+                                statusBadge.innerHTML = `
+                                    <span class="badge active">
+                                        <i class="fas fa-check mr-1"></i>
+                                        Active
+                                    </span>
+                                `;
+                            }
+                        }
+
+                        // Update action buttons
+                        const actionButtons = postCard.querySelector('.flex.items-center.space-x-2');
+                        if (actionButtons && post.pendingReportsCount === 0) {
+                            // Remove or disable reports button if no pending reports
+                            const reportsBtn = actionButtons.querySelector('button[onclick*="viewReports"]');
+                            if (reportsBtn) {
+                                reportsBtn.style.display = 'none';
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to update post card:', error);
+            }
         }
 
 

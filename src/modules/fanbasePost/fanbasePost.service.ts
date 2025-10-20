@@ -6,6 +6,7 @@ import { User, UserDocument } from '../user/user.model';
 import { Fanbase, FanbaseDocument } from '../fanbases/fanbase.model';
 import { CreateFanbasePostDto } from './dto/create-fanbasePost.dto';
 import { PostType } from '../../common/interfaces/fanbasepost.interface';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class FanbasePostService {
@@ -13,6 +14,7 @@ export class FanbasePostService {
     @InjectModel(FanbasePost.name) private fanbasePostModel: Model<FanbasePostDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(Fanbase.name) private fanbaseModel: Model<FanbaseDocument>,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async create(createPostDto: CreateFanbasePostDto, userId: string): Promise<PostType> {
@@ -101,6 +103,7 @@ export class FanbasePostService {
       }
 
       const userAlreadyLiked = post.likeUserIds.includes(userId);
+      const isLiking = !userAlreadyLiked;
 
       if (userAlreadyLiked) {
         // Unlike the post
@@ -114,6 +117,28 @@ export class FanbasePostService {
 
       post.updatedAt = new Date();
       const updatedPost = await post.save();
+
+      // Trigger notification only when liking and liker is not the post owner
+      if (isLiking && post.createdBy.userId !== userId) {
+        try {
+          // Get fanbase information
+          const fanbase = await this.fanbaseModel.findById(post.fanbaseId).exec();
+          if (fanbase) {
+            await this.notificationService.createFanbasePostLikeNotification(
+              post.createdBy.userId,        // post owner (recipient)
+              userId,                       // liker (sender)
+              user.username,                // liker username
+              postId,                       // fanbase post ID
+              post.fanbaseId,               // fanbase ID
+              fanbase.fanbaseName,          // fanbase name
+              post.description || post.songName || ''  // post topic
+            );
+            console.log(`✅ Fanbase like notification sent to user ${post.createdBy.userId} from ${user.username}`);
+          }
+        } catch (notificationError) {
+          console.error('❌ Failed to create fanbase like notification:', notificationError);
+        }
+      }
 
       return this.toPostType(updatedPost, userId);
     } catch (error) {
@@ -149,6 +174,30 @@ export class FanbasePostService {
       post.updatedAt = new Date();
 
       const updatedPost = await post.save();
+
+      // Trigger notification if commenter is not the post owner
+      if (post.createdBy.userId !== userId) {
+        try {
+          // Get fanbase information
+          const fanbase = await this.fanbaseModel.findById(post.fanbaseId).exec();
+          if (fanbase) {
+            await this.notificationService.createFanbasePostCommentNotification(
+              post.createdBy.userId,        // post owner (recipient)
+              userId,                       // commenter (sender)
+              user.username,                // commenter username
+              postId,                       // fanbase post ID
+              post.fanbaseId,               // fanbase ID
+              fanbase.fanbaseName,          // fanbase name
+              post.description || post.songName || '',  // post topic
+              comment.trim()                // comment text
+            );
+            console.log(`✅ Fanbase comment notification sent to user ${post.createdBy.userId} from ${user.username}`);
+          }
+        } catch (notificationError) {
+          console.error('❌ Failed to create fanbase comment notification:', notificationError);
+        }
+      }
+
       return this.toPostType(updatedPost, userId);
     } catch (error) {
       throw new Error(`Failed to add comment: ${error.message}`);
@@ -207,7 +256,16 @@ export class FanbasePostService {
         throw new NotFoundException('Unauthorized to delete this post');
       }
 
+      // Delete the post
       await this.fanbasePostModel.deleteOne({ _id: postId }).exec();
+
+      // Update postIds in the associated fanbase (if exists)
+      const fanbase = await this.fanbaseModel.findById(post.fanbaseId).exec();
+      if (fanbase) {
+        fanbase.postIds = (fanbase.postIds || []).filter(id => id.toString() !== postId);
+        fanbase.numberOfPosts = fanbase.postIds.length;
+        await fanbase.save();
+      }
     } catch (error) {
       throw new Error(`Failed to delete post: ${error.message}`);
     }
@@ -284,6 +342,99 @@ export class FanbasePostService {
     }
   }
 
+  async likeComment(postId: string, commentId: string, userId: string): Promise<PostType> {
+    try {
+      const post = await this.fanbasePostModel.findById(postId).exec();
+      if (!post) {
+        throw new NotFoundException('Post not found');
+      }
+
+      const user = await this.userModel.findById(userId).exec();
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // ✅ Find comment by _id
+      const comment = post.comments.find(c => 
+        (c._id as Types.ObjectId).toString() === commentId
+      );
+      
+      if (!comment) {
+        throw new NotFoundException('Comment not found');
+      }
+
+      const userAlreadyLiked = comment.likeUserIds.includes(userId);
+
+      if (userAlreadyLiked) {
+        // Unlike the comment
+        comment.likeUserIds = comment.likeUserIds.filter(id => id !== userId);
+        comment.likeCount = Math.max(0, comment.likeCount - 1);
+      } else {
+        // Like the comment
+        comment.likeUserIds.push(userId);
+        comment.likeCount += 1;
+      }
+
+      post.updatedAt = new Date();
+      const updatedPost = await post.save();
+
+      return this.toPostType(updatedPost, userId);
+    } catch (error) {
+      throw new Error(`Failed to like/unlike comment: ${error.message}`);
+    }
+  }
+
+  async likeSubComment(postId: string, commentId: string, subCommentId: string, userId: string): Promise<PostType> {
+    try {
+      const post = await this.fanbasePostModel.findById(postId).exec();
+      if (!post) {
+        throw new NotFoundException('Post not found');
+      }
+
+      const user = await this.userModel.findById(userId).exec();
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // ✅ Find parent comment by _id
+      const parentComment = post.comments.find(c => 
+        (c._id as Types.ObjectId).toString() === commentId
+      );
+      
+      if (!parentComment) {
+        throw new NotFoundException('Comment not found');
+      }
+
+      // ✅ Find sub-comment by _id
+      const subComment = parentComment.subComments.find(sc =>
+        (sc._id as Types.ObjectId).toString() === subCommentId
+      );
+      
+      if (!subComment) {
+        throw new NotFoundException('Sub-comment not found');
+      }
+
+      const userAlreadyLiked = subComment.likeUserIds.includes(userId);
+
+      if (userAlreadyLiked) {
+        // Unlike the sub-comment
+        subComment.likeUserIds = subComment.likeUserIds.filter(id => id !== userId);
+        subComment.likeCount = Math.max(0, subComment.likeCount - 1);
+      } else {
+        // Like the sub-comment
+        subComment.likeUserIds.push(userId);
+        subComment.likeCount += 1;
+      }
+
+      post.updatedAt = new Date();
+      const updatedPost = await post.save();
+
+      return this.toPostType(updatedPost, userId);
+    } catch (error) {
+      throw new Error(`Failed to like/unlike sub-comment: ${error.message}`);
+    }
+  }
+
   private toPostType(post: FanbasePostDocument, userId?: string): PostType {
     return {
       _id: (post._id as Types.ObjectId).toString(),
@@ -305,6 +456,7 @@ export class FanbasePostService {
         comment: comment.comment,
         likeCount: comment.likeCount || 0,
         likeUserIds: comment.likeUserIds || [],
+        isLiked: userId ? comment.likeUserIds.includes(userId) : false,
         createdAt: comment.createdAt,
         subComments: (comment.subComments || []).map((subComment) => ({
           commentId: (subComment._id as Types.ObjectId).toString(), // ✅ Use _id
@@ -313,6 +465,7 @@ export class FanbasePostService {
           comment: subComment.comment,
           likeCount: subComment.likeCount || 0,
           likeUserIds: subComment.likeUserIds || [],
+          isLiked: userId ? subComment.likeUserIds.includes(userId) : false,
           createdAt: subComment.createdAt,
         })),
       })),
