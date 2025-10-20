@@ -76,19 +76,44 @@ export class SearchService {
       };
     }));
 
+    // For each user, fetch profile image
+    const usersWithImage = await Promise.all(users.map(async user => {
+      let userImage = '';
+      try {
+        const profile = await this.profileModel.findOne({ userId: user._id }).lean();
+        userImage = profile?.profileImage || '';
+        console.log(`User ${user.username} (ID: ${user._id}): profileImage = "${userImage}"`);
+      } catch (e) {
+        userImage = '';
+        console.log(`Error fetching profile for user ${user.username}: ${e}`);
+      }
+      return {
+        id: user._id,
+        name: user.username,
+        type: 'user',
+        userImage,
+      };
+    }));
+
+    // Combine users and profiles into one list for People section
+    const combinedUsers = [
+      ...usersWithImage,
+      ...profiles.map(profile => {
+        console.log(`Profile ${profile.fullName} (userId: ${profile.userId}): profileImage = "${profile.profileImage}"`);
+        return {
+          id: profile.userId,
+          name: profile.fullName || 'Unknown',
+          type: 'profile',
+          userImage: profile.profileImage || '',
+        };
+      }),
+    ];
+
     return {
-      users: users.map(user => ({ id: user._id, name: user.username, type: 'user' })),
+      users: combinedUsers,
       fanbases: [],
       posts: [],
-      profiles: profiles.map(profile => ({ 
-        id: profile._id, 
-        name: profile.fullName || 'Unknown', 
-        type: 'profile',
-        userId: profile.userId,
-        profileImage: profile.profileImage || '',
-        profileUrl: `/profile/${profile.userId}`,
-        clickable: true
-      })),
+      profiles: [], // No longer needed separately
       songPosts: songPostsWithUser,
     };
   }
