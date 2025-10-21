@@ -2,6 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Profile, ProfileDocument } from './profile.model';
+import {
+  Request,
+  RequestDocument,
+  RequestRespondStatus,
+} from '../request/request.model';
 import { ProfileDto } from './dto/profile.dto';
 import { SongPost, SongPostDocument } from '../songPost/songPost.model';
 import { User, UserDocument } from '../user/user.model'; // <-- fix import
@@ -14,6 +19,7 @@ export class ProfileService {
     @InjectModel(SongPost.name) private songPostModel: Model<SongPostDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>, // <-- inject User model
     @InjectModel(Post.name) private postModel: Model<PostDocument>, // <-- inject Post model
+    @InjectModel(Request.name) private requestModel: Model<RequestDocument>,
   ) {}
 
   async getProfileByUserId(userId: string): Promise<ProfileDto | null> {
@@ -167,7 +173,6 @@ export class ProfileService {
     const profile = await this.profileModel.findOne({ userId }).lean();
     return profile?.following ?? [];
   }
-
 
   /**
    * Get total number of likes, comments, and all comments for each post by userId
@@ -387,6 +392,24 @@ export class ProfileService {
         { userId: followerId },
         { $pull: { following: followingId } },
       );
+
+      // If there is an existing Request document that was previously CONFIRMed between these users,
+      // mark it as CANCEL so the request record reflects the unfollow action.
+      try {
+        await this.requestModel.findOneAndUpdate(
+          {
+            requestSendUserId: followerId,
+            requestReceiveUserId: followingId,
+            respond: RequestRespondStatus.CONFIRM,
+          },
+          { respond: RequestRespondStatus.CANCEL },
+        );
+      } catch (e) {
+        console.error(
+          'Failed to update request status on unfollow:',
+          e.message || e,
+        );
+      }
 
       return {
         success: true,
